@@ -1,0 +1,13 @@
+name: cgfp
+channels:
+  - pytorch
+  - huggingface
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11.*
+  - pytorch::pytorch=2.1.0
+  - huggingface:transformers
+  - poetry
+  - polars
+

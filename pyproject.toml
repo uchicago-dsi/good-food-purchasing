@@ -1,0 +1,13 @@
+[project]
+name = "cgfp"
+version = "0.1.0"
+description = "Training for CGFP model"
+readme = "README.md"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
