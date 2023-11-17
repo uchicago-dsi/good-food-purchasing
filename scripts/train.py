@@ -142,12 +142,12 @@ if __name__ == '__main__':
 
     training_args = TrainingArguments(
         output_dir = './results',
-        num_train_epochs = 30,
-        per_device_train_batch_size = 2,
+        num_train_epochs = 100,
+        per_device_train_batch_size = 32,
         per_device_eval_batch_size = 64,
         warmup_steps = 100,
         weight_decay = 0.01,
-        logging_dir = './logs'
+        logging_dir = './training-logs'
     )
 
     adamW = AdamW(model.parameters(), lr=0.0003)

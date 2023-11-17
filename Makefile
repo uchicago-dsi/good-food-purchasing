@@ -59,7 +59,7 @@ test: env
 train: env
 	mkdir -p $(RUN_LOGS)
 	$(CONDA_RUN) sbatch \
-	--mem=5GB \
+	--mem=64GB \
 	--partition=$(DSI_PARTITION) \
 	--nodes=1 \
 	--gres=gpu:1 \
