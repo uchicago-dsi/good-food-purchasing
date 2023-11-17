@@ -9,13 +9,13 @@ By default this will train on the dataset `bulk_data.csv` in the `data` folder.
 
 To see the logs for the current or most recent run, run the command `make last-errs` (logging statements are printed to the error log, while print statements appear to be printed to the output log, so the logging I added goes to errors).
 
+Running `make train` performs some logging setup and runs an `sbatch` command that creates a job for `./scripts/train.slurm`.
+The script `./scripts/train.slurm` simply runs `./scripts/train.py`.
 Checkpoints will be saved in `./results`.
 
-For one off commands, preface your command with `conda run -p ./tmp/conda/cgfp `...
+For one off commands, preface your command with `conda run -p ./tmp/conda/cgfp ...`. For instance:
 
-For instance:
-
-`conda run -p ./tmp/conda/cgfp conda list`
+```conda run -p ./tmp/conda/cgfp conda list```
 
 to list all packages in the conda environment.
 Alternatively, you can start the environment.
