@@ -75,7 +75,7 @@ class MultiTaskModel(nn.Module):
     return ((loss,) + output) if loss is not None else output
 
 def read_data(data_path):
-    return pl.read_csv(data_path).lazy()
+    return pl.read_csv(data_path, infer_schema_length=1, null_values=['NULL']).lazy()
 
 
 ### Data prep
