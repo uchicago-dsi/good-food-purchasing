@@ -21,12 +21,7 @@ LABELS = [
     "Level of Processing",
     "Primary Food Product Category",
 ]
-SAVE_DIR = "/net/projects/cgfp/saved-models/"
-# TODO: figure out how to actually save different versions of the model
-# current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-# MODEL_NAME = f"test-{current_time}"
-# MODEL_PATH = SAVE_DIR + MODEL_NAME
-MODEL_PATH = SAVE_DIR
+MODEL_PATH = f"/net/projects/cgfp/saved-models/model-name/{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
 SMOKE_TEST = True
 
 class MultiTaskModel(PreTrainedModel):
@@ -120,6 +115,8 @@ def compute_metrics(pred):
 
 if __name__ == '__main__':
 
+    logging.info(f"MODEL_PATH : {MODEL_PATH}")
+
     # Setup
 
     logging.info("Starting")
@@ -203,7 +200,6 @@ if __name__ == '__main__':
 
     trainer.train()
 
-    # os.makedirs(MODEL_PATH, exist_ok=True)
     model.save_pretrained(MODEL_PATH)
     tokenizer.save_pretrained(MODEL_PATH)
 
