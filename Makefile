@@ -16,7 +16,8 @@ RUN_LOGS:=$(LOG_DIR)/$(TIMESTAMP)
 
 LAST_LOGS:=$(shell find logs |grep -E "logs/[^/]*$$" |sort |tail -n 1)
 
-CONDA_ENV_PATH := ./tmp/conda/cgfp
+# CONDA_ENV_PATH := ./tmp/conda/cgfp
+CONDA_ENV_PATH := /net/projects/cgfp
 CONDA_ENV_FILE := environment.yml
 
 CONDA_RUN = conda run -p $(CONDA_ENV_PATH)
