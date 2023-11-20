@@ -78,3 +78,7 @@ last-logs:
 last-errs:
 	echo ""
 	cat $(LAST_LOGS)/$(ERR_FILE)
+
+##### HUGGINGFACE #####
+
+# TODO: can probably standardize the pipeline to upload a model to huggingface

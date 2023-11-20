@@ -21,11 +21,14 @@ LABELS = [
     "Level of Processing",
     "Primary Food Product Category",
 ]
-MODEL_PATH = f"/net/projects/cgfp/saved-models/model-name/{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
+# TODO: set up some sort of way to have a model repo when the models are actually good
+MODEL_PATH = f"/net/projects/cgfp/saved-models/{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
+MODEL_PATH = f"/net/projects/cgfp/results/cgfp-classifier"
 SMOKE_TEST = True
 
 class MultiTaskModel(PreTrainedModel):
     def __init__(self, model, num_categories_per_task, *args, **kwargs):
+        logging.info(f"model.config.use_return_dict: {model.config.use_return_dict}")
         config = model.config
         super().__init__(config)
         self.model = model
@@ -74,10 +77,20 @@ class MultiTaskModel(PreTrainedModel):
             )
         loss = sum(losses)
 
+        for i, logit in enumerate(logits):
+            logging.info(f"Logit {i}: {logit.shape}")  # Should show something like [batch_size, num_classes_for_task]
+
         output = (logits,) + distilbert_output[1:] # TODO why activations? see https://github.com/huggingface/transformers/blob/6f316016877197014193b9463b2fd39fa8f0c8e4/src/transformers/models/distilbert/modeling_distilbert.py#L824
 
         # TODO: do we actually need to implement a return_dict setup?
+        if return_dict:
+            return {
+                "logits_task1": logits[0],
+                "logits_task2": logits[1],
+                # include other outputs like loss, hidden states, etc., if necessary
+            }
 
+        # TODO: Not sure why logits are not coming back in expected format
         return ((loss,) + output) if loss is not None else output
 
 def read_data(data_path):
@@ -136,13 +149,13 @@ if __name__ == '__main__':
     df_cleaned = df_cleaned.drop_nulls()
 
     encoders = {}
-    num_labels = 0
     for column in LABELS:
         encoder = LabelEncoder()
         encoder.fit_transform(df_cleaned.select(column).collect().to_numpy().ravel())
         encoders[column] = encoder
-        num_labels += len(encoder.classes_)
-    logging.info(f"Number of labels to predict : {num_labels}")
+
+    for k, v in encoders.items():
+        logging.info(f"{k}: {len(v.classes_)} classes")
 
     logging.info("Preparing dataset")
     dataset = Dataset.from_pandas(df_cleaned.collect().to_pandas())
@@ -169,8 +182,6 @@ if __name__ == '__main__':
     logging.info("Instantiating model")
     distilbert_model = DistilBertForSequenceClassification.from_pretrained('distilbert-base-uncased')
     model = MultiTaskModel(distilbert_model, [len(v.classes_) for k, v in encoders.items()])
-    # config = DistilBertConfig()  # Use the appropriate config for your base model
-    # model = MultiTaskModel(config=config, num_categories_per_task=[10, 5])
     logging.info("Model instantiated")
 
     training_args = TrainingArguments(
@@ -202,5 +213,13 @@ if __name__ == '__main__':
 
     model.save_pretrained(MODEL_PATH)
     tokenizer.save_pretrained(MODEL_PATH)
+
+    # Figure out if return_dict is working
+    text = "peas and carrots"
+    inputs = tokenizer(text, padding=True, truncation=True, return_tensors="pt")
+    model.eval()
+    with torch.no_grad():
+        outputs = model(**inputs, return_dict=True)
+    logging.info(f"Outputs: {outputs}")
 
     logging.info(data_path)
