@@ -33,6 +33,7 @@ class MultiTaskConfig(DistilBertConfig):
     def __init__(self, num_categories_per_task=None, **kwargs):
         super().__init__(**kwargs)
         self.num_categories_per_task = num_categories_per_task
+        self.decoders = decoders
 
 class MultiTaskModel(PreTrainedModel):
     config_class = MultiTaskConfig
@@ -89,7 +90,8 @@ class MultiTaskModel(PreTrainedModel):
 
         output = (logits,) + distilbert_output[1:] # TODO why activations? see https://github.com/huggingface/transformers/blob/6f316016877197014193b9463b2fd39fa8f0c8e4/src/transformers/models/distilbert/modeling_distilbert.py#L824
 
-        # TODO: clean this up
+        # TODO: clean this up - follow the Huggingface convention of returning
+        # whatever kind of object they actually want to come back
         if return_dict:
             return {
                 "logits_task1": logits[0],
@@ -97,7 +99,6 @@ class MultiTaskModel(PreTrainedModel):
                 # include other outputs like loss, hidden states, etc., if necessary
             }
 
-        # TODO: Not sure why logits are not coming back in expected format
         return ((loss,) + output) if loss is not None else output
 
 def read_data(data_path):
@@ -160,8 +161,12 @@ if __name__ == '__main__':
         encoder.fit_transform(df_cleaned.select(column).collect().to_numpy().ravel())
         encoders[column] = encoder
 
-    for k, v in encoders.items():
-        logging.info(f"{k}: {len(v.classes_)} classes")
+    # Create decoders to save to model config
+    decoders = {}
+    for col, encoder in encoders.items():
+        decoding_dict = {index: label for index, label in enumerate(encoder.classes_)}
+        decoders[col] = decoding_dict
+        logging.info(f"{col}: {len(encoder.classes_)} classes")
 
     logging.info("Preparing dataset")
     dataset = Dataset.from_pandas(df_cleaned.collect().to_pandas())
@@ -188,7 +193,7 @@ if __name__ == '__main__':
     logging.info("Instantiating model")
     distilbert_model = DistilBertForSequenceClassification.from_pretrained('distilbert-base-uncased')
     num_categories_per_task = [len(v.classes_) for k, v in encoders.items()]
-    config = MultiTaskConfig(num_categories_per_task=num_categories_per_task, **distilbert_model.config.to_dict())
+    config = MultiTaskConfig(num_categories_per_task=num_categories_per_task, decoders=decoders, **distilbert_model.config.to_dict())
     model = MultiTaskModel(config)
     logging.info("Model instantiated")
 
@@ -223,7 +228,5 @@ if __name__ == '__main__':
     logging.info("Saving the model")
     model.save_pretrained(MODEL_PATH)
     tokenizer.save_pretrained(MODEL_PATH)
-    with open(MODEL_PATH + 'encoders.pkl', 'wb') as f:
-        pickle.dump(encoders, f)
 
-    logging.info(data_path)
+    logging.info("Complete!")
