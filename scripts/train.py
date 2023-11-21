@@ -4,12 +4,13 @@ import logging
 import torch
 import torch.nn as nn
 from torch.optim import AdamW
-from transformers import DistilBertForSequenceClassification, DistilBertTokenizerFast, TrainingArguments, Trainer, PreTrainedModel
+from transformers import DistilBertForSequenceClassification, DistilBertTokenizerFast, TrainingArguments, Trainer, PreTrainedModel, DistilBertConfig, DistilBertModel
 from datasets import Dataset
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 import polars as pl
 from datetime import datetime
+import pickle
 
 logging.basicConfig(level=logging.INFO)
 
@@ -23,24 +24,30 @@ LABELS = [
 ]
 # TODO: set up some sort of way to have a model repo when the models are actually good
 MODEL_PATH = f"/net/projects/cgfp/saved-models/{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
-MODEL_PATH = f"/net/projects/cgfp/results/cgfp-classifier"
+MODEL_PATH = f"/net/projects/cgfp/results/cgfp-classifier/"
 SMOKE_TEST = True
 
-class MultiTaskModel(PreTrainedModel):
-    def __init__(self, model, num_categories_per_task, *args, **kwargs):
-        logging.info(f"model.config.use_return_dict: {model.config.use_return_dict}")
-        config = model.config
-        super().__init__(config)
-        self.model = model
-        self.distilbert = model.distilbert
+from transformers import PretrainedConfig
+
+class MultiTaskConfig(DistilBertConfig):
+    def __init__(self, num_categories_per_task=None, **kwargs):
+        super().__init__(**kwargs)
         self.num_categories_per_task = num_categories_per_task
+
+class MultiTaskModel(PreTrainedModel):
+    config_class = MultiTaskConfig
+
+    def __init__(self, config, *args, **kwargs):
+        super().__init__(config)
+        self.distilbert = DistilBertModel(config)
+        self.num_categories_per_task = config.num_categories_per_task
         self.classification_heads = nn.ModuleList([
             nn.Sequential(
                 nn.Linear(config.dim, config.dim),
                 nn.ReLU(),
                 nn.Dropout(config.seq_classif_dropout),
                 nn.Linear(config.dim, num_categories)
-            ) for num_categories in num_categories_per_task
+            ) for num_categories in self.num_categories_per_task
         ])
 
     def forward(
@@ -70,19 +77,19 @@ class MultiTaskModel(PreTrainedModel):
         loss = None
         if labels is not None:
             loss_fct = nn.CrossEntropyLoss()
-        losses = []
-        for logit, label in zip(logits, labels.squeeze().transpose(0, 1)): # trust me
-            losses.append(
-                loss_fct(logit, label.view(-1))
-            )
-        loss = sum(losses)
+            losses = []
+            for logit, label in zip(logits, labels.squeeze().transpose(0, 1)): # trust me
+                losses.append(
+                    loss_fct(logit, label.view(-1))
+                )
+            loss = sum(losses)
 
         for i, logit in enumerate(logits):
             logging.info(f"Logit {i}: {logit.shape}")  # Should show something like [batch_size, num_classes_for_task]
 
         output = (logits,) + distilbert_output[1:] # TODO why activations? see https://github.com/huggingface/transformers/blob/6f316016877197014193b9463b2fd39fa8f0c8e4/src/transformers/models/distilbert/modeling_distilbert.py#L824
 
-        # TODO: do we actually need to implement a return_dict setup?
+        # TODO: clean this up
         if return_dict:
             return {
                 "logits_task1": logits[0],
@@ -101,7 +108,6 @@ def read_data(data_path):
 
 # Training
 
-# ????
 def compute_metrics(pred):
     # Extract the predictions and labels for each task
     preds_task1 = pred.predictions[0].argmax(-1)
@@ -181,7 +187,9 @@ if __name__ == '__main__':
 
     logging.info("Instantiating model")
     distilbert_model = DistilBertForSequenceClassification.from_pretrained('distilbert-base-uncased')
-    model = MultiTaskModel(distilbert_model, [len(v.classes_) for k, v in encoders.items()])
+    num_categories_per_task = [len(v.classes_) for k, v in encoders.items()]
+    config = MultiTaskConfig(num_categories_per_task=num_categories_per_task, **distilbert_model.config.to_dict())
+    model = MultiTaskModel(config)
     logging.info("Model instantiated")
 
     training_args = TrainingArguments(
@@ -209,17 +217,13 @@ if __name__ == '__main__':
         optimizers = (adamW, None)  # Optimizer, LR scheduler
     )
 
+    logging.info("Training...")
     trainer.train()
 
+    logging.info("Saving the model")
     model.save_pretrained(MODEL_PATH)
     tokenizer.save_pretrained(MODEL_PATH)
-
-    # Figure out if return_dict is working
-    text = "peas and carrots"
-    inputs = tokenizer(text, padding=True, truncation=True, return_tensors="pt")
-    model.eval()
-    with torch.no_grad():
-        outputs = model(**inputs, return_dict=True)
-    logging.info(f"Outputs: {outputs}")
+    with open(MODEL_PATH + 'encoders.pkl', 'wb') as f:
+        pickle.dump(encoders, f)
 
     logging.info(data_path)
