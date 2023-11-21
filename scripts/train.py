@@ -42,6 +42,7 @@ class MultiTaskModel(PreTrainedModel):
         super().__init__(config)
         self.distilbert = DistilBertModel(config)
         self.num_categories_per_task = config.num_categories_per_task
+        self.decoders = config.decoders
         self.classification_heads = nn.ModuleList([
             nn.Sequential(
                 nn.Linear(config.dim, config.dim),
