@@ -30,7 +30,7 @@ SMOKE_TEST = True
 from transformers import PretrainedConfig
 
 class MultiTaskConfig(DistilBertConfig):
-    def __init__(self, num_categories_per_task=None, **kwargs):
+    def __init__(self, num_categories_per_task=None, decoders=None, **kwargs):
         super().__init__(**kwargs)
         self.num_categories_per_task = num_categories_per_task
         self.decoders = decoders
