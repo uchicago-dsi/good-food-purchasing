@@ -165,6 +165,7 @@ if __name__ == '__main__':
 
     # Data preparation
 
+    # TODO: Should we force everything into the name normalization format here?
     data_path = sys.argv[1] if len(sys.argv) > 1 else 'data'
     logging.info(f"Reading data from path : {data_path}")
     df = read_data(data_path)
