@@ -10,7 +10,6 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 import polars as pl
 from datetime import datetime
-import pickle
 
 logging.basicConfig(level=logging.INFO)
 
@@ -23,17 +22,21 @@ LABELS = [
     "Primary Food Product Category",
 ]
 # TODO: set up some sort of way to have a model repo when the models are actually good
-MODEL_PATH = f"/net/projects/cgfp/saved-models/{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
+# MODEL_PATH = f"/net/projects/cgfp/saved-models/{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
 MODEL_PATH = f"/net/projects/cgfp/results/cgfp-classifier/"
-SMOKE_TEST = True
+SMOKE_TEST = False
 
-from transformers import PretrainedConfig
+if SMOKE_TEST:
+    MODEL_PATH += "smoke-test"
+
+# TODO: move models into separate file
 
 class MultiTaskConfig(DistilBertConfig):
-    def __init__(self, num_categories_per_task=None, decoders=None, **kwargs):
+    def __init__(self, num_categories_per_task=None, decoders=None, columns=None, **kwargs):
         super().__init__(**kwargs)
         self.num_categories_per_task = num_categories_per_task
         self.decoders = decoders
+        self.columns = columns
 
 class MultiTaskModel(PreTrainedModel):
     config_class = MultiTaskConfig
@@ -43,6 +46,8 @@ class MultiTaskModel(PreTrainedModel):
         self.distilbert = DistilBertModel(config)
         self.num_categories_per_task = config.num_categories_per_task
         self.decoders = config.decoders
+        self.columns = config.columns
+
         self.classification_heads = nn.ModuleList([
             nn.Sequential(
                 nn.Linear(config.dim, config.dim),
@@ -86,9 +91,6 @@ class MultiTaskModel(PreTrainedModel):
                 )
             loss = sum(losses)
 
-        for i, logit in enumerate(logits):
-            logging.info(f"Logit {i}: {logit.shape}")  # Should show something like [batch_size, num_classes_for_task]
-
         output = (logits,) + distilbert_output[1:] # TODO why activations? see https://github.com/huggingface/transformers/blob/6f316016877197014193b9463b2fd39fa8f0c8e4/src/transformers/models/distilbert/modeling_distilbert.py#L824
 
         # TODO: clean this up - follow the Huggingface convention of returning
@@ -112,22 +114,35 @@ def read_data(data_path):
 
 def compute_metrics(pred):
     # Extract the predictions and labels for each task
+    
+    # TODO: fix predictions
+    # len(pred.predictions) » 2
+    # len(pred.predictions[0]) » 20
+    # len(pred.predictions[0][0]) » 6 (number of classes)
+    # len(pred.predictions[1][0]) » 29 (number of classes)
+    # Also...why is this 20 and not the batch size?
+
     preds_task1 = pred.predictions[0].argmax(-1)
     preds_task2 = pred.predictions[1].argmax(-1)
 
-    labels_task1 = pred.label_ids[0]
-    labels_task2 = pred.label_ids[1]
+    # TODO: fix label_ids
+    # len(pred.label_ids) » 2
+    # This comes in a list of length 20 with a 2D label for each example?
+    # array([[ 5],
+    #    [26]])
+    labels_task1 = pred.label_ids[:, 0, 0].tolist()
+    labels_task2 = pred.label_ids[:, 1, 0].tolist()
 
     # Compute metrics for Task 1
     accuracy_task1 = accuracy_score(labels_task1, preds_task1)
-    precision_task1, recall_task1, f1_task1, _ = precision_recall_fscore_support(labels_task1, preds_task1, average='macro')
+    # precision_task1, recall_task1, f1_task1, _ = precision_recall_fscore_support(labels_task1, preds_task1, average='macro')
 
     # Compute metrics for Task 2
     accuracy_task2 = accuracy_score(labels_task2, preds_task2)
-    precision_task2, recall_task2, f1_task2, _ = precision_recall_fscore_support(labels_task2, preds_task2, average='macro')
+    # precision_task2, recall_task2, f1_task2, _ = precision_recall_fscore_support(labels_task2, preds_task2, average='macro')
 
     # TODO: hack to get something working
-    composite_metric = (f1_task1 + f1_task2) / 2
+    composite_metric = (accuracy_task1 + accuracy_task2) / 2
 
     # Return a dictionary of combined metrics
     return {
@@ -153,6 +168,7 @@ if __name__ == '__main__':
     data_path = sys.argv[1] if len(sys.argv) > 1 else 'data'
     logging.info(f"Reading data from path : {data_path}")
     df = read_data(data_path)
+    columns = df.columns
     df_cleaned = df.select(TEXT_FIELD, *LABELS)
     df_cleaned = df_cleaned.drop_nulls()
 
@@ -173,7 +189,7 @@ if __name__ == '__main__':
     dataset = Dataset.from_pandas(df_cleaned.collect().to_pandas())
 
     if SMOKE_TEST:
-        dataset = dataset.select(range(10))
+        dataset = dataset.select(range(1000))
 
     tokenizer = DistilBertTokenizerFast.from_pretrained(MODEL_NAME)
     def tokenize(batch):
@@ -194,18 +210,21 @@ if __name__ == '__main__':
     logging.info("Instantiating model")
     distilbert_model = DistilBertForSequenceClassification.from_pretrained('distilbert-base-uncased')
     num_categories_per_task = [len(v.classes_) for k, v in encoders.items()]
-    config = MultiTaskConfig(num_categories_per_task=num_categories_per_task, decoders=decoders, **distilbert_model.config.to_dict())
+    config = MultiTaskConfig(num_categories_per_task=num_categories_per_task, decoders=decoders, columns=columns, **distilbert_model.config.to_dict())
     model = MultiTaskModel(config)
     logging.info("Model instantiated")
+
+    epochs = 5 if SMOKE_TEST else 50
 
     training_args = TrainingArguments(
         output_dir = '/net/projects/cgfp/checkpoints',
         evaluation_strategy="epoch",
         save_strategy="epoch",
+        # TODO: fix this when metrics work
         load_best_model_at_end=True,
         metric_for_best_model='composite_metric',
         greater_is_better=True,
-        num_train_epochs = 2,
+        num_train_epochs = epochs,
         per_device_train_batch_size = 32,
         per_device_eval_batch_size = 64,
         warmup_steps = 100,
@@ -217,7 +236,8 @@ if __name__ == '__main__':
     trainer = Trainer(
         model = model,
         args = training_args,
-        compute_metrics = compute_metrics,
+        # TODO: fix this when metrics work
+        compute_metrics = compute_metrics, 
         train_dataset = dataset['train'],
         eval_dataset = dataset['test'],
         optimizers = (adamW, None)  # Optimizer, LR scheduler
