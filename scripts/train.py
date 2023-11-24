@@ -18,12 +18,15 @@ logging.basicConfig(level=logging.INFO)
 MODEL_NAME = 'distilbert-base-uncased'
 TEXT_FIELD = "Product Type"
 LABELS = [
+    "Food Product Category",
     "Level of Processing",
     "Primary Food Product Category",
+    "Food Product Group",
+    "Primary Food Product Group"
 ]
 # TODO: set up some sort of way to have a model repo when the models are actually good
 # MODEL_PATH = f"/net/projects/cgfp/saved-models/{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
-MODEL_PATH = f"/net/projects/cgfp/results/cgfp-classifier/"
+MODEL_PATH = f"/net/projects/cgfp/results/cgfp-classifier/five-cols"
 SMOKE_TEST = False
 
 if SMOKE_TEST:
