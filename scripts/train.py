@@ -28,9 +28,9 @@ LABELS = [
 ]
 # TODO: set up some sort of way to have a model repo when the models are actually good
 # MODEL_PATH = f"/net/projects/cgfp/saved-models/{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
-MODEL_PATH = f"/net/projects/cgfp/results/cgfp-classifier/five-cols"
+MODEL_PATH = f"/net/projects/cgfp/results/cgfp-classifier/five-cols/"
 
-SMOKE_TEST = False
+SMOKE_TEST = True
 SAVE_BEST = True # TODO: Need to actually set up eval metric for this to be a good idea
 
 if SMOKE_TEST:
@@ -131,31 +131,24 @@ def compute_metrics(pred):
     # len(pred.predictions[1][0]) » 29 (number of classes)
     # Also...why is this 20 and not the batch size?
 
-    preds_task1 = pred.predictions[0].argmax(-1)
-    preds_task2 = pred.predictions[1].argmax(-1)
-
-    # TODO: fix label_ids
     # len(pred.label_ids) » 2
     # This comes in a list of length 20 with a 2D label for each example?
     # array([[ 5],
     #    [26]])
-    labels_task1 = pred.label_ids[:, 0, 0].tolist()
-    labels_task2 = pred.label_ids[:, 1, 0].tolist()
 
-    # Compute metrics for Task 1
-    accuracy_task1 = accuracy_score(labels_task1, preds_task1)
-    # precision_task1, recall_task1, f1_task1, _ = precision_recall_fscore_support(labels_task1, preds_task1, average='macro')
+    num_tasks = len(pred.predictions)
+    preds = [pred.predictions[i].argmax(-1) for i in range(num_tasks)]
+    labels = [pred.label_ids[:, i, 0].tolist() for i in range(num_tasks)]
 
-    # Compute metrics for Task 2
-    accuracy_task2 = accuracy_score(labels_task2, preds_task2)
-    # precision_task2, recall_task2, f1_task2, _ = precision_recall_fscore_support(labels_task2, preds_task2, average='macro')
+    accuracies = {}
+    for i, task in enumerate(zip(preds, labels)):
+        pred, lbl = task
+        accuracies[i] = accuracy_score(lbl, pred)
 
-    # TODO: hack to get something working
-    composite_metric = (accuracy_task1 + accuracy_task2) / 2
+    mean_accuracy = sum(accuracies.values())/num_tasks
 
-    # Return a dictionary of combined metrics
     return {
-        "composite_metric": composite_metric
+        "mean_accuracy": mean_accuracy
     }
 
 if __name__ == '__main__':
@@ -226,6 +219,8 @@ if __name__ == '__main__':
 
     epochs = 5 if SMOKE_TEST else 50
 
+    # TODO: training logs aren't showing up?
+
     training_args = TrainingArguments(
         output_dir = '/net/projects/cgfp/checkpoints',
         evaluation_strategy="epoch",
@@ -236,11 +231,12 @@ if __name__ == '__main__':
         warmup_steps = 100,
         weight_decay = 0.01,
         logging_dir = './training-logs'
+        # logging_dir = '/home/tnief/good-food-purchasing/training-logs'
     )
 
     if SAVE_BEST:
         training_args.load_best_model_at_end=True
-        training_args.metric_for_best_model='composite_metric'
+        training_args.metric_for_best_model='mean_accuracy'
         training_args.greater_is_better=True
 
     adamW = AdamW(model.parameters(), lr=0.0003)
@@ -256,14 +252,11 @@ if __name__ == '__main__':
     logging.info("Training...")
     trainer.train()
 
-    # TODO: Can I log validation results?
-
     logging.info("Saving the model")
     model.save_pretrained(MODEL_PATH)
     tokenizer.save_pretrained(MODEL_PATH)
 
     logging.info("Complete!")
-    # TODO: add example output
 
     def inference(model, text, device, confidence_score=False):
         inputs = tokenizer(text, padding=True, truncation=True, return_tensors="pt")
@@ -274,7 +267,7 @@ if __name__ == '__main__':
         model.eval()
         with torch.no_grad():
             outputs = model(**inputs, return_dict=True)
-        scores = [torch.max(logits, dim=1) for logits in outputs['logits']] # torch.max returns both max and argmax
+        scores = [torch.max(logits, dim=1) for logits in outputs.logits] # torch.max returns both max and argmax
 
         legible_preds = {}
         for item, score in zip(model.decoders.items(), scores):
