@@ -256,6 +256,8 @@ if __name__ == '__main__':
     logging.info("Training...")
     trainer.train()
 
+    # TODO: Can I log validation results?
+
     logging.info("Saving the model")
     model.save_pretrained(MODEL_PATH)
     tokenizer.save_pretrained(MODEL_PATH)
