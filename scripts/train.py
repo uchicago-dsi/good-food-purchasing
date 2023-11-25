@@ -3,8 +3,10 @@ import logging
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.optim import AdamW
 from transformers import DistilBertForSequenceClassification, DistilBertTokenizerFast, TrainingArguments, Trainer, PreTrainedModel, DistilBertConfig, DistilBertModel
+from transformers.modeling_outputs import SequenceClassifierOutput
 from datasets import Dataset
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support
@@ -27,7 +29,9 @@ LABELS = [
 # TODO: set up some sort of way to have a model repo when the models are actually good
 # MODEL_PATH = f"/net/projects/cgfp/saved-models/{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
 MODEL_PATH = f"/net/projects/cgfp/results/cgfp-classifier/five-cols"
+
 SMOKE_TEST = False
+SAVE_BEST = True # TODO: Need to actually set up eval metric for this to be a good idea
 
 if SMOKE_TEST:
     MODEL_PATH += "smoke-test"
@@ -95,17 +99,16 @@ class MultiTaskModel(PreTrainedModel):
             loss = sum(losses)
 
         output = (logits,) + distilbert_output[1:] # TODO why activations? see https://github.com/huggingface/transformers/blob/6f316016877197014193b9463b2fd39fa8f0c8e4/src/transformers/models/distilbert/modeling_distilbert.py#L824
+    
+        if not return_dict:
+            return (loss,) + output if loss is not None else output
 
-        # TODO: clean this up - follow the Huggingface convention of returning
-        # whatever kind of object they actually want to come back
-        if return_dict:
-            return {
-                "logits_task1": logits[0],
-                "logits_task2": logits[1],
-                # include other outputs like loss, hidden states, etc., if necessary
-            }
-
-        return ((loss,) + output) if loss is not None else output
+        return SequenceClassifierOutput(
+            loss=loss,
+            logits=logits,
+            hidden_states=distilbert_output.hidden_states,
+            attentions=distilbert_output.attentions
+        )
 
 def read_data(data_path):
     return pl.read_csv(data_path, infer_schema_length=1, null_values=['NULL']).lazy()
@@ -117,6 +120,9 @@ def read_data(data_path):
 
 def compute_metrics(pred):
     # Extract the predictions and labels for each task
+
+    # TODO: set this up so that it gets all of the labels and predictions in 
+    # a principled and scalable way for an arbitrary number of columns
     
     # TODO: fix predictions
     # len(pred.predictions) » 2
@@ -224,10 +230,6 @@ if __name__ == '__main__':
         output_dir = '/net/projects/cgfp/checkpoints',
         evaluation_strategy="epoch",
         save_strategy="epoch",
-        # TODO: fix this when metrics work
-        load_best_model_at_end=True,
-        metric_for_best_model='composite_metric',
-        greater_is_better=True,
         num_train_epochs = epochs,
         per_device_train_batch_size = 32,
         per_device_eval_batch_size = 64,
@@ -236,11 +238,15 @@ if __name__ == '__main__':
         logging_dir = './training-logs'
     )
 
+    if SAVE_BEST:
+        training_args.load_best_model_at_end=True
+        training_args.metric_for_best_model='composite_metric'
+        training_args.greater_is_better=True
+
     adamW = AdamW(model.parameters(), lr=0.0003)
     trainer = Trainer(
         model = model,
         args = training_args,
-        # TODO: fix this when metrics work
         compute_metrics = compute_metrics, 
         train_dataset = dataset['train'],
         eval_dataset = dataset['test'],
@@ -255,3 +261,35 @@ if __name__ == '__main__':
     tokenizer.save_pretrained(MODEL_PATH)
 
     logging.info("Complete!")
+    # TODO: add example output
+
+    def inference(model, text, device, confidence_score=False):
+        inputs = tokenizer(text, padding=True, truncation=True, return_tensors="pt")
+
+        inputs = inputs.to(device)
+        model = model.to(device)
+
+        model.eval()
+        with torch.no_grad():
+            outputs = model(**inputs, return_dict=True)
+        logging.info(f"outputs: {outputs}")
+        scores = [torch.max(logits, dim=1) for logits in outputs['logits']] # torch.max returns both max and argmax
+
+        legible_preds = {}
+        for item, score in zip(model.decoders.items(), scores):
+            col, decoder = item
+            prob, idx = score
+            try:
+                # TODO: should prob deserialize the ints for the notebook...
+                legible_preds[col] = decoder[idx.item()]
+                if confidence_score:
+                    legible_preds[col + "_score"] = prob.item()
+            except Exception as e:
+                # TODO: what do we want to actually happen here?
+                logging.info(f"Exception: {e}")
+
+        return legible_preds
+
+    prompt = "frozen peas and carrots"
+    legible_preds = inference(model, prompt, device)
+    logging.info(f"Example output for 'frozen peas and carrots': {legible_preds}")

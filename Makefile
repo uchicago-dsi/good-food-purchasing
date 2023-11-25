@@ -1,5 +1,5 @@
 
-SBATCH_MAIL:=credmond@uchicago.edu
+SBATCH_MAIL:=tnief@uchicago.edu
 DSI_PARTITION:=general
 
 SCRIPTS_DIR:=scripts
