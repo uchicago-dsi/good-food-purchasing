@@ -272,7 +272,6 @@ if __name__ == '__main__':
         model.eval()
         with torch.no_grad():
             outputs = model(**inputs, return_dict=True)
-        logging.info(f"outputs: {outputs}")
         scores = [torch.max(logits, dim=1) for logits in outputs['logits']] # torch.max returns both max and argmax
 
         legible_preds = {}
