@@ -148,7 +148,8 @@ def compute_metrics(pred):
     mean_accuracy = sum(accuracies.values())/num_tasks
 
     return {
-        "mean_accuracy": mean_accuracy
+        "mean_accuracy": mean_accuracy,
+        "accuracies": accuracies
     }
 
 if __name__ == '__main__':
