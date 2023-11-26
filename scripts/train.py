@@ -30,7 +30,7 @@ LABELS = [
 # MODEL_PATH = f"/net/projects/cgfp/saved-models/{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
 MODEL_PATH = f"/net/projects/cgfp/results/cgfp-classifier/five-cols/"
 
-SMOKE_TEST = True
+SMOKE_TEST = False
 SAVE_BEST = True # TODO: Need to actually set up eval metric for this to be a good idea
 
 if SMOKE_TEST:
@@ -252,6 +252,9 @@ if __name__ == '__main__':
     logging.info("Training...")
     trainer.train()
 
+    logging.info("Training complete")
+    logging.info(f"Validation Results: {trainer.evaluate()}")
+
     logging.info("Saving the model")
     model.save_pretrained(MODEL_PATH)
     tokenizer.save_pretrained(MODEL_PATH)
@@ -275,6 +278,7 @@ if __name__ == '__main__':
             prob, idx = score
             try:
                 # TODO: should prob deserialize the ints for the notebook...
+                # and just import this script. Do this later.
                 legible_preds[col] = decoder[idx.item()]
                 if confidence_score:
                     legible_preds[col + "_score"] = prob.item()
