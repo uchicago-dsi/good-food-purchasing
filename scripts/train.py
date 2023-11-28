@@ -5,6 +5,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.optim import AdamW
+from torch.optim.lr_scheduler import CosineAnnealingLR, ReduceLROnPlateau
+
 from transformers import DistilBertForSequenceClassification, DistilBertTokenizerFast, TrainingArguments, Trainer, PreTrainedModel, DistilBertConfig, DistilBertModel
 from transformers.modeling_outputs import SequenceClassifierOutput
 from datasets import Dataset
@@ -12,6 +14,10 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 import polars as pl
 from datetime import datetime
+from collections import namedtuple
+
+# TODO: switch this back to an ordered dict and just serialize it...probably
+Decoder = namedtuple('Decoder', 'column decoding_dict')
 
 logging.basicConfig(level=logging.INFO)
 
@@ -27,23 +33,24 @@ LABELS = [
     "Primary Food Product Group"
 ]
 # TODO: set up some sort of way to have a model repo when the models are actually good
-# MODEL_PATH = f"/net/projects/cgfp/saved-models/{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
-MODEL_PATH = f"/net/projects/cgfp/results/cgfp-classifier/five-cols/"
+# Add some other args to the model path
+MODEL_PATH = f"/net/projects/cgfp/model-files/{datetime.now().strftime('%Y-%m-%d_%H-%M')}"
 
 SMOKE_TEST = False
 SAVE_BEST = True # TODO: Need to actually set up eval metric for this to be a good idea
 
 if SMOKE_TEST:
-    MODEL_PATH += "smoke-test"
+    MODEL_PATH += "-smoke-test"
 
 # TODO: move models into separate file
 
 class MultiTaskConfig(DistilBertConfig):
-    def __init__(self, num_categories_per_task=None, decoders=None, columns=None, **kwargs):
+    def __init__(self, classification="linear", num_categories_per_task=None, decoders=None, columns=None, **kwargs):
         super().__init__(**kwargs)
         self.num_categories_per_task = num_categories_per_task
         self.decoders = decoders
         self.columns = columns
+        self.classification = classification # choices are "linear" or "mlp"
 
 class MultiTaskModel(PreTrainedModel):
     config_class = MultiTaskConfig
@@ -54,15 +61,26 @@ class MultiTaskModel(PreTrainedModel):
         self.num_categories_per_task = config.num_categories_per_task
         self.decoders = config.decoders
         self.columns = config.columns
+        self.classification = config.classification
 
-        self.classification_heads = nn.ModuleList([
-            nn.Sequential(
-                nn.Linear(config.dim, config.dim),
-                nn.ReLU(),
-                nn.Dropout(config.seq_classif_dropout),
-                nn.Linear(config.dim, num_categories)
-            ) for num_categories in self.num_categories_per_task
-        ])
+        # TODO: 
+        if self.classification == "mlp":
+            # TODO: wait...the config.dim should be downsampled here probably...
+            self.classification_heads = nn.ModuleList([
+                nn.Sequential(
+                    nn.Linear(config.dim, config.dim // 2),
+                    nn.ReLU(),
+                    nn.Dropout(config.seq_classif_dropout),
+                    nn.Linear(config.dim // 2, num_categories)
+                ) for num_categories in self.num_categories_per_task
+            ])
+        elif self.classification == "linear":
+            self.classification_heads = nn.ModuleList([
+                nn.Sequential(
+                    nn.Linear(config.dim, num_categories),
+                    nn.Dropout(config.seq_classif_dropout)
+                ) for num_categories in self.num_categories_per_task
+            ])
 
     def forward(
         self,
@@ -169,6 +187,7 @@ if __name__ == '__main__':
     # Data preparation
 
     # TODO: Should we force everything into the name normalization format here?
+    # Should actually probably just create the datasets ahead of time in a data pipeline
     data_path = sys.argv[1] if len(sys.argv) > 1 else 'data'
     logging.info(f"Reading data from path : {data_path}")
     df = read_data(data_path)
@@ -183,11 +202,14 @@ if __name__ == '__main__':
         encoders[column] = encoder
 
     # Create decoders to save to model config
-    decoders = {}
+    decoders = []
     for col, encoder in encoders.items():
         decoding_dict = {index: label for index, label in enumerate(encoder.classes_)}
-        decoders[col] = decoding_dict
+        decoders.append(Decoder(column=col, decoding_dict=decoding_dict))
         logging.info(f"{col}: {len(encoder.classes_)} classes")
+
+    # TODO: so actually should serialize the decoders and deserialize them
+    # whenver they're used
 
     logging.info("Preparing dataset")
     dataset = Dataset.from_pandas(df_cleaned.collect().to_pandas())
@@ -212,16 +234,28 @@ if __name__ == '__main__':
     # Training
 
     logging.info("Instantiating model")
+
+    # TODO: set this up so that classification can be passed via args
+    classification = "mlp"
     distilbert_model = DistilBertForSequenceClassification.from_pretrained('distilbert-base-uncased')
     num_categories_per_task = [len(v.classes_) for k, v in encoders.items()]
-    config = MultiTaskConfig(num_categories_per_task=num_categories_per_task, decoders=decoders, columns=columns, **distilbert_model.config.to_dict())
+    config = MultiTaskConfig(num_categories_per_task=num_categories_per_task, decoders=decoders, columns=columns, classification=classification, **distilbert_model.config.to_dict())
     model = MultiTaskModel(config)
     logging.info("Model instantiated")
 
-    epochs = 5 if SMOKE_TEST else 50
+    epochs = 5 if SMOKE_TEST else 15
 
-    # TODO: training logs aren't showing up?
+    # TODO: add an arg for freezing layers
+    # Freeze all layers
+    for param in model.parameters():
+        param.requires_grad = False
 
+    # Unfreeze classification heads
+    for param in model.classification_heads.parameters():
+        param.requires_grad = True
+
+    # TODO: Training logs argument doesn't seem to work. Logs are in the normal logging folder?
+    # Add info to logging file name
     training_args = TrainingArguments(
         output_dir = '/net/projects/cgfp/checkpoints',
         evaluation_strategy="epoch",
@@ -240,14 +274,20 @@ if __name__ == '__main__':
         training_args.metric_for_best_model='mean_accuracy'
         training_args.greater_is_better=True
 
-    adamW = AdamW(model.parameters(), lr=0.0003)
+    # TODO: depending on how we're actually training an LR scheduler is probably useful
+    # Samet hing with learning rate
+    lr = .001
+    adamW = AdamW(model.parameters(), lr=lr)
+    # TODO: pass this from args...maybe include an option for None
+    # Should prob actually use: torch.optim.lr_scheduler.ReduceLROnPlateau
+    scheduler = ReduceLROnPlateau(adamW)
     trainer = Trainer(
         model = model,
         args = training_args,
         compute_metrics = compute_metrics, 
         train_dataset = dataset['train'],
         eval_dataset = dataset['test'],
-        optimizers = (adamW, None)  # Optimizer, LR scheduler
+        optimizers = (adamW, scheduler)  # Optimizer, LR scheduler
     )
 
     logging.info("Training...")
@@ -274,15 +314,14 @@ if __name__ == '__main__':
         scores = [torch.max(logits, dim=1) for logits in outputs.logits] # torch.max returns both max and argmax
 
         legible_preds = {}
-        for item, score in zip(model.decoders.items(), scores):
-            col, decoder = item
+        for decoder, score in zip(model.decoders, scores):
             prob, idx = score
             try:
                 # TODO: should prob deserialize the ints for the notebook...
-                # and just import this script. Do this later.
-                legible_preds[col] = decoder[idx.item()]
+                # and just import this script. And figure out named tuples...
+                legible_preds[decoder.column] = decoder.decoding_dict[idx.item()]
                 if confidence_score:
-                    legible_preds[col + "_score"] = prob.item()
+                    legible_preds[decoder.column + "_score"] = prob.item()
             except Exception as e:
                 # TODO: what do we want to actually happen here?
                 logging.info(f"Exception: {e}")
