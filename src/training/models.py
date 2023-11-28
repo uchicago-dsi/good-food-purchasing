@@ -3,6 +3,8 @@ import json
 import torch
 import torch.nn as nn
 
+from collections import OrderedDict
+
 from transformers import DistilBertForSequenceClassification, DistilBertTokenizerFast, TrainingArguments, Trainer, PreTrainedModel, DistilBertConfig, DistilBertModel
 from transformers.modeling_outputs import SequenceClassifierOutput
 
@@ -21,7 +23,7 @@ class MultiTaskModel(PreTrainedModel):
         super().__init__(config)
         self.distilbert = DistilBertModel(config)
         self.num_categories_per_task = config.num_categories_per_task
-        self.decoders = json.loads(config.decoders)
+        self.decoders = json.loads(config.decoders, object_pairs_hook=OrderedDict)
         self.columns = config.columns
         self.classification = config.classification
 
