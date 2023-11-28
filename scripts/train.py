@@ -1,5 +1,12 @@
 import sys
 import logging
+import json
+from datetime import datetime
+from collections import OrderedDict
+
+from sklearn.preprocessing import LabelEncoder
+from sklearn.metrics import accuracy_score, precision_recall_fscore_support
+import polars as pl
 
 import torch
 import torch.nn as nn
@@ -10,14 +17,8 @@ from torch.optim.lr_scheduler import CosineAnnealingLR, ReduceLROnPlateau
 from transformers import DistilBertForSequenceClassification, DistilBertTokenizerFast, TrainingArguments, Trainer, PreTrainedModel, DistilBertConfig, DistilBertModel
 from transformers.modeling_outputs import SequenceClassifierOutput
 from datasets import Dataset
-from sklearn.preprocessing import LabelEncoder
-from sklearn.metrics import accuracy_score, precision_recall_fscore_support
-import polars as pl
-from datetime import datetime
-from collections import namedtuple
 
-# TODO: switch this back to an ordered dict and just serialize it...probably
-Decoder = namedtuple('Decoder', 'column decoding_dict')
+from training.utils import inference
 
 logging.basicConfig(level=logging.INFO)
 
@@ -25,6 +26,7 @@ logging.basicConfig(level=logging.INFO)
 
 MODEL_NAME = 'distilbert-base-uncased'
 TEXT_FIELD = "Product Type"
+# TODO: change this default somewhere
 LABELS = [
     "Food Product Category",
     "Level of Processing",
@@ -32,17 +34,14 @@ LABELS = [
     "Food Product Group",
     "Primary Food Product Group"
 ]
-# TODO: set up some sort of way to have a model repo when the models are actually good
-# Add some other args to the model path
+# TODO: add args to MODEL_PATH and logging path
 MODEL_PATH = f"/net/projects/cgfp/model-files/{datetime.now().strftime('%Y-%m-%d_%H-%M')}"
 
-SMOKE_TEST = False
-SAVE_BEST = True # TODO: Need to actually set up eval metric for this to be a good idea
+SMOKE_TEST = True
+SAVE_BEST = True
 
 if SMOKE_TEST:
     MODEL_PATH += "-smoke-test"
-
-# TODO: move models into separate file
 
 class MultiTaskConfig(DistilBertConfig):
     def __init__(self, classification="linear", num_categories_per_task=None, decoders=None, columns=None, **kwargs):
@@ -59,7 +58,7 @@ class MultiTaskModel(PreTrainedModel):
         super().__init__(config)
         self.distilbert = DistilBertModel(config)
         self.num_categories_per_task = config.num_categories_per_task
-        self.decoders = config.decoders
+        self.decoders = json.loads(config.decoders)
         self.columns = config.columns
         self.classification = config.classification
 
@@ -131,18 +130,14 @@ class MultiTaskModel(PreTrainedModel):
 def read_data(data_path):
     return pl.read_csv(data_path, infer_schema_length=1, null_values=['NULL']).lazy()
 
-
 ### Data prep
 
 # Training
 
 def compute_metrics(pred):
     # Extract the predictions and labels for each task
-
-    # TODO: set this up so that it gets all of the labels and predictions in 
-    # a principled and scalable way for an arbitrary number of columns
     
-    # TODO: fix predictions
+    # TODO: organize this info in a docstring
     # len(pred.predictions) » 2
     # len(pred.predictions[0]) » 20
     # len(pred.predictions[0][0]) » 6 (number of classes)
@@ -186,8 +181,7 @@ if __name__ == '__main__':
 
     # Data preparation
 
-    # TODO: Should we force everything into the name normalization format here?
-    # Should actually probably just create the datasets ahead of time in a data pipeline
+    # TODO: Set this up so data file comes out of data pipeline
     data_path = sys.argv[1] if len(sys.argv) > 1 else 'data'
     logging.info(f"Reading data from path : {data_path}")
     df = read_data(data_path)
@@ -202,14 +196,12 @@ if __name__ == '__main__':
         encoders[column] = encoder
 
     # Create decoders to save to model config
-    decoders = []
+    decoders = OrderedDict()
     for col, encoder in encoders.items():
         decoding_dict = {index: label for index, label in enumerate(encoder.classes_)}
-        decoders.append(Decoder(column=col, decoding_dict=decoding_dict))
+        decoders[col] = decoding_dict
         logging.info(f"{col}: {len(encoder.classes_)} classes")
-
-    # TODO: so actually should serialize the decoders and deserialize them
-    # whenver they're used
+    decoders = json.dumps(decoders) # serialize for config file
 
     logging.info("Preparing dataset")
     dataset = Dataset.from_pandas(df_cleaned.collect().to_pandas())
@@ -254,6 +246,9 @@ if __name__ == '__main__':
     for param in model.classification_heads.parameters():
         param.requires_grad = True
 
+    # TODO: set this up to come from args
+    lr = .001
+
     # TODO: Training logs argument doesn't seem to work. Logs are in the normal logging folder?
     # Add info to logging file name
     training_args = TrainingArguments(
@@ -263,6 +258,8 @@ if __name__ == '__main__':
         num_train_epochs = epochs,
         per_device_train_batch_size = 32,
         per_device_eval_batch_size = 64,
+        lr_scheduler_type='linear',
+        learning_rate=lr,
         warmup_steps = 100,
         weight_decay = 0.01,
         logging_dir = './training-logs'
@@ -276,18 +273,32 @@ if __name__ == '__main__':
 
     # TODO: depending on how we're actually training an LR scheduler is probably useful
     # Samet hing with learning rate
-    lr = .001
     adamW = AdamW(model.parameters(), lr=lr)
     # TODO: pass this from args...maybe include an option for None
     # Should prob actually use: torch.optim.lr_scheduler.ReduceLROnPlateau
-    scheduler = ReduceLROnPlateau(adamW)
+    # scheduler = ReduceLROnPlateau(adamW) doesn't work great with trainer
+
+    # idea from ChatGPT:
+    # class ReduceOnPlateauCallback(TrainerCallback):
+    # def __init__(self, optimizer, *args, **kwargs):
+    #     self.scheduler = ReduceLROnPlateau(optimizer, *args, **kwargs)
+
+    # def on_evaluate(self, args, state, control, **kwargs):
+    #     metrics = kwargs.get('metrics', {})
+    #     validation_loss = metrics.get('eval_loss', None)
+    #     if validation_loss is not None:
+    #         self.scheduler.step(validation_loss)
+    #
+    # add this to trainer args: 
+    # callbacks=[ReduceOnPlateauCallback(optimizer, mode='min', factor=0.1, patience=10)]
+
     trainer = Trainer(
         model = model,
         args = training_args,
         compute_metrics = compute_metrics, 
         train_dataset = dataset['train'],
         eval_dataset = dataset['test'],
-        optimizers = (adamW, scheduler)  # Optimizer, LR scheduler
+        optimizers = (adamW, None)  # Optimizer, LR scheduler
     )
 
     logging.info("Training...")
@@ -302,31 +313,30 @@ if __name__ == '__main__':
 
     logging.info("Complete!")
 
-    def inference(model, text, device, confidence_score=False):
-        inputs = tokenizer(text, padding=True, truncation=True, return_tensors="pt")
+    # def inference(model, text, device, confidence_score=False):
+    #     inputs = tokenizer(text, padding=True, truncation=True, return_tensors="pt")
 
-        inputs = inputs.to(device)
-        model = model.to(device)
+    #     inputs = inputs.to(device)
+    #     model = model.to(device)
 
-        model.eval()
-        with torch.no_grad():
-            outputs = model(**inputs, return_dict=True)
-        scores = [torch.max(logits, dim=1) for logits in outputs.logits] # torch.max returns both max and argmax
+    #     model.eval()
+    #     with torch.no_grad():
+    #         outputs = model(**inputs, return_dict=True)
+    #     scores = [torch.max(logits, dim=1) for logits in outputs.logits] # torch.max returns both max and argmax
 
-        legible_preds = {}
-        for decoder, score in zip(model.decoders, scores):
-            prob, idx = score
-            try:
-                # TODO: should prob deserialize the ints for the notebook...
-                # and just import this script. And figure out named tuples...
-                legible_preds[decoder.column] = decoder.decoding_dict[idx.item()]
-                if confidence_score:
-                    legible_preds[decoder.column + "_score"] = prob.item()
-            except Exception as e:
-                # TODO: what do we want to actually happen here?
-                logging.info(f"Exception: {e}")
+    #     legible_preds = {}
+    #     for item, score in zip(model.decoders.items(), scores):
+    #         col, decoder = item
+    #         prob, idx = score
+    #         try:
+    #             legible_preds[col] = decoder[str(idx.item())] # decoders have been serialized so keys are strings
+    #             if confidence_score:
+    #                 legible_preds[decoder.column + "_score"] = prob.item()
+    #         except Exception as e:
+    #             # TODO: what do we want to actually happen here?
+    #             logging.info(f"Exception: {e}")
 
-        return legible_preds
+    #     return legible_preds
 
     prompt = "frozen peas and carrots"
     legible_preds = inference(model, prompt, device)
