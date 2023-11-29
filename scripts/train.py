@@ -17,7 +17,7 @@ from transformers import DistilBertForSequenceClassification, DistilBertTokenize
 from transformers.modeling_outputs import SequenceClassifierOutput
 from datasets import Dataset
 
-from training.utils import inference
+from training.inference import inference
 from training.models import MultiTaskConfig, MultiTaskModel
 
 logging.basicConfig(level=logging.INFO)

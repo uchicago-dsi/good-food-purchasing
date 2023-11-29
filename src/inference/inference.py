@@ -18,7 +18,7 @@ def inference(model, tokenizer, text, device, confidence_score=False):
         try:
             legible_preds[col] = decoder[str(idx.item())] # decoders have been serialized so keys are strings
             if confidence_score:
-                legible_preds[decoder.column + "_score"] = prob.item()
+                legible_preds[col + "_score"] = prob.item()
         except Exception as e:
             pass
             # TODO: what do we want to actually happen here?
