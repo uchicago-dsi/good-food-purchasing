@@ -9,7 +9,8 @@ def inference(model, tokenizer, text, device, confidence_score=False):
     model.eval()
     with torch.no_grad():
         outputs = model(**inputs, return_dict=True)
-    scores = [torch.max(logits, dim=1) for logits in outputs.logits] # torch.max returns both max and argmax
+    softmaxed_scores = [torch.softmax(logits, dim=1) for logits in outputs.logits]
+    scores = [torch.max(score, dim=1) for score in softmaxed_scores] # torch.max returns both max and argmax
 
     legible_preds = {}
     for item, score in zip(model.decoders, scores):
