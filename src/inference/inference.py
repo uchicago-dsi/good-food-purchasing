@@ -43,7 +43,7 @@ def highlight_uncertain_preds(df, threshold=.85):
         print(f"Tried to find uncertainty in a a non-float column! {df.iloc[:,col_idx].head(5)}")
   return styles_dict
 
-def inference_handler(model, tokenizer, input_path, input_column, device=None, sheet_name=0, confidence_score=False, threshold=.85, rows_to_classify=None):
+def inference_handler(model, tokenizer, input_path, input_column, device=None, sheet_name=0, highlight=False, confidence_score=False, threshold=.85, rows_to_classify=None):
   if device is None:
         device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
@@ -77,7 +77,7 @@ def inference_handler(model, tokenizer, input_path, input_column, device=None, s
       results_full[score_col] = results[score_col]
 
   # highlight uncertain predictions
-  if confidence_score:
+  if highlight:
     styles_dict = highlight_uncertain_preds(results_full, threshold)
     styles_df = pd.DataFrame(styles_dict)
 
@@ -89,4 +89,6 @@ def inference_handler(model, tokenizer, input_path, input_column, device=None, s
   # TODO: maybe we want option to have styles but not have scores?
 
   os.chdir("/content/") # make sure this saves in the expected directory
-  df_formatted.to_excel(input_path + "_classifed.xlsx", index=False)
+  output_path = input_path + "_classifed.xlsx"
+  df_formatted.to_excel(output_path, index=False)
+  print(f"Classification completed! File saved to {output_path}")
