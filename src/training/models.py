@@ -23,7 +23,7 @@ class MultiTaskModel(PreTrainedModel):
         super().__init__(config)
         self.distilbert = DistilBertModel(config)
         self.num_categories_per_task = config.num_categories_per_task
-        self.decoders = json.loads(config.decoders, object_pairs_hook=OrderedDict)
+        self.decoders = config.decoders
         self.columns = config.columns
         self.classification = config.classification
 

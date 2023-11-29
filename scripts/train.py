@@ -2,7 +2,6 @@ import sys
 import logging
 import json
 from datetime import datetime
-from collections import OrderedDict
 
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support
@@ -44,90 +43,6 @@ SAVE_BEST = True
 if SMOKE_TEST:
     MODEL_PATH += "-smoke-test"
 
-# class MultiTaskConfig(DistilBertConfig):
-#     def __init__(self, classification="linear", num_categories_per_task=None, decoders=None, columns=None, **kwargs):
-#         super().__init__(**kwargs)
-#         self.num_categories_per_task = num_categories_per_task
-#         self.decoders = decoders
-#         self.columns = columns
-#         self.classification = classification # choices are "linear" or "mlp"
-
-# class MultiTaskModel(PreTrainedModel):
-#     config_class = MultiTaskConfig
-
-#     def __init__(self, config, *args, **kwargs):
-#         super().__init__(config)
-#         self.distilbert = DistilBertModel(config)
-#         self.num_categories_per_task = config.num_categories_per_task
-#         self.decoders = json.loads(config.decoders)
-#         self.columns = config.columns
-#         self.classification = config.classification
-
-#         # TODO: 
-#         if self.classification == "mlp":
-#             # TODO: wait...the config.dim should be downsampled here probably...
-#             self.classification_heads = nn.ModuleList([
-#                 nn.Sequential(
-#                     nn.Linear(config.dim, config.dim // 2),
-#                     nn.ReLU(),
-#                     nn.Dropout(config.seq_classif_dropout),
-#                     nn.Linear(config.dim // 2, num_categories)
-#                 ) for num_categories in self.num_categories_per_task
-#             ])
-#         elif self.classification == "linear":
-#             self.classification_heads = nn.ModuleList([
-#                 nn.Sequential(
-#                     nn.Linear(config.dim, num_categories),
-#                     nn.Dropout(config.seq_classif_dropout)
-#                 ) for num_categories in self.num_categories_per_task
-#             ])
-
-#     def forward(
-#         self,
-#         input_ids=None,
-#         attention_mask=None,
-#         head_mask=None,
-#         inputs_embeds=None,
-#         labels=None,
-#         output_attentions=None,
-#         output_hidden_states=None,
-#         return_dict=None,
-#     ):
-#         distilbert_output = self.distilbert(
-#             input_ids=input_ids,
-#             attention_mask=attention_mask,
-#             head_mask=head_mask,
-#             inputs_embeds=inputs_embeds,
-#             output_attentions=output_attentions,
-#             output_hidden_states=output_hidden_states,
-#         )
-#         hidden_state = distilbert_output[0]
-#         pooled_output = hidden_state[:, 0]
-
-#         logits = [classifier(pooled_output) for classifier in self.classification_heads]
-
-#         loss = None
-#         if labels is not None:
-#             loss_fct = nn.CrossEntropyLoss()
-#             losses = []
-#             for logit, label in zip(logits, labels.squeeze().transpose(0, 1)): # trust me
-#                 losses.append(
-#                     loss_fct(logit, label.view(-1))
-#                 )
-#             loss = sum(losses)
-
-#         output = (logits,) + distilbert_output[1:] # TODO why activations? see https://github.com/huggingface/transformers/blob/6f316016877197014193b9463b2fd39fa8f0c8e4/src/transformers/models/distilbert/modeling_distilbert.py#L824
-    
-#         if not return_dict:
-#             return (loss,) + output if loss is not None else output
-
-#         return SequenceClassifierOutput(
-#             loss=loss,
-#             logits=logits,
-#             hidden_states=distilbert_output.hidden_states,
-#             attentions=distilbert_output.attentions
-#         )
-
 def read_data(data_path):
     return pl.read_csv(data_path, infer_schema_length=1, null_values=['NULL']).lazy()
 
@@ -136,19 +51,21 @@ def read_data(data_path):
 # Training
 
 def compute_metrics(pred):
-    # Extract the predictions and labels for each task
+    '''
+    Extract the predictions and labels for each task
     
-    # TODO: organize this info in a docstring
-    # len(pred.predictions) » 2
-    # len(pred.predictions[0]) » 20
-    # len(pred.predictions[0][0]) » 6 (number of classes)
-    # len(pred.predictions[1][0]) » 29 (number of classes)
-    # Also...why is this 20 and not the batch size?
+    TODO: organize this info in a docstring
+    len(pred.predictions) » 2
+    len(pred.predictions[0]) » 20
+    len(pred.predictions[0][0]) » 6 (number of classes)
+    len(pred.predictions[1][0]) » 29 (number of classes)
+    Also...why is this 20 and not the batch size?
 
-    # len(pred.label_ids) » 2
-    # This comes in a list of length 20 with a 2D label for each example?
-    # array([[ 5],
-    #    [26]])
+    len(pred.label_ids) » 2
+    This comes in a list of length 20 with a 2D label for each example?
+    array([[ 5],
+       [26]])
+    '''
 
     num_tasks = len(pred.predictions)
     preds = [pred.predictions[i].argmax(-1) for i in range(num_tasks)]
@@ -197,12 +114,13 @@ if __name__ == '__main__':
         encoders[column] = encoder
 
     # Create decoders to save to model config
-    decoders = OrderedDict()
+    # Huggingface is picky...so a list of tuples seems like the best bet
+    # for saving to the config.json in a way that doesn't break when loaded
+    decoders = []
     for col, encoder in encoders.items():
-        decoding_dict = {index: label for index, label in enumerate(encoder.classes_)}
-        decoders[col] = decoding_dict
+        decoding_dict = {f"{index}": label for index, label in enumerate(encoder.classes_)}
+        decoders.append((col, decoding_dict))
         logging.info(f"{col}: {len(encoder.classes_)} classes")
-    decoders = json.dumps(decoders) # serialize for config file
 
     logging.info("Preparing dataset")
     dataset = Dataset.from_pandas(df_cleaned.collect().to_pandas())

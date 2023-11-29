@@ -12,7 +12,7 @@ def inference(model, tokenizer, text, device, confidence_score=False):
     scores = [torch.max(logits, dim=1) for logits in outputs.logits] # torch.max returns both max and argmax
 
     legible_preds = {}
-    for item, score in zip(model.decoders.items(), scores):
+    for item, score in zip(model.decoders, scores):
         col, decoder = item
         prob, idx = score
         try:
