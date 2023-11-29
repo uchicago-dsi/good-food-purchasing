@@ -2,7 +2,7 @@ import torch
 import pandas as pd
 import os
 
-def inference(model, tokenizer, text, device, confidence_score=False):
+def inference(model, tokenizer, text, device, confidence_score=True):
     inputs = tokenizer(text, padding=True, truncation=True, return_tensors="pt")
 
     inputs = inputs.to(device)
@@ -57,7 +57,7 @@ def inference_handler(model, tokenizer, input_path, input_column, device=None, s
   if rows_to_classify:
     df = df.head(rows_to_classify)
 
-  output = df[input_column].apply(lambda text: inference(model, tokenizer, text, device, confidence_score=confidence_score)).apply(pd.Series)
+  output = df[input_column].apply(lambda text: inference(model, tokenizer, text, device)).apply(pd.Series)
   results = pd.concat([df[input_column], output], axis=1)
 
   # Add all columns to results to match name normalization format
@@ -71,22 +71,22 @@ def inference_handler(model, tokenizer, input_path, input_column, device=None, s
     else:
       results_full[col] = pd.Series([None] * len(results))
 
-    # Add score col if confidence_score is passed
+    # Add confidence score (needed for highlights)
     score_col = col + "_score"
-    if confidence_score and score_col in results:
+    if score_col in results:
       results_full[score_col] = results[score_col]
 
-  # highlight uncertain predictions
+  # Create highlights
+  # Logic here is a bit odd since applying styles gives you a Styler object...not a dataframe
   if highlight:
     styles_dict = highlight_uncertain_preds(results_full, threshold)
     styles_df = pd.DataFrame(styles_dict)
 
-    # Actually apply the styles — applying styles gives you a Styler object not a dataframe
-    df_formatted = results_full.style.apply(lambda x: styles_df, axis=None)
-  else:
-    df_formatted = results_full
+  if not confidence_score:
+    results_full = results_full[[col for col in df.columns if "_score" not in col]]
 
-  # TODO: maybe we want option to have styles but not have scores?
+  # Actually apply the styles here
+  df_formatted = results_full.style.apply(lambda x: styles_df, axis=None) if highlight else results_full
 
   os.chdir("/content/") # make sure this saves in the expected directory
   output_path = input_path + "_classifed.xlsx"
