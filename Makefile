@@ -1,5 +1,5 @@
 
-SBATCH_MAIL:=credmond@uchicago.edu
+SBATCH_MAIL:=tnief@uchicago.edu
 DSI_PARTITION:=general
 
 SCRIPTS_DIR:=scripts
@@ -16,7 +16,9 @@ RUN_LOGS:=$(LOG_DIR)/$(TIMESTAMP)
 
 LAST_LOGS:=$(shell find logs |grep -E "logs/[^/]*$$" |sort |tail -n 1)
 
-CONDA_ENV_PATH := ./tmp/conda/cgfp
+# CONDA_ENV_PATH := ./tmp/conda/cgfp
+# TODO: What do we actually want to do with this?
+CONDA_ENV_PATH := /net/projects/cgfp/conda-environment
 CONDA_ENV_FILE := environment.yml
 
 CONDA_RUN = conda run -p $(CONDA_ENV_PATH)
@@ -25,6 +27,8 @@ CONDA_RUN = conda run -p $(CONDA_ENV_PATH)
 clean:
 	find . | grep -E ".*/__pycache__$$" | xargs rm -rf
 	find . |grep -E ".*\.egg-info$$" |xargs rm -rf
+
+# TODO: add something to clean model files and checkpoints
 
 ##### ENVIRONMENT SETUP #####
 
@@ -77,3 +81,7 @@ last-logs:
 last-errs:
 	echo ""
 	cat $(LAST_LOGS)/$(ERR_FILE)
+
+##### HUGGINGFACE #####
+
+# TODO: can probably standardize the pipeline to upload a model to huggingface
