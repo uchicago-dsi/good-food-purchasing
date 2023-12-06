@@ -17,7 +17,7 @@ from transformers import DistilBertForSequenceClassification, DistilBertTokenize
 from transformers.modeling_outputs import SequenceClassifierOutput
 from datasets import Dataset
 
-from training.inference import inference
+from inference.inference import inference
 from training.models import MultiTaskConfig, MultiTaskModel
 
 logging.basicConfig(level=logging.INFO)
@@ -37,7 +37,7 @@ LABELS = [
 # TODO: add args to MODEL_PATH and logging path
 MODEL_PATH = f"/net/projects/cgfp/model-files/{datetime.now().strftime('%Y-%m-%d_%H-%M')}"
 
-SMOKE_TEST = True
+SMOKE_TEST = False
 SAVE_BEST = True
 
 if SMOKE_TEST:
