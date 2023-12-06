@@ -17,7 +17,7 @@ from transformers import DistilBertForSequenceClassification, DistilBertTokenize
 from transformers.modeling_outputs import SequenceClassifierOutput
 from datasets import Dataset
 
-from training.inference import inference
+from inference.inference import inference
 from training.models import MultiTaskConfig, MultiTaskModel
 
 logging.basicConfig(level=logging.INFO)
@@ -27,17 +27,33 @@ logging.basicConfig(level=logging.INFO)
 MODEL_NAME = 'distilbert-base-uncased'
 TEXT_FIELD = "Product Type"
 # TODO: change this default somewhere
+# LABELS = [
+#     "Food Product Category",
+#     "Level of Processing",
+#     "Primary Food Product Category",
+#     "Food Product Group",
+#     "Primary Food Product Group"
+# ]
 LABELS = [
+    "Food Product Group", 
     "Food Product Category",
-    "Level of Processing",
-    "Primary Food Product Category",
-    "Food Product Group",
-    "Primary Food Product Group"
+    "Flavor/Cut", "Shape", 
+    "Skin", 
+    "Seed/Bone", 
+    "Processing", 
+    "Cooked/Cleaned", 
+    "WG/WGR", 
+    "Dietary Concern", 
+    "Additives", 
+    "Dietary Accommodation", 
+    "Frozen", 
+    "Packaging", 
+    "Commodity"
 ]
 # TODO: add args to MODEL_PATH and logging path
 MODEL_PATH = f"/net/projects/cgfp/model-files/{datetime.now().strftime('%Y-%m-%d_%H-%M')}"
 
-SMOKE_TEST = True
+SMOKE_TEST = False
 SAVE_BEST = True
 
 if SMOKE_TEST:
@@ -105,7 +121,17 @@ if __name__ == '__main__':
     df = read_data(data_path)
     columns = df.columns
     df_cleaned = df.select(TEXT_FIELD, *LABELS)
-    df_cleaned = df_cleaned.drop_nulls()
+    # TODO: this is to handle random integers that show up in the input column and break stuff
+    # Should handle these somehow (drop rows — check the pipeline)
+    # For now, just convert to string so we can run this
+    # Syntax is kinda weird for polars
+    df_cleaned = df_cleaned.with_columns(
+        pl.col(TEXT_FIELD).cast(pl.Utf8)
+    )
+    df_cleaned = df_cleaned.filter(pl.col(TEXT_FIELD).is_not_null())
+    # TODO: What do we actually want to do here?
+    df_cleaned = df_cleaned.fill_null('None')
+    # df_cleaned = df_cleaned.drop_nulls()
 
     encoders = {}
     for column in LABELS:
@@ -134,6 +160,8 @@ if __name__ == '__main__':
         tokenized_inputs["labels"] = [encoders[label].transform([batch[label]]) for label in LABELS]
         return tokenized_inputs
     dataset = dataset.map(tokenize)
+    for i in range(5):
+        logging.info(dataset[i])
 
     dataset.set_format('torch', columns=['input_ids', 'attention_mask', "labels"])
     dataset = dataset.train_test_split(test_size=0.2)
@@ -157,6 +185,7 @@ if __name__ == '__main__':
     epochs = 5 if SMOKE_TEST else 15
 
     # TODO: add an arg for freezing layers
+    # Is gradient still calculated here? If so, we should figure out how to not do that
     # Freeze all layers
     for param in model.parameters():
         param.requires_grad = False
