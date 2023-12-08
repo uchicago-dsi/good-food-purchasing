@@ -89,6 +89,6 @@ def inference_handler(model, tokenizer, input_path, input_column, device=None, s
   df_formatted = results_full.style.apply(lambda x: styles_df, axis=None) if highlight else results_full
 
   os.chdir("/content/") # make sure this saves in the expected directory
-  output_path = input_path + "_classifed.xlsx"
+  output_path = input_path.rstrip('.xlsx') + '_classified.xlsx'
   df_formatted.to_excel(output_path, index=False)
   print(f"Classification completed! File saved to {output_path}")
