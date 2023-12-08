@@ -4,4 +4,5 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --mail-type=END
 
-python scripts/train.py /net/projects/cgfp/data/bulk_data.csv
+# python scripts/train.py /net/projects/cgfp/data/bulk_data.csv
+python scripts/train.py /net/projects/cgfp/data/test-data-cleaning.csv
