@@ -19,8 +19,14 @@ def inference(model, tokenizer, text, device, confidence_score=True):
     # TODO: Add constraints here so model can only predict valid tags for Food Product Group
     combined_tags = create_combined_tags()
     # 1. Get predicted food product group
+    # scores_fpg = softmaxed_scores[FPG_HEAD_IDX]
+    # _, fpg_idx = torch.max(scores_fpg)
+    # pred_fpg = model.decores[FPG_HEAD_IDX]
     # 2. Get the allowed tags for that group
+    # allowed_tags = combined_tags[pred_fpg]
+    # get allowed tag indices
     # 3. Exclude all other tags and create filtered_scores
+    # create mask based on allowed tags
 
     scores = [
         torch.max(score, dim=1) for score in softmaxed_scores
