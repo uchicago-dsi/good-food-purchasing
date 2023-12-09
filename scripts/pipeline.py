@@ -1,8 +1,33 @@
 import pandas as pd
+import os
+from datetime import datetime
 
 from config import TAGS, ADDED_TAGS, TOKEN_MAP_DICT
 
-FILEPATH = "good-food-purchasing/data/bulk_data.csv"
+# TODO: Fix filepaths
+DATA_FOLDER = "../data/"
+RAW_FOLDER = DATA_FOLDER + "raw/"
+CLEAN_FOLDER = DATA_FOLDER + "clean/"
+RUN_FOLDER = f"pipeline-{datetime.now()}/"
+
+if not os.path.exists(CLEAN_FOLDER + RUN_FOLDER):
+    os.makedirs(CLEAN_FOLDER + RUN_FOLDER)
+
+INPUT_FILE = "bulk_data.csv"
+MISC_FILE = "misc.csv"
+CLEAN_FILE = "clean_tags.csv"
+
+INPUT_PATH = RAW_FOLDER + INPUT_FILE
+MISC_PATH = CLEAN_FOLDER + RUN_FOLDER + MISC_FILE
+CLEAN_PATH = CLEAN_FOLDER + RUN_FOLDER + CLEAN_FILE
+
+GROUP_COLUMNS = [
+    "Product Type",
+    "Product Name",
+    "Food Product Group",
+    "Food Product Category",
+    "Primary Food Product Category",
+]
 
 NORMALIZED_COLUMNS = [
     "Flavor/Cut",
@@ -19,6 +44,14 @@ NORMALIZED_COLUMNS = [
     "Packaging",
     "Commodity",
 ]
+
+# TODO: Pretty sure this can be done better
+# Need to review the expected input and outputs to clean this up
+COLUMNS_ORDER = (
+    ["Product Type", "Food Product Group", "Food Product Category", "Product Name"]
+    + ["Basic Type", "Sub-Type 1", "Sub-Type 2"]
+    + NORMALIZED_COLUMNS
+)
 
 
 def clean_df(df):
@@ -39,8 +72,9 @@ def clean_name(name_list, food_product_category, tags_dict):
     misc_col = {"Misc": []}  # make a list so we can append unmatched tokens
     for i, token in enumerate(name_list):
         token = token.strip()
-        if token in token_map_dict:
-            token = token_map_dict[token]
+        # TODO: I think you can do this with get or whatever
+        if token in TOKEN_MAP_DICT:
+            token = TOKEN_MAP_DICT[token]
         # First token is always Basic Type
         if i == 0:
             normalized_name["Basic Type"] = token
@@ -74,66 +108,61 @@ def clean_name(name_list, food_product_category, tags_dict):
     return normalized_name
 
 
-combined_tags = {}
-for group, group_dict in TAGS.items():
-    combined_tags[group] = group_dict
-    all_set = set()
-    for col, tag_set in group_dict.items():
-        tags_to_add = ADDED_TAGS[group][col]
-        combined_set = tag_set | tags_to_add
-        combined_tags[group][col] = combined_set
-        all_set |= combined_set
-    combined_tags[group]["All"] = all_set
+def create_combined_tags():
+    # TODO: add args for TAGS, etc.
+    combined_tags = {}
+    for group, group_dict in TAGS.items():
+        combined_tags[group] = group_dict
+        all_set = set()
+        for col, tag_set in group_dict.items():
+            tags_to_add = ADDED_TAGS[group][col]
+            combined_set = tag_set | tags_to_add
+            combined_tags[group][col] = combined_set
+            all_set |= combined_set
+        combined_tags[group]["All"] = all_set
+    return combined_tags
 
-df = pd.read_csv(FILEPATH)
-df["Misc"] = None
 
-df = clean_df(df)
+if __name__ == "__main__":
+    # TODO: Add args for filepath, etc.
 
-name_dict = df.apply(
-    lambda row: clean_name(
-        row["Product Name"].split(","), row["Food Product Group"], combined_tags
-    ),
-    axis=1,
-)
+    df = pd.read_csv(INPUT_PATH)
+    df["Misc"] = None
+    df = clean_df(df)
 
-new_columns = pd.DataFrame(name_dict.tolist()).reset_index(drop=True)
+    combined_tags = create_combined_tags()
 
-df_split = pd.concat(
-    [
-        df[
-            [
-                "Product Type",
-                "Product Name",
-                "Food Product Group",
-                "Food Product Category",
-                "Primary Food Product Category",
-            ]
+    # Get a dictionary back with split tags allocated to appropriate columns
+    # Then convert dictionary to dataframe
+    name_dict = df.apply(
+        lambda row: clean_name(
+            row["Product Name"].split(","), row["Food Product Group"], combined_tags
+        ),
+        axis=1,
+    )
+    new_columns = pd.DataFrame(name_dict.tolist()).reset_index(drop=True)
+
+    # Combine split tags with group and category columns
+    df_split = pd.concat(
+        [
+            df[GROUP_COLUMNS],
+            new_columns,
         ],
-        new_columns,
-    ],
-    axis=1,
-)
+        axis=1,
+    )
 
-misc = df_split[df_split["Misc"].apply(lambda x: x != [])][
-    [
-        "Product Type",
-        "Food Product Group",
-        "Basic Type",
-        "Sub-Type 1",
-        "Sub-Type 2",
-        "Misc",
+    # Save unallocated tags for manual review
+    misc = df_split[df_split["Misc"].apply(lambda x: x != [])][
+        [
+            "Product Type",
+            "Food Product Group",
+            "Basic Type",
+            "Sub-Type 1",
+            "Sub-Type 2",
+            "Misc",
+        ]
     ]
-]
+    misc.to_csv(MISC_PATH, index=False)
 
-misc.to_csv("missing-tags.csv", index=False)
-
-COLUMNS_ORDER = (
-    ["Product Type", "Food Product Group", "Food Product Category", "Product Name"]
-    + ["Basic Type", "Sub-Type 1", "Sub-Type 2"]
-    + NORMALIZED_COLUMNS
-)
-
-df_split = df_split[COLUMNS_ORDER]
-
-df_split.to_csv("better-test-data-cleaning.csv", index=False)
+    df_split = df_split[COLUMNS_ORDER]
+    df_split.to_csv(CLEAN_PATH, index=False)
