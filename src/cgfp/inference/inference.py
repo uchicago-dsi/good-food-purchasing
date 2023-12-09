@@ -2,6 +2,8 @@ import torch
 import pandas as pd
 import os
 
+from cgfp.config import create_combined_tags
+
 
 def inference(model, tokenizer, text, device, confidence_score=True):
     inputs = tokenizer(text, padding=True, truncation=True, return_tensors="pt")
@@ -13,11 +15,16 @@ def inference(model, tokenizer, text, device, confidence_score=True):
     with torch.no_grad():
         outputs = model(**inputs, return_dict=True)
     softmaxed_scores = [torch.softmax(logits, dim=1) for logits in outputs.logits]
+
+    # TODO: Add constraints here so model can only predict valid tags for Food Product Group
+    combined_tags = create_combined_tags()
+    # 1. Get predicted food product group
+    # 2. Get the allowed tags for that group
+    # 3. Exclude all other tags and create filtered_scores
+
     scores = [
         torch.max(score, dim=1) for score in softmaxed_scores
     ]  # torch.max returns both max and argmax
-
-    # TODO: Add constraints here so model can only predict valid tags for Food Product Group
 
     legible_preds = {}
     for item, score in zip(model.decoders, scores):

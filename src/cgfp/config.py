@@ -458,3 +458,18 @@ ADDED_TAGS = {
         "Commodity": set(),
     },
 }
+
+
+def create_combined_tags():
+    # TODO: add args for TAGS, etc.
+    combined_tags = {}
+    for group, group_dict in TAGS.items():
+        combined_tags[group] = group_dict
+        all_set = set()
+        for col, tag_set in group_dict.items():
+            tags_to_add = ADDED_TAGS[group][col]
+            combined_set = tag_set | tags_to_add
+            combined_tags[group][col] = combined_set
+            all_set |= combined_set
+        combined_tags[group]["All"] = all_set
+    return combined_tags

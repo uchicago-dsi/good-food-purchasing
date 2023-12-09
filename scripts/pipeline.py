@@ -2,7 +2,7 @@ import pandas as pd
 import os
 from datetime import datetime
 
-from cgfp.config import TAGS, ADDED_TAGS, TOKEN_MAP_DICT
+from cgfp.config import create_combined_tags, TOKEN_MAP_DICT
 
 # TODO: set this up so there's a make command that handles filepaths well
 # Right now have to run this from the scripts folder
@@ -98,21 +98,6 @@ def clean_name(name_list, food_product_category, tags_dict):
         if col not in normalized_name:
             normalized_name[col] = None
     return normalized_name
-
-
-def create_combined_tags():
-    # TODO: add args for TAGS, etc.
-    combined_tags = {}
-    for group, group_dict in TAGS.items():
-        combined_tags[group] = group_dict
-        all_set = set()
-        for col, tag_set in group_dict.items():
-            tags_to_add = ADDED_TAGS[group][col]
-            combined_set = tag_set | tags_to_add
-            combined_tags[group][col] = combined_set
-            all_set |= combined_set
-        combined_tags[group]["All"] = all_set
-    return combined_tags
 
 
 if __name__ == "__main__":
