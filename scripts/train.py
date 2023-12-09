@@ -34,10 +34,16 @@ TEXT_FIELD = "Product Type"
 #     "Food Product Group",
 #     "Primary Food Product Group"
 # ]
+# TODO: This is kind of fragile to changes in capitalization, etc.
+# Fix this so it doesn't matter if the columns are the same case or not
 LABELS = [
     "Food Product Group", 
     "Food Product Category",
-    "Flavor/Cut", "Shape", 
+    "Basic Type",
+    "Sub-Type 1",
+    "Sub-Type 2",
+    "Flavor/Cut", 
+    "Shape", 
     "Skin", 
     "Seed/Bone", 
     "Processing", 
@@ -55,6 +61,8 @@ MODEL_PATH = f"/net/projects/cgfp/model-files/{datetime.now().strftime('%Y-%m-%d
 
 SMOKE_TEST = False
 SAVE_BEST = True
+
+FREEZE_LAYERS = False
 
 if SMOKE_TEST:
     MODEL_PATH += "-smoke-test"
@@ -182,17 +190,18 @@ if __name__ == '__main__':
     model = MultiTaskModel(config)
     logging.info("Model instantiated")
 
-    epochs = 5 if SMOKE_TEST else 15
+    epochs = 5 if SMOKE_TEST else 40
 
     # TODO: add an arg for freezing layers
     # Is gradient still calculated here? If so, we should figure out how to not do that
     # Freeze all layers
-    for param in model.parameters():
-        param.requires_grad = False
+    if FREEZE_LAYERS:
+        for param in model.parameters():
+            param.requires_grad = False
 
-    # Unfreeze classification heads
-    for param in model.classification_heads.parameters():
-        param.requires_grad = True
+        # Unfreeze classification heads
+        for param in model.classification_heads.parameters():
+            param.requires_grad = True
 
     # TODO: set this up to come from args
     lr = .001
