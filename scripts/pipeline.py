@@ -2,24 +2,18 @@ import pandas as pd
 import os
 from datetime import datetime
 
-from config import TAGS, ADDED_TAGS, TOKEN_MAP_DICT
+from cgfp.config import TAGS, ADDED_TAGS, TOKEN_MAP_DICT
 
-# TODO: Fix filepaths
+# TODO: set this up so there's a make command that handles filepaths well
+# Right now have to run this from the scripts folder
+
 DATA_FOLDER = "../data/"
 RAW_FOLDER = DATA_FOLDER + "raw/"
 CLEAN_FOLDER = DATA_FOLDER + "clean/"
-RUN_FOLDER = f"pipeline-{datetime.now()}/"
+RUN_FOLDER = f"pipeline-{datetime.now().strftime('%Y-%m-%d %H:%M')}/"
 
 if not os.path.exists(CLEAN_FOLDER + RUN_FOLDER):
     os.makedirs(CLEAN_FOLDER + RUN_FOLDER)
-
-INPUT_FILE = "bulk_data.csv"
-MISC_FILE = "misc.csv"
-CLEAN_FILE = "clean_tags.csv"
-
-INPUT_PATH = RAW_FOLDER + INPUT_FILE
-MISC_PATH = CLEAN_FOLDER + RUN_FOLDER + MISC_FILE
-CLEAN_PATH = CLEAN_FOLDER + RUN_FOLDER + CLEAN_FILE
 
 GROUP_COLUMNS = [
     "Product Type",
@@ -72,9 +66,7 @@ def clean_name(name_list, food_product_category, tags_dict):
     misc_col = {"Misc": []}  # make a list so we can append unmatched tokens
     for i, token in enumerate(name_list):
         token = token.strip()
-        # TODO: I think you can do this with get or whatever
-        if token in TOKEN_MAP_DICT:
-            token = TOKEN_MAP_DICT[token]
+        token = TOKEN_MAP_DICT.get(token, token)
         # First token is always Basic Type
         if i == 0:
             normalized_name["Basic Type"] = token
@@ -125,6 +117,13 @@ def create_combined_tags():
 
 if __name__ == "__main__":
     # TODO: Add args for filepath, etc.
+    INPUT_FILE = "bulk_data.csv"
+    MISC_FILE = "misc.csv"
+    CLEAN_FILE = "clean_tags.csv"
+
+    INPUT_PATH = RAW_FOLDER + INPUT_FILE
+    MISC_PATH = CLEAN_FOLDER + RUN_FOLDER + MISC_FILE
+    CLEAN_PATH = CLEAN_FOLDER + RUN_FOLDER + CLEAN_FILE
 
     df = pd.read_csv(INPUT_PATH)
     df["Misc"] = None
