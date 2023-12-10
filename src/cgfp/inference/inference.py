@@ -119,6 +119,8 @@ def inference_handler(
         score_col = col + "_score"
         if score_col in results:
             results_full[score_col] = results[score_col]
+    
+    results_full = results_full.replace('None', pd.NA)
 
     # Create highlights
     # Logic here is a bit odd since applying styles gives you a Styler
