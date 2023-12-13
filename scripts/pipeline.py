@@ -2,7 +2,7 @@ import pandas as pd
 import os
 from datetime import datetime
 
-from cgfp.config import create_combined_tags, TOKEN_MAP_DICT
+from cgfp.config import create_combined_tags, TOKEN_MAP_DICT, SKIP_TOKENS
 
 # TODO: set this up so there's a make command that handles filepaths well
 # Right now have to run this from the scripts folder
@@ -10,11 +10,13 @@ from cgfp.config import create_combined_tags, TOKEN_MAP_DICT
 DATA_FOLDER = "../data/"
 RAW_FOLDER = DATA_FOLDER + "raw/"
 CLEAN_FOLDER = DATA_FOLDER + "clean/"
-RUN_FOLDER = f"pipeline-{datetime.now().strftime('%Y-%m-%d %H:%M')}/"
+RUN_FOLDER = f"pipeline-{datetime.now().strftime('%Y-%m-%d %H-%M')}/"
 
 if not os.path.exists(CLEAN_FOLDER + RUN_FOLDER):
     os.makedirs(CLEAN_FOLDER + RUN_FOLDER)
 
+# TODO: Move this stuff to the config file and figure out the best structure
+# for keeping track of the input columns, intermediate steps, and output file
 GROUP_COLUMNS = [
     "Product Type",
     "Product Name",
@@ -61,7 +63,18 @@ def clean_df(df):
     return df
 
 
-def clean_name(name_list, food_product_category, tags_dict):
+def token_handler(token, basic_type):
+    # Handle specific edge cases
+    if token == "baby" and basic_type == "carrot":
+        return token
+
+    # Skip outdated tokens
+    if token in SKIP_TOKENS:
+        return None
+    return token
+
+
+def clean_name(name_list, food_product_group, tags_dict):
     normalized_name = {}
     misc_col = {"Misc": []}  # make a list so we can append unmatched tokens
     for i, token in enumerate(name_list):
@@ -69,15 +82,20 @@ def clean_name(name_list, food_product_category, tags_dict):
         token = TOKEN_MAP_DICT.get(token, token)
         # First token is always Basic Type
         if i == 0:
+            basic_type = token
             normalized_name["Basic Type"] = token
             continue
+        token = token_handler(token, basic_type)
+        if token is None:
+            continue
+        token = TOKEN_MAP_DICT.get(token, token)
         # Check if token is in tags — if so, enter the tagging loop
-        if token in tags_dict[food_product_category]["All"]:
+        if token in tags_dict[food_product_group]["All"]:
             matched = False
             for col in NORMALIZED_COLUMNS:
                 # Find the category that the token is in and add to normalized_name
-                if col in tags_dict[food_product_category]:
-                    if token in tags_dict[food_product_category][col]:
+                if col in tags_dict[food_product_group]:
+                    if token in tags_dict[food_product_group][col]:
                         normalized_name[col] = token
                         matched = True
                         break

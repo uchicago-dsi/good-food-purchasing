@@ -17,6 +17,7 @@ def inference(model, tokenizer, text, device, confidence_score=True):
     softmaxed_scores = [torch.softmax(logits, dim=1) for logits in outputs.logits]
 
     # TODO: Add constraints here so model can only predict valid tags for Food Product Group
+    # TODO: Additionally, probably appropriate to allow all tags from Milk, Milk & Dairy, and Cheese since these are kinda tricky?
     combined_tags = create_combined_tags()
     # 1. Get predicted food product group
     # scores_fpg = softmaxed_scores[FPG_HEAD_IDX]
