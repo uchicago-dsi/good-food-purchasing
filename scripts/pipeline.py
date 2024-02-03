@@ -26,6 +26,8 @@ GROUP_COLUMNS = [
 ]
 
 NORMALIZED_COLUMNS = [
+    "Sub-Type 1",
+    "Sub-Type 2",
     "Flavor/Cut",
     "Shape",
     "Skin",
@@ -45,7 +47,7 @@ NORMALIZED_COLUMNS = [
 # Need to review the expected input and outputs to clean this up
 COLUMNS_ORDER = (
     ["Product Type", "Food Product Group", "Food Product Category", "Product Name"]
-    + ["Basic Type", "Sub-Type 1", "Sub-Type 2"]
+    + ["Basic Type"]
     + NORMALIZED_COLUMNS
 )
 
@@ -68,13 +70,22 @@ def token_handler(token, basic_type):
     if token == "baby" and basic_type == "carrot":
         return token
 
-    # Skip outdated tokens
+    # Include all the flavor logic here
+    # Need to convert some tokens into "flavored" and let others "pass through" (ie for cheese)
+
+    # Skip outdated tokens from old name normalization format
     if token in SKIP_TOKENS:
         return None
     return token
 
 
-def clean_name(name_list, food_product_group, tags_dict):
+def clean_name(
+    name_list,
+    food_product_group,
+    food_product_category,
+    group_tags_dict,
+    category_tags_dict,
+):
     normalized_name = {}
     misc_col = {"Misc": []}  # make a list so we can append unmatched tokens
     for i, token in enumerate(name_list):
@@ -90,18 +101,21 @@ def clean_name(name_list, food_product_group, tags_dict):
             continue
         token = TOKEN_MAP_DICT.get(token, token)
         # Check if token is in tags — if so, enter the tagging loop
-        if token in tags_dict[food_product_group]["All"]:
+        if token in group_tags_dict.get(food_product_group, {}).get(
+            "All", []
+        ) or token in category_tags_dict.get(food_product_category, {}).get("All", []):
             matched = False
             for col in NORMALIZED_COLUMNS:
+                # TODO: Write better documentation here
                 # Find the category that the token is in and add to normalized_name
-                if col in tags_dict[food_product_group]:
-                    if token in tags_dict[food_product_group][col]:
+                if col in group_tags_dict[food_product_group]:
+                    if token in group_tags_dict[food_product_group][col]:
                         normalized_name[col] = token
                         matched = True
                         break
             if matched:
                 continue
-        # First token after basic type is sub-type 1 if it's not a later token
+        # First token after basic type is sub-type 1 if it's not from the later tags
         if "Sub-Type 1" not in normalized_name:
             normalized_name["Sub-Type 1"] = token
             continue
@@ -111,7 +125,7 @@ def clean_name(name_list, food_product_group, tags_dict):
         # Aggregate unmatched tokens to add to tag dictionary
         misc_col["Misc"].append(token)
     normalized_name.update(misc_col)
-    # Make sure all columns are represented
+    # Make sure all columns are represented in dictionary for dataframe creation
     for col in NORMALIZED_COLUMNS:
         if col not in normalized_name:
             normalized_name[col] = None
@@ -132,13 +146,18 @@ if __name__ == "__main__":
     df["Misc"] = None
     df = clean_df(df)
 
-    combined_tags = create_combined_tags()
+    combined_group_tags = create_combined_tags(level="group")
+    combined_category_tags = create_combined_tags(level="category")
 
     # Get a dictionary back with split tags allocated to appropriate columns
     # Then convert dictionary to dataframe
     name_dict = df.apply(
         lambda row: clean_name(
-            row["Product Name"].split(","), row["Food Product Group"], combined_tags
+            row["Product Name"].split(","),
+            row["Food Product Group"],
+            row["Food Product Category"],
+            combined_group_tags,
+            combined_category_tags,
         ),
         axis=1,
     )
@@ -158,6 +177,7 @@ if __name__ == "__main__":
         [
             "Product Type",
             "Food Product Group",
+            "Food Product Category",
             "Basic Type",
             "Sub-Type 1",
             "Sub-Type 2",

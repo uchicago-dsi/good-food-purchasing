@@ -17,7 +17,6 @@ def inference(model, tokenizer, text, device, confidence_score=True):
     softmaxed_scores = [torch.softmax(logits, dim=1) for logits in outputs.logits]
 
     # TODO: Add constraints here so model can only predict valid tags for Food Product Group
-    # TODO: Additionally, probably appropriate to allow all tags from Milk, Milk & Dairy, and Cheese since these are kinda tricky?
     combined_tags = create_combined_tags()
     # 1. Get predicted food product group
     # scores_fpg = softmaxed_scores[FPG_HEAD_IDX]
@@ -28,6 +27,9 @@ def inference(model, tokenizer, text, device, confidence_score=True):
     # get allowed tag indices
     # 3. Exclude all other tags and create filtered_scores
     # create mask based on allowed tags
+    # 4. Figure out what to do with the sub-types
+    # - Idea: set up some sort of partial ordering and allow up to three sub-types if tokens
+    # are in those sets
 
     scores = [
         torch.max(score, dim=1) for score in softmaxed_scores
@@ -87,11 +89,8 @@ def inference_handler(
 
     try:
         df = pd.read_excel(input_path, sheet_name=sheet_name)
-    except FileNotFoundError:
-        # TODO: make this error message clearer
-        print(
-            "There was a FileNotFoundError thrown, please double-check the file name, or ensure that you have correctly uploaded the file to the Google Colab drive."
-        )
+    except FileNotFoundError as e:
+        print("FileNotFound: {e}\n. Please double check the filename: {input_path}")
         raise
 
     if rows_to_classify:
@@ -120,8 +119,8 @@ def inference_handler(
         score_col = col + "_score"
         if score_col in results:
             results_full[score_col] = results[score_col]
-    
-    results_full = results_full.replace('None', pd.NA)
+
+    results_full = results_full.replace("None", pd.NA)
 
     # Create highlights
     # Logic here is a bit odd since applying styles gives you a Styler

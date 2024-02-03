@@ -26,6 +26,8 @@ TOKEN_MAP_DICT = {
     "chopped": "cut",
     "wedge": "cut",
     "segment": "cut",
+    ## WHOLE GRAIN ##
+    "whole wheat": "whole grain rich",
     ## COOKED ##
     "baked": "cooked",
     "fried": "cooked",
@@ -35,8 +37,10 @@ TOKEN_MAP_DICT = {
     "broiled": "cooked",
     "parbaked": "cooked",
     "broiled": "cooked",
-    "parfried": "cooked"
+    "parfried": "cooked",
     ## FLAVORED ##
+    ## PACKAGING ##
+    "bag": "ss",
 }
 
 SKIP_TOKENS = {
@@ -51,6 +55,8 @@ SKIP_TOKENS = {
     "yellow",
     "green",
     "gold",
+    "white",
+    # "blue", # TODO: we want to keep this for cheese so create a rule
     ## BONELESS ##
     "boneless",
     ## PASTA TYPES ##
@@ -85,9 +91,22 @@ SKIP_TOKENS = {
     "tortellini",
     "vermicelli",
     "ziti",
+    ## PACKAGING ##
+    "aerosol",
 }
 
-TAGS = {
+# FOOD PRODUCT GROUPS #
+"""
+Produce
+Milk & Dairy
+Meat
+Seafood
+Beverages
+Meals
+Condiments & Snacks
+"""
+
+GROUP_TAGS = {
     "Beverages": {
         "Flavor/Cut": {"flavored"},
         "Shape": {"thickened", "concentrate"},
@@ -114,32 +133,6 @@ TAGS = {
         "Dietary Concern": {"salted", "unsalted"},
         "Additives": {"no additives"},
         "Dietary Accommodation": {"gluten free"},
-        "Frozen": {"frozen"},
-        "Packaging": {"ss"},
-        "Commodity": {"commodity"},
-    },
-    "Cheese": {
-        "Flavor/Cut": {"flavored"},
-        "Shape": {
-            "stick",
-            "string",
-            "shredded",
-        },
-        "Skin": set(),
-        "Seed/Bone": set(),
-        "Processing": {
-            "dried",
-            "grated",
-            "sauce",
-            "shaved",
-            "sliced",
-            "whipped",
-        },
-        "Cooked/Cleaned": set(),
-        "WG/WGR": set(),
-        "Dietary Concern": {"2%", "reduced fat", "reduced sodium"},
-        "Additives": {"no additives"},
-        "Dietary Accommodation": set(),
         "Frozen": {"frozen"},
         "Packaging": {"ss"},
         "Commodity": {"commodity"},
@@ -227,21 +220,6 @@ TAGS = {
         "Dietary Accommodation": {"gluten free", "halal", "kosher"},
         "Frozen": {"frozen"},
         "Packaging": set(),
-        "Commodity": {"commodity"},
-    },
-    "Milk": {
-        "Flavor/Cut": {"flavored"},
-        "Shape": {"thickened"},
-        "Skin": set(),
-        "Seed/Bone": set(),
-        "Processing": set(),
-        "Cooked/Cleaned": set(),
-        "WG/WGR": set(),
-        "Dietary Concern": set(),
-        "Additives": set(),
-        "Dietary Accommodation": {"lactose free"},
-        "Frozen": set(),
-        "Packaging": {"bag", "ss"},
         "Commodity": {"commodity"},
     },
     "Milk & Dairy": {
@@ -350,7 +328,7 @@ TAGS = {
     },
 }
 
-ADDED_TAGS = {
+ADDED_GROUP_TAGS = {
     "Beverages": {
         "Flavor/Cut": set(),
         "Shape": {"ground", "kcup", "mix", "powder", "whole bean"},
@@ -562,17 +540,225 @@ ADDED_TAGS = {
     },
 }
 
+# FOOD PRODUCT CATEGORIES #
+"""
+## PRODUCE ##
+Fruit
+Vegetables
+Roots & Tubers
+## MILK & DAIRY ##
+Butter
+Cheese
+Milk
+Yogurt
+Milk & Dairy (Includes other items, buttermilk, ice cream, coffee creamer, etc)
+## MEAT ##
+Beef
+Chicken
+Eggs
+Pork
+Turkey, Other Poultry
+Meat (includes other like bison, lamb, veal, venison, etc)
+## SEAFOOD ##
+Fish (Farm-raised)
+Fish (Wild)
+Seafood (includes other)
+## BREAD, GRAINS & LEGUMES ##
+Grain Products
+Legumes
+Rice
+Tree Nuts & Seeds
+Bread, Grains & Legumes
+"""
 
-def create_combined_tags():
-    # TODO: add args for TAGS, etc.
+CATEGORY_TAGS = {
+    ## GROUP: PRODUCE ##
+    "Fruit": {
+        "Flavor/Cut": set(),
+        "Shape": set(),
+        "Skin": set(),
+        "Seed/Bone": set(),
+        "Processing": set(),
+        "Cooked/Cleaned": set(),
+        "WG/WGR": set(),
+        "Dietary Concern": set(),
+        "Additives": set(),
+        "Dietary Accommodation": set(),
+        "Frozen": set(),
+        "Packaging": set(),
+        "Commodity": set(),
+    },
+    "Vegetables": {
+        "Flavor/Cut": set(),
+        "Shape": set(),
+        "Skin": set(),
+        "Seed/Bone": set(),
+        "Processing": set(),
+        "Cooked/Cleaned": set(),
+        "WG/WGR": set(),
+        "Dietary Concern": set(),
+        "Additives": set(),
+        "Dietary Accommodation": set(),
+        "Frozen": set(),
+        "Packaging": set(),
+        "Commodity": set(),
+    },
+    "Roots & Tubers": {
+        "Flavor/Cut": set(),
+        "Shape": set(),
+        "Skin": set(),
+        "Seed/Bone": set(),
+        "Processing": set(),
+        "Cooked/Cleaned": set(),
+        "WG/WGR": set(),
+        "Dietary Concern": set(),
+        "Additives": set(),
+        "Dietary Accommodation": set(),
+        "Frozen": set(),
+        "Packaging": set(),
+        "Commodity": set(),
+    },
+    ## GROUP: MILK & DAIRY ##
+    "Cheese": {
+        "Flavor/Cut": {"flavored"},
+        "Shape": {
+            "stick",
+            "string",
+            "shredded",
+        },
+        "Skin": set(),
+        "Seed/Bone": set(),
+        "Processing": {
+            "dried",
+            "grated",
+            "sauce",
+            "shaved",
+            "sliced",
+            "whipped",
+        },
+        "Cooked/Cleaned": set(),
+        "WG/WGR": set(),
+        "Dietary Concern": {"2%", "reduced fat", "reduced sodium"},
+        "Additives": {"no additives"},
+        "Dietary Accommodation": set(),
+        "Frozen": {"frozen"},
+        "Packaging": {"ss"},
+        "Commodity": {"commodity"},
+    },
+    "Milk": {
+        "Flavor/Cut": {"flavored"},
+        "Shape": {"thickened"},
+        "Skin": set(),
+        "Seed/Bone": set(),
+        "Processing": set(),
+        "Cooked/Cleaned": set(),
+        "WG/WGR": set(),
+        "Dietary Concern": set(),
+        "Additives": set(),
+        "Dietary Accommodation": {"lactose free"},
+        "Frozen": set(),
+        "Packaging": {"bag", "ss"},
+        "Commodity": {"commodity"},
+    },
+}
+
+ADDED_CATEGORY_TAGS = {
+    ## GROUP: PRODUCE ##
+    "Fruit": {
+        "Flavor/Cut": set(),
+        "Shape": set(),
+        "Skin": set(),
+        "Seed/Bone": set(),
+        "Processing": set(),
+        "Cooked/Cleaned": set(),
+        "WG/WGR": set(),
+        "Dietary Concern": set(),
+        "Additives": set(),
+        "Dietary Accommodation": set(),
+        "Frozen": set(),
+        "Packaging": set(),
+        "Commodity": set(),
+    },
+    "Vegetables": {
+        "Flavor/Cut": set(),
+        "Shape": set(),
+        "Skin": set(),
+        "Seed/Bone": set(),
+        "Processing": set(),
+        "Cooked/Cleaned": set(),
+        "WG/WGR": set(),
+        "Dietary Concern": set(),
+        "Additives": set(),
+        "Dietary Accommodation": set(),
+        "Frozen": set(),
+        "Packaging": set(),
+        "Commodity": set(),
+    },
+    "Roots & Tubers": {
+        "Flavor/Cut": set(),
+        "Shape": set(),
+        "Skin": set(),
+        "Seed/Bone": set(),
+        "Processing": set(),
+        "Cooked/Cleaned": set(),
+        "WG/WGR": set(),
+        "Dietary Concern": set(),
+        "Additives": set(),
+        "Dietary Accommodation": set(),
+        "Frozen": set(),
+        "Packaging": set(),
+        "Commodity": set(),
+    },
+    ## GROUP: MILK & DAIRY ##
+    "Cheese": {
+        "Flavor/Cut": set(),
+        "Shape": set(),
+        "Skin": set(),
+        "Seed/Bone": set(),
+        "Processing": set(),
+        "Cooked/Cleaned": set(),
+        "WG/WGR": set(),
+        "Dietary Concern": set(),
+        "Additives": set(),
+        "Dietary Accommodation": set(),
+        "Frozen": set(),
+        "Packaging": set(),
+        "Commodity": set(),
+    },
+    "Milk": {
+        "Flavor/Cut": set(),
+        "Shape": set(),
+        "Skin": set(),
+        "Seed/Bone": set(),
+        "Processing": set(),
+        "Cooked/Cleaned": set(),
+        "WG/WGR": set(),
+        "Dietary Concern": set(),
+        "Additives": set(),
+        "Dietary Accommodation": set(),
+        "Frozen": set(),
+        "Packaging": set(),
+        "Commodity": set(),
+    },
+}
+
+
+def create_combined_tags(level="group"):
+    """Choices for level are "group" or "category"""
+    if level == "group":
+        tags = GROUP_TAGS
+        added_tags = ADDED_GROUP_TAGS
+    else:
+        tags = CATEGORY_TAGS
+        added_tags = ADDED_CATEGORY_TAGS
     combined_tags = {}
-    for group, group_dict in TAGS.items():
-        combined_tags[group] = group_dict
+    for name, tags_dict in tags.items():
+        combined_tags[name] = tags_dict
         all_set = set()
-        for col, tag_set in group_dict.items():
-            tags_to_add = ADDED_TAGS[group][col]
+        for col, tag_set in tags_dict.items():
+            tags_to_add = added_tags[name][col]
             combined_set = tag_set | tags_to_add
-            combined_tags[group][col] = combined_set
+            combined_tags[name][col] = combined_set
             all_set |= combined_set
-        combined_tags[group]["All"] = all_set
+        combined_tags[name]["All"] = all_set
     return combined_tags
