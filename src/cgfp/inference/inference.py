@@ -26,19 +26,17 @@ def inference(model, tokenizer, text, device, confidence_score=True):
     _, fpg_dict = model.decoders[model.fpg_idx]
     fpg = fpg_dict[str(fpg_argmax.item())]
 
-    # TODO: Pull in all of the allowed basic type tags here
+    # Not sure of the best way to save these — maybe a dictionary or maybe a list is fine?
+    # TODO: I think this is incorrect but it's at least not crashing
+    inference_mask = model.inference_masks[fpg_argmax.item()].to(device)
 
-    # TODO: need to mask these before taking the max
+    # actually mask the basic type scores
+    softmaxed_scores[model.basic_type_idx] = inference_mask * softmaxed_scores[model.basic_type_idx]
+
     # get the score for each task
     scores = [
         torch.max(score, dim=1) for score in softmaxed_scores
     ]  # torch.max returns both max and argmax if you specify dim so this is a list of tuples
-
-    eligible_tags = combined_tags[fpg]
-
-    # get allowed tag indices
-    # 3. Exclude all other tags and create filtered_scores
-    # create mask based on allowed tags
 
     # 4. Figure out what to do with the sub-types
     # - Idea: set up some sort of partial ordering and allow up to three sub-types if tokens
@@ -48,10 +46,10 @@ def inference(model, tokenizer, text, device, confidence_score=True):
     for item, score in zip(model.decoders, scores):
         col, decoder = item
         prob, idx = score
+
         try:
-            legible_preds[col] = decoder[
-                str(idx.item())
-            ]  # decoders have been serialized so keys are strings
+            pred = decoder[str(idx.item())]  # decoders have been serialized so keys are strings
+            legible_preds[col] = pred
             if confidence_score:
                 legible_preds[col + "_score"] = prob.item()
         except Exception as e:

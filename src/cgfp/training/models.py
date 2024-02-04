@@ -25,6 +25,8 @@ class MultiTaskConfig(DistilBertConfig):
         decoders=None,
         columns=None,
         fpg_idx=0,
+        basic_type_idx=2,
+        inference_masks=None,
         **kwargs
     ):
         super().__init__(**kwargs)
@@ -33,6 +35,8 @@ class MultiTaskConfig(DistilBertConfig):
         self.columns = columns
         self.classification = classification  # choices are "linear" or "mlp"
         self.fpg_idx = fpg_idx
+        self.basic_type_idx=basic_type_idx
+        self.inference_masks=inference_masks
 
 
 class MultiTaskModel(PreTrainedModel):
@@ -46,6 +50,8 @@ class MultiTaskModel(PreTrainedModel):
         self.columns = config.columns
         self.classification = config.classification
         self.fpg_idx = config.fpg_idx  # index for the food product group task
+        self.basic_type_idx = config.basic_type_idx
+        self.inference_masks = [torch.tensor(mask) for mask in json.loads(config.inference_masks)]
 
         # TODO:
         if self.classification == "mlp":

@@ -6,6 +6,7 @@ from datetime import datetime
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 import polars as pl
+import numpy as np
 
 import torch
 import torch.nn as nn
@@ -64,7 +65,10 @@ LABELS = [
     "Packaging",
     "Commodity",
 ]
-FPG_IDX = 0
+# These indeces are used to set up inference filtering
+FPG_IDX = LABELS.index("Food Product Group")
+BASIC_TYPE_IDX = LABELS.index("Basic Type")
+
 # TODO: add args to MODEL_PATH and logging path
 MODEL_PATH = (
     f"/net/projects/cgfp/model-files/{datetime.now().strftime('%Y-%m-%d_%H-%M')}"
@@ -168,6 +172,17 @@ if __name__ == "__main__":
         decoders.append((col, decoding_dict))
         logging.info(f"{col}: {len(encoder.classes_)} classes")
 
+    # Save valid basic types for each food product group
+    # Remember: Polars syntax is kinda weird
+    inference_masks = []
+    basic_types = df_cleaned.select("Basic Type").unique().collect()['Basic Type'].to_list()
+    for fpg in df_cleaned.select('Food Product Group').unique().collect()['Food Product Group']:
+        valid_basic_types = df_cleaned.filter(pl.col("Food Product Group") == fpg).select("Basic Type").unique().collect()['Basic Type'].to_list()
+        basic_type_indeces = encoders['Basic Type'].transform(valid_basic_types)
+        mask = np.zeros(len(basic_types))
+        mask[basic_type_indeces] = 1
+        inference_masks.append(mask.tolist())
+
     logging.info("Preparing dataset")
     dataset = Dataset.from_pandas(df_cleaned.collect().to_pandas())
 
@@ -212,6 +227,8 @@ if __name__ == "__main__":
         columns=columns,
         classification=classification,
         fpg_idx=FPG_IDX,
+        basic_type_idx=BASIC_TYPE_IDX,
+        inference_masks=json.dumps(inference_masks),
         **distilbert_model.config.to_dict(),
     )
     model = MultiTaskModel(config)
