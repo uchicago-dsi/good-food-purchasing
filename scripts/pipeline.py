@@ -62,6 +62,11 @@ def clean_df(df):
         & (df["Product Name"].str.len() >= 3)
         & (df["Food Product Group"] != "Non-Food")
     ].reset_index(drop=True)
+    # Remove leading 'PREQUALIFIED: ' string
+    df["Product Name"] = df["Product Name"].str.replace(
+        "^PREQUALIFIED: ", "", regex=True
+    )
+    # TODO: figure out where the numbers are coming from in basic type — maybe filter that later or do it here?
     return df
 
 
