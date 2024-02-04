@@ -21,7 +21,7 @@ def inference(model, tokenizer, text, device, confidence_score=True):
     # 1. Get predicted food product group
     # scores_fpg = softmaxed_scores[FPG_HEAD_IDX]
     # _, fpg_idx = torch.max(scores_fpg)
-    # pred_fpg = model.decores[FPG_HEAD_IDX]
+    # pred_fpg = model.decoders[FPG_HEAD_IDX]
     # 2. Get the allowed tags for that group
     # allowed_tags = combined_tags[pred_fpg]
     # get allowed tag indices
@@ -31,9 +31,13 @@ def inference(model, tokenizer, text, device, confidence_score=True):
     # - Idea: set up some sort of partial ordering and allow up to three sub-types if tokens
     # are in those sets
 
+    # get the score for each task
     scores = [
         torch.max(score, dim=1) for score in softmaxed_scores
     ]  # torch.max returns both max and argmax
+
+    # get predicted food product group
+    scores_fpg = softmaxed_scores[model.fpg_idx]
 
     legible_preds = {}
     for item, score in zip(model.decoders, scores):

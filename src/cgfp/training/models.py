@@ -5,16 +5,35 @@ import torch.nn as nn
 
 from collections import OrderedDict
 
-from transformers import DistilBertForSequenceClassification, DistilBertTokenizerFast, TrainingArguments, Trainer, PreTrainedModel, DistilBertConfig, DistilBertModel
+from transformers import (
+    DistilBertForSequenceClassification,
+    DistilBertTokenizerFast,
+    TrainingArguments,
+    Trainer,
+    PreTrainedModel,
+    DistilBertConfig,
+    DistilBertModel,
+)
 from transformers.modeling_outputs import SequenceClassifierOutput
 
+
 class MultiTaskConfig(DistilBertConfig):
-    def __init__(self, classification="linear", num_categories_per_task=None, decoders=None, columns=None, **kwargs):
+    def __init__(
+        self,
+        classification="linear",
+        num_categories_per_task=None,
+        decoders=None,
+        columns=None,
+        fpg_idx=0,
+        **kwargs
+    ):
         super().__init__(**kwargs)
         self.num_categories_per_task = num_categories_per_task
         self.decoders = decoders
         self.columns = columns
-        self.classification = classification # choices are "linear" or "mlp"
+        self.classification = classification  # choices are "linear" or "mlp"
+        self.fpg_idx = fpg_idx
+
 
 class MultiTaskModel(PreTrainedModel):
     config_class = MultiTaskConfig
@@ -26,25 +45,32 @@ class MultiTaskModel(PreTrainedModel):
         self.decoders = config.decoders
         self.columns = config.columns
         self.classification = config.classification
+        self.fpg_idx = config.fpg_idx  # index for the food product group task
 
-        # TODO: 
+        # TODO:
         if self.classification == "mlp":
             # TODO: wait...the config.dim should be downsampled here probably...
-            self.classification_heads = nn.ModuleList([
-                nn.Sequential(
-                    nn.Linear(config.dim, config.dim // 2),
-                    nn.ReLU(),
-                    nn.Dropout(config.seq_classif_dropout),
-                    nn.Linear(config.dim // 2, num_categories)
-                ) for num_categories in self.num_categories_per_task
-            ])
+            self.classification_heads = nn.ModuleList(
+                [
+                    nn.Sequential(
+                        nn.Linear(config.dim, config.dim // 2),
+                        nn.ReLU(),
+                        nn.Dropout(config.seq_classif_dropout),
+                        nn.Linear(config.dim // 2, num_categories),
+                    )
+                    for num_categories in self.num_categories_per_task
+                ]
+            )
         elif self.classification == "linear":
-            self.classification_heads = nn.ModuleList([
-                nn.Sequential(
-                    nn.Linear(config.dim, num_categories),
-                    nn.Dropout(config.seq_classif_dropout)
-                ) for num_categories in self.num_categories_per_task
-            ])
+            self.classification_heads = nn.ModuleList(
+                [
+                    nn.Sequential(
+                        nn.Linear(config.dim, num_categories),
+                        nn.Dropout(config.seq_classif_dropout),
+                    )
+                    for num_categories in self.num_categories_per_task
+                ]
+            )
 
     def forward(
         self,
@@ -74,14 +100,16 @@ class MultiTaskModel(PreTrainedModel):
         if labels is not None:
             loss_fct = nn.CrossEntropyLoss()
             losses = []
-            for logit, label in zip(logits, labels.squeeze().transpose(0, 1)): # trust me
-                losses.append(
-                    loss_fct(logit, label.view(-1))
-                )
+            for logit, label in zip(
+                logits, labels.squeeze().transpose(0, 1)
+            ):  # trust me
+                losses.append(loss_fct(logit, label.view(-1)))
             loss = sum(losses)
 
-        output = (logits,) + distilbert_output[1:] # TODO why activations? see https://github.com/huggingface/transformers/blob/6f316016877197014193b9463b2fd39fa8f0c8e4/src/transformers/models/distilbert/modeling_distilbert.py#L824
-    
+        output = (logits,) + distilbert_output[
+            1:
+        ]  # TODO why activations? see https://github.com/huggingface/transformers/blob/6f316016877197014193b9463b2fd39fa8f0c8e4/src/transformers/models/distilbert/modeling_distilbert.py#L824
+
         if not return_dict:
             return (loss,) + output if loss is not None else output
 
@@ -89,5 +117,5 @@ class MultiTaskModel(PreTrainedModel):
             loss=loss,
             logits=logits,
             hidden_states=distilbert_output.hidden_states,
-            attentions=distilbert_output.attentions
+            attentions=distilbert_output.attentions,
         )
