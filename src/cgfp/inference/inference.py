@@ -1,8 +1,12 @@
 import torch
 import pandas as pd
 import os
+import logging
 
 from cgfp.config import create_combined_tags
+
+logger = logging.getLogger("inference_logger")
+logger.setLevel(logging.INFO)
 
 
 def inference(model, tokenizer, text, device, confidence_score=True):
@@ -16,28 +20,29 @@ def inference(model, tokenizer, text, device, confidence_score=True):
         outputs = model(**inputs, return_dict=True)
     softmaxed_scores = [torch.softmax(logits, dim=1) for logits in outputs.logits]
 
-    # TODO: Add constraints here so model can only predict valid tags for Food Product Group
-    combined_tags = create_combined_tags()
-    # 1. Get predicted food product group
-    # scores_fpg = softmaxed_scores[FPG_HEAD_IDX]
-    # _, fpg_idx = torch.max(scores_fpg)
-    # pred_fpg = model.decoders[FPG_HEAD_IDX]
-    # 2. Get the allowed tags for that group
-    # allowed_tags = combined_tags[pred_fpg]
-    # get allowed tag indices
-    # 3. Exclude all other tags and create filtered_scores
-    # create mask based on allowed tags
-    # 4. Figure out what to do with the sub-types
-    # - Idea: set up some sort of partial ordering and allow up to three sub-types if tokens
-    # are in those sets
+    # get predicted food product group
+    fpg, _ = torch.max(softmaxed_scores[model.fpg_idx])
+    fgp = model.decoders[model.fpg_idx][fpg]
+    logger.info(f"Food Product Group: {fpg}")
 
+    combined_tags = create_combined_tags()
+    # TODO: combine the group and the category tags
+
+    # TODO: need to mask these before taking the max
     # get the score for each task
     scores = [
         torch.max(score, dim=1) for score in softmaxed_scores
-    ]  # torch.max returns both max and argmax
+    ]  # torch.max returns both max and argmax so this is a list of tuples
 
-    # get predicted food product group
-    scores_fpg = softmaxed_scores[model.fpg_idx]
+    eligible_tags = combined_tags[fgp]
+
+    # get allowed tag indices
+    # 3. Exclude all other tags and create filtered_scores
+    # create mask based on allowed tags
+
+    # 4. Figure out what to do with the sub-types
+    # - Idea: set up some sort of partial ordering and allow up to three sub-types if tokens
+    # are in those sets
 
     legible_preds = {}
     for item, score in zip(model.decoders, scores):
