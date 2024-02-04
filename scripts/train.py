@@ -25,8 +25,8 @@ from transformers import (
 from transformers.modeling_outputs import SequenceClassifierOutput
 from datasets import Dataset
 
-from inference.inference import inference
-from training.models import MultiTaskConfig, MultiTaskModel
+from cgfp.inference.inference import inference
+from cgfp.training.models import MultiTaskConfig, MultiTaskModel
 
 logging.basicConfig(level=logging.INFO)
 

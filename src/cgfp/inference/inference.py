@@ -21,20 +21,20 @@ def inference(model, tokenizer, text, device, confidence_score=True):
     softmaxed_scores = [torch.softmax(logits, dim=1) for logits in outputs.logits]
 
     # get predicted food product group
-    fpg, _ = torch.max(softmaxed_scores[model.fpg_idx])
-    fgp = model.decoders[model.fpg_idx][fpg]
-    logger.info(f"Food Product Group: {fpg}")
+    fpg_argmax = torch.argmax(softmaxed_scores[model.fpg_idx])
+    # model.decoders is a tuple of column name and actual decoding dictionary
+    _, fpg_dict = model.decoders[model.fpg_idx]
+    fpg = fpg_dict[str(fpg_argmax.item())]
 
-    combined_tags = create_combined_tags()
-    # TODO: combine the group and the category tags
+    # TODO: Pull in all of the allowed basic type tags here
 
     # TODO: need to mask these before taking the max
     # get the score for each task
     scores = [
         torch.max(score, dim=1) for score in softmaxed_scores
-    ]  # torch.max returns both max and argmax so this is a list of tuples
+    ]  # torch.max returns both max and argmax if you specify dim so this is a list of tuples
 
-    eligible_tags = combined_tags[fgp]
+    eligible_tags = combined_tags[fpg]
 
     # get allowed tag indices
     # 3. Exclude all other tags and create filtered_scores
