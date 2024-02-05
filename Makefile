@@ -40,7 +40,7 @@ $(CONDA_ENV_PATH)/.timestamp: $(CONDA_ENV_FILE) $(CONDA_ENV_PATH)
 	touch $(CONDA_ENV_PATH)/.timestamp
 
 src: $(SRC_FILES) $(CONDA_ENV_PATH)/.timestamp
-	conda run -p $(CONDA_ENV_PATH) pip install .
+	conda run -p $(CONDA_ENV_PATH) pip install -e .
 	touch src
 
 requirements.dev.txt: $(CONDA_ENV_PATH)/.timestamp
