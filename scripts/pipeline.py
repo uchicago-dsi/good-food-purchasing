@@ -66,7 +66,6 @@ def clean_df(df):
     df["Product Name"] = df["Product Name"].str.replace(
         "^PREQUALIFIED: ", "", regex=True
     )
-    # TODO: figure out where the numbers are coming from in basic type — maybe filter that later or do it here?
     return df
 
 

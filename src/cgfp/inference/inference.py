@@ -28,7 +28,7 @@ def inference(model, tokenizer, text, device, confidence_score=True):
 
     # Not sure of the best way to save these — maybe a dictionary or maybe a list is fine?
     # TODO: I think this is incorrect but it's at least not crashing
-    inference_mask = model.inference_masks[fpg_argmax.item()].to(device)
+    inference_mask = model.inference_masks[fpg].to(device)
 
     # actually mask the basic type scores
     softmaxed_scores[model.basic_type_idx] = inference_mask * softmaxed_scores[model.basic_type_idx]

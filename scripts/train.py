@@ -35,14 +35,6 @@ logging.basicConfig(level=logging.INFO)
 
 MODEL_NAME = "distilbert-base-uncased"
 TEXT_FIELD = "Product Type"
-# TODO: change this default somewhere
-# LABELS = [
-#     "Food Product Category",
-#     "Level of Processing",
-#     "Primary Food Product Category",
-#     "Food Product Group",
-#     "Primary Food Product Group"
-# ]
 # TODO: This is kind of fragile to changes in capitalization, etc.
 # Fix this so it doesn't matter if the columns are the same case or not
 LABELS = [
@@ -148,12 +140,10 @@ if __name__ == "__main__":
     # TODO: this is to handle random integers that show up in the input column and break stuff
     # Should handle these somehow (drop rows — check the pipeline)
     # For now, just convert to string so we can run this
-    # Syntax is kinda weird for polars
+    # Reminder: polars syntax is different than pandas syntax
     df_cleaned = df_cleaned.with_columns(pl.col(TEXT_FIELD).cast(pl.Utf8))
     df_cleaned = df_cleaned.filter(pl.col(TEXT_FIELD).is_not_null())
-    # TODO: What do we actually want to do here?
     df_cleaned = df_cleaned.fill_null("None")
-    # df_cleaned = df_cleaned.drop_nulls()
 
     encoders = {}
     for column in LABELS:
@@ -173,15 +163,20 @@ if __name__ == "__main__":
         logging.info(f"{col}: {len(encoder.classes_)} classes")
 
     # Save valid basic types for each food product group
-    # Remember: Polars syntax is kinda weird
-    inference_masks = []
+    # Reminder: polars syntax is different than pandas
+    inference_masks = {}
     basic_types = df_cleaned.select("Basic Type").unique().collect()['Basic Type'].to_list()
     for fpg in df_cleaned.select('Food Product Group').unique().collect()['Food Product Group']:
         valid_basic_types = df_cleaned.filter(pl.col("Food Product Group") == fpg).select("Basic Type").unique().collect()['Basic Type'].to_list()
+
+        # logging to inspect basic types
+        # logging.info(f"{fpg} basic types")
+        # logging.info(valid_basic_types)
+
         basic_type_indeces = encoders['Basic Type'].transform(valid_basic_types)
         mask = np.zeros(len(basic_types))
         mask[basic_type_indeces] = 1
-        inference_masks.append(mask.tolist())
+        inference_masks[fpg] = mask.tolist()
 
     logging.info("Preparing dataset")
     dataset = Dataset.from_pandas(df_cleaned.collect().to_pandas())

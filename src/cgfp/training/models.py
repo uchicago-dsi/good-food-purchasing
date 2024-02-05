@@ -51,7 +51,8 @@ class MultiTaskModel(PreTrainedModel):
         self.classification = config.classification
         self.fpg_idx = config.fpg_idx  # index for the food product group task
         self.basic_type_idx = config.basic_type_idx
-        self.inference_masks = [torch.tensor(mask) for mask in json.loads(config.inference_masks)]
+        self.inference_masks = {key: torch.tensor(value) for key, value in json.loads(config.inference_masks).items()}
+
 
         # TODO:
         if self.classification == "mlp":

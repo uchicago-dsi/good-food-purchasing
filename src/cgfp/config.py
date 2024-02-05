@@ -13,6 +13,7 @@ TOKEN_MAP_DICT = {
     "campanelli": "campanelle",
     "unsweeted": "unsweetened",
     "peeled & deveined": "peeled and deveined",
+    "mangu": "mango",
     ## INCONSISTENCIES ##
     "skin-on": "skin on",
     "carrots": "carrot",
