@@ -6,6 +6,7 @@ from datetime import datetime
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 import polars as pl
+import numpy as np
 
 import torch
 import torch.nn as nn
@@ -13,71 +14,80 @@ import torch.nn.functional as F
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR, ReduceLROnPlateau
 
-from transformers import DistilBertForSequenceClassification, DistilBertTokenizerFast, TrainingArguments, Trainer, PreTrainedModel, DistilBertConfig, DistilBertModel
+from transformers import (
+    DistilBertForSequenceClassification,
+    DistilBertTokenizerFast,
+    TrainingArguments,
+    Trainer,
+    PreTrainedModel,
+    DistilBertConfig,
+    DistilBertModel,
+)
 from transformers.modeling_outputs import SequenceClassifierOutput
 from datasets import Dataset
 
-from inference.inference import inference
-from training.models import MultiTaskConfig, MultiTaskModel
+from cgfp.inference.inference import inference
+from cgfp.training.models import MultiTaskConfig, MultiTaskModel
 
 logging.basicConfig(level=logging.INFO)
 
 ### Setup
 
-MODEL_NAME = 'distilbert-base-uncased'
+MODEL_NAME = "distilbert-base-uncased"
 TEXT_FIELD = "Product Type"
-# TODO: change this default somewhere
-# LABELS = [
-#     "Food Product Category",
-#     "Level of Processing",
-#     "Primary Food Product Category",
-#     "Food Product Group",
-#     "Primary Food Product Group"
-# ]
 # TODO: This is kind of fragile to changes in capitalization, etc.
 # Fix this so it doesn't matter if the columns are the same case or not
 LABELS = [
-    "Food Product Group", 
+    "Food Product Group",
     "Food Product Category",
     "Basic Type",
     "Sub-Type 1",
     "Sub-Type 2",
-    "Flavor/Cut", 
-    "Shape", 
-    "Skin", 
-    "Seed/Bone", 
-    "Processing", 
-    "Cooked/Cleaned", 
-    "WG/WGR", 
-    "Dietary Concern", 
-    "Additives", 
-    "Dietary Accommodation", 
-    "Frozen", 
-    "Packaging", 
-    "Commodity"
+    "Flavor/Cut",
+    "Shape",
+    "Skin",
+    "Seed/Bone",
+    "Processing",
+    "Cooked/Cleaned",
+    "WG/WGR",
+    "Dietary Concern",
+    "Additives",
+    "Dietary Accommodation",
+    "Frozen",
+    "Packaging",
+    "Commodity",
 ]
+# These indeces are used to set up inference filtering
+FPG_IDX = LABELS.index("Food Product Group")
+BASIC_TYPE_IDX = LABELS.index("Basic Type")
+
 # TODO: add args to MODEL_PATH and logging path
-MODEL_PATH = f"/net/projects/cgfp/model-files/{datetime.now().strftime('%Y-%m-%d_%H-%M')}"
+MODEL_PATH = (
+    f"/net/projects/cgfp/model-files/{datetime.now().strftime('%Y-%m-%d_%H-%M')}"
+)
 
 SMOKE_TEST = False
 SAVE_BEST = True
 
-FREEZE_LAYERS = False
+FREEZE_LAYERS = True
 
 if SMOKE_TEST:
     MODEL_PATH += "-smoke-test"
 
+
 def read_data(data_path):
-    return pl.read_csv(data_path, infer_schema_length=1, null_values=['NULL']).lazy()
+    return pl.read_csv(data_path, infer_schema_length=1, null_values=["NULL"]).lazy()
+
 
 ### Data prep
 
 # Training
 
+
 def compute_metrics(pred):
-    '''
+    """
     Extract the predictions and labels for each task
-    
+
     TODO: organize this info in a docstring
     len(pred.predictions) » 2
     len(pred.predictions[0]) » 20
@@ -89,7 +99,7 @@ def compute_metrics(pred):
     This comes in a list of length 20 with a 2D label for each example?
     array([[ 5],
        [26]])
-    '''
+    """
 
     num_tasks = len(pred.predictions)
     preds = [pred.predictions[i].argmax(-1) for i in range(num_tasks)]
@@ -100,14 +110,12 @@ def compute_metrics(pred):
         pred, lbl = task
         accuracies[i] = accuracy_score(lbl, pred)
 
-    mean_accuracy = sum(accuracies.values())/num_tasks
+    mean_accuracy = sum(accuracies.values()) / num_tasks
 
-    return {
-        "mean_accuracy": mean_accuracy,
-        "accuracies": accuracies
-    }
+    return {"mean_accuracy": mean_accuracy, "accuracies": accuracies}
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
 
     logging.info(f"MODEL_PATH : {MODEL_PATH}")
 
@@ -124,7 +132,7 @@ if __name__ == '__main__':
     # Data preparation
 
     # TODO: Set this up so data file comes out of data pipeline
-    data_path = sys.argv[1] if len(sys.argv) > 1 else 'data'
+    data_path = sys.argv[1] if len(sys.argv) > 1 else "data"
     logging.info(f"Reading data from path : {data_path}")
     df = read_data(data_path)
     columns = df.columns
@@ -132,14 +140,10 @@ if __name__ == '__main__':
     # TODO: this is to handle random integers that show up in the input column and break stuff
     # Should handle these somehow (drop rows — check the pipeline)
     # For now, just convert to string so we can run this
-    # Syntax is kinda weird for polars
-    df_cleaned = df_cleaned.with_columns(
-        pl.col(TEXT_FIELD).cast(pl.Utf8)
-    )
+    # Reminder: polars syntax is different than pandas syntax
+    df_cleaned = df_cleaned.with_columns(pl.col(TEXT_FIELD).cast(pl.Utf8))
     df_cleaned = df_cleaned.filter(pl.col(TEXT_FIELD).is_not_null())
-    # TODO: What do we actually want to do here?
-    df_cleaned = df_cleaned.fill_null('None')
-    # df_cleaned = df_cleaned.drop_nulls()
+    df_cleaned = df_cleaned.fill_null("None")
 
     encoders = {}
     for column in LABELS:
@@ -152,9 +156,27 @@ if __name__ == '__main__':
     # for saving to the config.json in a way that doesn't break when loaded
     decoders = []
     for col, encoder in encoders.items():
-        decoding_dict = {f"{index}": label for index, label in enumerate(encoder.classes_)}
+        decoding_dict = {
+            f"{index}": label for index, label in enumerate(encoder.classes_)
+        }
         decoders.append((col, decoding_dict))
         logging.info(f"{col}: {len(encoder.classes_)} classes")
+
+    # Save valid basic types for each food product group
+    # Reminder: polars syntax is different than pandas
+    inference_masks = {}
+    basic_types = df_cleaned.select("Basic Type").unique().collect()['Basic Type'].to_list()
+    for fpg in df_cleaned.select('Food Product Group').unique().collect()['Food Product Group']:
+        valid_basic_types = df_cleaned.filter(pl.col("Food Product Group") == fpg).select("Basic Type").unique().collect()['Basic Type'].to_list()
+
+        # logging to inspect basic types
+        # logging.info(f"{fpg} basic types")
+        # logging.info(valid_basic_types)
+
+        basic_type_indeces = encoders['Basic Type'].transform(valid_basic_types)
+        mask = np.zeros(len(basic_types))
+        mask[basic_type_indeces] = 1
+        inference_masks[fpg] = mask.tolist()
 
     logging.info("Preparing dataset")
     dataset = Dataset.from_pandas(df_cleaned.collect().to_pandas())
@@ -163,15 +185,21 @@ if __name__ == '__main__':
         dataset = dataset.select(range(1000))
 
     tokenizer = DistilBertTokenizerFast.from_pretrained(MODEL_NAME)
+
     def tokenize(batch):
-        tokenized_inputs = tokenizer(batch[TEXT_FIELD], padding='max_length', truncation=True, max_length=100)
-        tokenized_inputs["labels"] = [encoders[label].transform([batch[label]]) for label in LABELS]
+        tokenized_inputs = tokenizer(
+            batch[TEXT_FIELD], padding="max_length", truncation=True, max_length=100
+        )
+        tokenized_inputs["labels"] = [
+            encoders[label].transform([batch[label]]) for label in LABELS
+        ]
         return tokenized_inputs
+
     dataset = dataset.map(tokenize)
     for i in range(5):
         logging.info(dataset[i])
 
-    dataset.set_format('torch', columns=['input_ids', 'attention_mask', "labels"])
+    dataset.set_format("torch", columns=["input_ids", "attention_mask", "labels"])
     dataset = dataset.train_test_split(test_size=0.2)
     logging.info("Dataset is prepared")
 
@@ -184,9 +212,20 @@ if __name__ == '__main__':
 
     # TODO: set this up so that classification can be passed via args
     classification = "mlp"
-    distilbert_model = DistilBertForSequenceClassification.from_pretrained('distilbert-base-uncased')
+    distilbert_model = DistilBertForSequenceClassification.from_pretrained(
+        "distilbert-base-uncased"
+    )
     num_categories_per_task = [len(v.classes_) for k, v in encoders.items()]
-    config = MultiTaskConfig(num_categories_per_task=num_categories_per_task, decoders=decoders, columns=columns, classification=classification, **distilbert_model.config.to_dict())
+    config = MultiTaskConfig(
+        num_categories_per_task=num_categories_per_task,
+        decoders=decoders,
+        columns=columns,
+        classification=classification,
+        fpg_idx=FPG_IDX,
+        basic_type_idx=BASIC_TYPE_IDX,
+        inference_masks=json.dumps(inference_masks),
+        **distilbert_model.config.to_dict(),
+    )
     model = MultiTaskModel(config)
     logging.info("Model instantiated")
 
@@ -204,29 +243,29 @@ if __name__ == '__main__':
             param.requires_grad = True
 
     # TODO: set this up to come from args
-    lr = .001
+    lr = 0.001
 
     # TODO: Training logs argument doesn't seem to work. Logs are in the normal logging folder?
     # Add info to logging file name
     training_args = TrainingArguments(
-        output_dir = '/net/projects/cgfp/checkpoints',
+        output_dir="/net/projects/cgfp/checkpoints",
         evaluation_strategy="epoch",
         save_strategy="epoch",
-        num_train_epochs = epochs,
-        per_device_train_batch_size = 32,
-        per_device_eval_batch_size = 64,
-        lr_scheduler_type='linear',
+        num_train_epochs=epochs,
+        per_device_train_batch_size=32,
+        per_device_eval_batch_size=64,
+        lr_scheduler_type="linear",
         learning_rate=lr,
-        warmup_steps = 100,
-        weight_decay = 0.01,
-        logging_dir = './training-logs'
+        warmup_steps=100,
+        weight_decay=0.01,
+        logging_dir="./training-logs",
         # logging_dir = '/home/tnief/good-food-purchasing/training-logs'
     )
 
     if SAVE_BEST:
-        training_args.load_best_model_at_end=True
-        training_args.metric_for_best_model='mean_accuracy'
-        training_args.greater_is_better=True
+        training_args.load_best_model_at_end = True
+        training_args.metric_for_best_model = "mean_accuracy"
+        training_args.greater_is_better = True
 
     # TODO: depending on how we're actually training an LR scheduler is probably useful
     # Samet hing with learning rate
@@ -246,16 +285,16 @@ if __name__ == '__main__':
     #     if validation_loss is not None:
     #         self.scheduler.step(validation_loss)
     #
-    # add this to trainer args: 
+    # add this to trainer args:
     # callbacks=[ReduceOnPlateauCallback(optimizer, mode='min', factor=0.1, patience=10)]
 
     trainer = Trainer(
-        model = model,
-        args = training_args,
-        compute_metrics = compute_metrics, 
-        train_dataset = dataset['train'],
-        eval_dataset = dataset['test'],
-        optimizers = (adamW, None)  # Optimizer, LR scheduler
+        model=model,
+        args=training_args,
+        compute_metrics=compute_metrics,
+        train_dataset=dataset["train"],
+        eval_dataset=dataset["test"],
+        optimizers=(adamW, None),  # Optimizer, LR scheduler
     )
 
     logging.info("Training...")
