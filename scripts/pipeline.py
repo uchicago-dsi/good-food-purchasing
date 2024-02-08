@@ -138,9 +138,9 @@ def clean_name(
 
 if __name__ == "__main__":
     # TODO: Add args for filepath, etc.
-    INPUT_FILE = "bulk_data.csv"
+    INPUT_FILE = "CONFIDENTIAL_CGFP bulk data_073123.csv"
     MISC_FILE = "misc.csv"
-    CLEAN_FILE = "clean_tags.csv"
+    CLEAN_FILE = "clean_" + INPUT_FILE
 
     INPUT_PATH = RAW_FOLDER + INPUT_FILE
     MISC_PATH = CLEAN_FOLDER + RUN_FOLDER + MISC_FILE

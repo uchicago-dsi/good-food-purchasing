@@ -5,4 +5,4 @@
 #SBATCH --mail-type=END
 
 # python scripts/train.py /net/projects/cgfp/data/bulk_data.csv
-python scripts/train.py /net/projects/cgfp/data/clean_tags.csv
+python scripts/train.py /net/projects/cgfp/data/clean_CONFIDENTIAL_CGFP bulk data_073123.csv
