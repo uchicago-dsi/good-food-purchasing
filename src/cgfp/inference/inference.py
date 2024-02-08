@@ -128,6 +128,11 @@ def inference_handler(
 
     if raw_results:
         results_full = results
+        # TODO: change this to a function to write the file
+        os.chdir("/content/")  # make sure this saves in the expected directory in Colab
+        output_path = input_path.rstrip(".xlsx") + "_classified.xlsx"
+        df_formatted.to_excel(output_path, index=False)
+        print(f"Classification completed! File saved to {output_path}")
 
     results_full = results_full.replace("None", pd.NA)
 
