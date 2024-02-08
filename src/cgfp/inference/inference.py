@@ -133,6 +133,7 @@ def inference_handler(
         output_path = input_path.rstrip(".xlsx") + "_classified.xlsx"
         df_formatted.to_excel(output_path, index=False)
         print(f"Classification completed! File saved to {output_path}")
+        return
 
     results_full = results_full.replace("None", pd.NA)
 
