@@ -26,8 +26,6 @@ def inference(model, tokenizer, text, device, confidence_score=True):
     _, fpg_dict = model.decoders[model.fpg_idx]
     fpg = fpg_dict[str(fpg_argmax.item())]
 
-    # Not sure of the best way to save these — maybe a dictionary or maybe a list is fine?
-    # TODO: I think this is incorrect but it's at least not crashing
     inference_mask = model.inference_masks[fpg].to(device)
 
     # actually mask the basic type scores
@@ -90,6 +88,7 @@ def inference_handler(
     confidence_score=False,
     threshold=0.85,
     rows_to_classify=None,
+    include_group=False
 ):
     if device is None:
         device = "cuda:0" if torch.cuda.is_available() else "cpu"
@@ -126,6 +125,9 @@ def inference_handler(
         score_col = col + "_score"
         if score_col in results:
             results_full[score_col] = results[score_col]
+
+    if include_group:
+        results_full.insert(2, 'Food Product Group', results['Food Product Group'])
 
     results_full = results_full.replace("None", pd.NA)
 

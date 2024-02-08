@@ -66,7 +66,7 @@ MODEL_PATH = (
     f"/net/projects/cgfp/model-files/{datetime.now().strftime('%Y-%m-%d_%H-%M')}"
 )
 
-SMOKE_TEST = False
+SMOKE_TEST = True
 SAVE_BEST = True
 
 FREEZE_LAYERS = True
