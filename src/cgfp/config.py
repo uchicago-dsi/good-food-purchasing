@@ -96,7 +96,7 @@ SKIP_TOKENS = {
     "aerosol",
 }
 
-# FOOD PRODUCT GROUPS #
+# FOOD PRODUCT CATEGORY & GROUP STRUCTURE #
 """
 Produce
 Milk & Dairy
@@ -106,6 +106,47 @@ Beverages
 Meals
 Condiments & Snacks
 """
+
+"""
+## PRODUCE ##
+Fruit
+Vegetables
+Roots & Tubers
+## MILK & DAIRY ##
+Butter
+Cheese
+Milk
+Yogurt
+Milk & Dairy (Includes other items, buttermilk, ice cream, coffee creamer, etc)
+## MEAT ##
+Beef
+Chicken
+Eggs
+Pork
+Turkey, Other Poultry
+Meat (includes other like bison, lamb, veal, venison, etc)
+## SEAFOOD ##
+Fish (Farm-raised)
+Fish (Wild)
+Seafood (includes other)
+## BREAD, GRAINS & LEGUMES ##
+Grain Products
+Legumes
+Rice
+Tree Nuts & Seeds
+Bread, Grains & Legumes
+"""
+
+GROUP_CATEGORY_VALIDATION = {
+    "Produce": ["Fruit", "Vegetables", "Roots & Tubers"],
+    "Milk & Dairy": ["Butter", "Cheese", "Milk", "Yogurt", "Milk & Dairy"],
+    "Meat": ["Beef", "Chicken", "Eggs", "Pork", "Turkey, Other Poultry", "Meat"], # "Meat" is used for other items without a category like bison, lamb, venison, rabbit, etc.
+    "Seafood": ["Fish (Farm-Raised)", "Fish (Wild)", "Seafood"],# "Seafood" is used for fish that are unconfirmed farm-raised or wild, shellfish, crab, mollusks, scallops, clams, shrimp, etc.
+    "Bread, Grains & Legumes": ["Grain Products", "Legumes", "Rice", "Tree Nuts & Seeds", "Bread, Grains & Legumes"] # "Bread, Grains & Legumes" is used to account for items not belonging to the other categories
+    "Beverages": ["Beverages"],
+    "Meals": ["Meals"], # TODO: Figure out how to set something up for primary food product category here
+    "Condiments & Snacks": ["Condiments & Snacks"]
+}
 
 GROUP_TAGS = {
     "Beverages": {
@@ -512,35 +553,6 @@ ADDED_GROUP_TAGS = {
 }
 
 # FOOD PRODUCT CATEGORIES #
-"""
-## PRODUCE ##
-Fruit
-Vegetables
-Roots & Tubers
-## MILK & DAIRY ##
-Butter
-Cheese
-Milk
-Yogurt
-Milk & Dairy (Includes other items, buttermilk, ice cream, coffee creamer, etc)
-## MEAT ##
-Beef
-Chicken
-Eggs
-Pork
-Turkey, Other Poultry
-Meat (includes other like bison, lamb, veal, venison, etc)
-## SEAFOOD ##
-Fish (Farm-raised)
-Fish (Wild)
-Seafood (includes other)
-## BREAD, GRAINS & LEGUMES ##
-Grain Products
-Legumes
-Rice
-Tree Nuts & Seeds
-Bread, Grains & Legumes
-"""
 
 CATEGORY_TAGS = {
     ## GROUP: PRODUCE ##
