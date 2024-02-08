@@ -88,7 +88,7 @@ def inference_handler(
     confidence_score=False,
     threshold=0.85,
     rows_to_classify=None,
-    include_group=False
+    raw_results=False
 ):
     if device is None:
         device = "cuda:0" if torch.cuda.is_available() else "cpu"
@@ -126,8 +126,8 @@ def inference_handler(
         if score_col in results:
             results_full[score_col] = results[score_col]
 
-    if include_group:
-        results_full.insert(2, 'Food Product Group', results['Food Product Group'])
+    if raw_results:
+        results_full = results
 
     results_full = results_full.replace("None", pd.NA)
 
