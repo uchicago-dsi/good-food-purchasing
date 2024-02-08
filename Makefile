@@ -1,9 +1,9 @@
 
-SBATCH_MAIL:=tnief@uchicago.edu,credmond@uchicago.edu
+SBATCH_MAIL:=tnief@uchicago.edu
 DSI_PARTITION:=general
 
 SCRIPTS_DIR:=scripts
-LOG_DIR:=/net/projects/cgfp/logs
+LOG_DIR:=logs
 SRC_DIR:=src
 
 SRC_FILES := $(shell find src -type f -not -path "*/__pycache__/*" -not -name "*.egg-info")
@@ -14,8 +14,9 @@ ERR_FILE:=err.txt
 TIMESTAMP:=$(shell date '+%Y-%m-%d-%T-%a')
 RUN_LOGS:=$(LOG_DIR)/$(TIMESTAMP)
 
-LAST_LOGS:=$(shell find $(LOG_DIR) |grep -E "logs/[^/]*$$" |sort |tail -n 1)
+LAST_LOGS:=$(shell find logs |grep -E "logs/[^/]*$$" |sort |tail -n 1)
 
+# CONDA_ENV_PATH := ./tmp/conda/cgfp
 # TODO: What do we actually want to do with this?
 CONDA_ENV_PATH := /net/projects/cgfp/conda-environment
 CONDA_ENV_FILE := environment.yml
@@ -39,7 +40,7 @@ $(CONDA_ENV_PATH)/.timestamp: $(CONDA_ENV_FILE) $(CONDA_ENV_PATH)
 	touch $(CONDA_ENV_PATH)/.timestamp
 
 src: $(SRC_FILES) $(CONDA_ENV_PATH)/.timestamp
-	conda run -p $(CONDA_ENV_PATH) pip install .
+	conda run -p $(CONDA_ENV_PATH) pip install -e .
 	touch src
 
 requirements.dev.txt: $(CONDA_ENV_PATH)/.timestamp
@@ -73,16 +74,18 @@ train: env
 
 .PHONY: last-logs
 last-logs:
-	@echo ""
+	echo ""
 	cat $(LAST_LOGS)/$(OUTPUT_FILE)
-	@echo ""
 
 .PHONY: last-errs
 last-errs:
-	@echo ""
+	echo ""
 	cat $(LAST_LOGS)/$(ERR_FILE)
-	@echo ""
 
 ##### HUGGINGFACE #####
 
 # TODO: can probably standardize the pipeline to upload a model to huggingface
+
+# mv /net/projects/cgfp/model-files/2024-02-05_10-56/* /net/projects/cgfp/huggingface/cgfp-classifier-dev/
+# cd /net/projects/cgfp/huggingface/cgfp-classifier-dev/
+# git commit -m "model trained on clean-ish dataset" && git push
