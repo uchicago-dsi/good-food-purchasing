@@ -4,6 +4,10 @@ import os
 import logging
 
 from cgfp.config import create_combined_tags
+from cgfp.training.models import MultiTaskModel
+
+from transformers import AutoTokenizer
+
 
 logger = logging.getLogger("inference_logger")
 logger.setLevel(logging.INFO)
@@ -158,3 +162,23 @@ def inference_handler(
     output_path = input_path.rstrip(".xlsx") + "_classified.xlsx"
     df_formatted.to_excel(output_path, index=False)
     print(f"Classification completed! File saved to {output_path}")
+
+if __name__ == "__main__":
+    HUGGINGFACE = 'cgfp-classifier-dev'
+    model = MultiTaskModel.from_pretrained(f"uchicago-dsi/{HUGGINGFACE}")
+    tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
+    device = "cuda:0" if torch.cuda.is_available() else "cpu"
+
+    SHEET_NUMBER = 0
+    HIGHLIGHT = False
+    CONFIDENCE_SCORE = False
+    ROWS_TO_CLASSIFY = None
+    RAW_RESULTS = True # saves the raw model results rather than the formatted normalized name results
+
+    FILENAME = "TestData_11.22.23.xlsx"
+    INPUT_COLUMN = "Product Type"
+    DATA_DIR = "/net/projects/cgfp/data/"
+
+    INPUT_PATH = DATA_DIR + FILENAME
+
+    inference_handler(model, tokenizer, input_path=INPUT_PATH, device=device, sheet_name=SHEET_NUMBER, input_column=INPUT_COLUMN, rows_to_classify=ROWS_TO_CLASSIFY, highlight=HIGHLIGHT, confidence_score=CONFIDENCE_SCORE, raw_results=RAW_RESULTS)
