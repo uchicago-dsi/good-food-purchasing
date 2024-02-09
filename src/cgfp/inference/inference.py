@@ -3,7 +3,7 @@ import pandas as pd
 import os
 import logging
 
-from cgfp.config import create_combined_tags
+from cgfp.config import GROUP_CATEGORY_VALIDATION
 from cgfp.training.models import MultiTaskModel
 
 from transformers import AutoTokenizer
@@ -11,6 +11,12 @@ from transformers import AutoTokenizer
 
 logger = logging.getLogger("inference_logger")
 logger.setLevel(logging.INFO)
+
+def prediction_to_string(model, scores, idx):
+    max_idx = torch.argmax(scores[idx])
+    # model.decoders is a tuple of column name and actual decoding dictionary
+    _, decoder = model.decoders[idx]
+    return decoder[str(max_idx.item())]
 
 
 def inference(model, tokenizer, text, device, confidence_score=True):
@@ -24,11 +30,10 @@ def inference(model, tokenizer, text, device, confidence_score=True):
         outputs = model(**inputs, return_dict=True)
     softmaxed_scores = [torch.softmax(logits, dim=1) for logits in outputs.logits]
 
-    # get predicted food product group
-    fpg_argmax = torch.argmax(softmaxed_scores[model.fpg_idx])
-    # model.decoders is a tuple of column name and actual decoding dictionary
-    _, fpg_dict = model.decoders[model.fpg_idx]
-    fpg = fpg_dict[str(fpg_argmax.item())]
+    # get predicted food product group & predicted food product category
+    fpg = prediction_to_string(model, softmaxed_scores, model.fpg_idx)
+    # TODO: This is fragile. Maybe change config to have a mapping of each column to index
+    fpc = prediction_to_string(model, softmaxed_scores, model.fpg_idx + 1)
 
     inference_mask = model.inference_masks[fpg].to(device)
 
@@ -44,6 +49,12 @@ def inference(model, tokenizer, text, device, confidence_score=True):
     # - Idea: set up some sort of partial ordering and allow up to three sub-types if tokens
     # are in those sets
 
+    # assertion to make sure fpg & fpg match
+    # TODO: Add argument here to turn this behavior on and off
+    assertion_failed = False
+    if fpc not in GROUP_CATEGORY_VALIDATION[fpg]:
+        assertion_failed = True
+
     legible_preds = {}
     for item, score in zip(model.decoders, scores):
         col, decoder = item
@@ -51,7 +62,7 @@ def inference(model, tokenizer, text, device, confidence_score=True):
 
         try:
             pred = decoder[str(idx.item())]  # decoders have been serialized so keys are strings
-            legible_preds[col] = pred
+            legible_preds[col] = pred if not assertion_failed else None
             if confidence_score:
                 legible_preds[col + "_score"] = prob.item()
         except Exception as e:
@@ -81,11 +92,20 @@ def highlight_uncertain_preds(df, threshold=0.85):
     return styles_dict
 
 
+def save_output(df, filename, data_dir):
+    os.chdir(data_dir)  # ensures this saves in the expected directory in Colab
+    output_path = filename.rstrip(".xlsx") + "_classified.xlsx"
+    df = df.replace("None", pd.NA)
+    df.to_excel(output_path, index=False)
+    print(f"Classification completed! File saved to {output_path}")
+    return
+
 def inference_handler(
     model,
     tokenizer,
     input_path,
     input_column,
+    data_dir="/content",
     device=None,
     sheet_name=0,
     highlight=False,
@@ -112,6 +132,11 @@ def inference_handler(
         .apply(pd.Series)
     )
     results = pd.concat([df[input_column], output], axis=1)
+    results = results.replace("None", pd.NA)
+
+    if raw_results:
+        save_output(results, input_path, data_dir)
+        return
 
     # Add all columns to results to match name normalization format
     # Assumes that the input dataframe is in the expected name normalization format
@@ -130,18 +155,6 @@ def inference_handler(
         if score_col in results:
             results_full[score_col] = results[score_col]
 
-    if raw_results:
-        results_full = results
-        # TODO: change this to a function to write the file
-        os.chdir("/content/")  # make sure this saves in the expected directory in Colab
-        output_path = input_path.rstrip(".xlsx") + "_classified.xlsx"
-        results_full = results_full.replace("None", pd.NA)
-        results_full.to_excel(output_path, index=False)
-        print(f"Classification completed! File saved to {output_path}")
-        return
-
-    results_full = results_full.replace("None", pd.NA)
-
     # Create highlights
     # Logic here is a bit odd since applying styles gives you a Styler
     # object...not a dataframe
@@ -159,10 +172,8 @@ def inference_handler(
         else results_full
     )
 
-    os.chdir("/content/")  # make sure this saves in the expected directory in Colab
-    output_path = input_path.rstrip(".xlsx") + "_classified.xlsx"
-    df_formatted.to_excel(output_path, index=False)
-    print(f"Classification completed! File saved to {output_path}")
+    save_output(df_formatted, input_path, data_dir)
+    return
 
 if __name__ == "__main__":
     HUGGINGFACE = 'cgfp-classifier-dev'
@@ -182,4 +193,4 @@ if __name__ == "__main__":
 
     INPUT_PATH = DATA_DIR + FILENAME
 
-    inference_handler(model, tokenizer, input_path=INPUT_PATH, device=device, sheet_name=SHEET_NUMBER, input_column=INPUT_COLUMN, rows_to_classify=ROWS_TO_CLASSIFY, highlight=HIGHLIGHT, confidence_score=CONFIDENCE_SCORE, raw_results=RAW_RESULTS)
+    inference_handler(model, tokenizer, input_path=INPUT_PATH, data_dir=DATA_DIR, device=device, sheet_name=SHEET_NUMBER, input_column=INPUT_COLUMN, rows_to_classify=ROWS_TO_CLASSIFY, highlight=HIGHLIGHT, confidence_score=CONFIDENCE_SCORE, raw_results=RAW_RESULTS)
