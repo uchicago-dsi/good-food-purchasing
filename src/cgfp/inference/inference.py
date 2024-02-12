@@ -19,7 +19,7 @@ def prediction_to_string(model, scores, idx):
     return decoder[str(max_idx.item())]
 
 
-def inference(model, tokenizer, text, device, confidence_score=True):
+def inference(model, tokenizer, text, device, assertion=True, confidence_score=True):
     inputs = tokenizer(text, padding=True, truncation=True, return_tensors="pt")
 
     inputs = inputs.to(device)
@@ -52,7 +52,7 @@ def inference(model, tokenizer, text, device, confidence_score=True):
     # assertion to make sure fpg & fpg match
     # TODO: Add argument here to turn this behavior on and off
     assertion_failed = False
-    if fpc not in GROUP_CATEGORY_VALIDATION[fpg]:
+    if fpc not in GROUP_CATEGORY_VALIDATION[fpg] and assertion:
         assertion_failed = True
 
     legible_preds = {}
@@ -112,7 +112,8 @@ def inference_handler(
     confidence_score=False,
     threshold=0.85,
     rows_to_classify=None,
-    raw_results=False
+    raw_results=False,
+    assertion=True
 ):
     if device is None:
         device = "cuda:0" if torch.cuda.is_available() else "cpu"
@@ -128,7 +129,7 @@ def inference_handler(
 
     output = (
         df[input_column]
-        .apply(lambda text: inference(model, tokenizer, text, device))
+        .apply(lambda text: inference(model, tokenizer, text, device, assertion=assertion))
         .apply(pd.Series)
     )
     results = pd.concat([df[input_column], output], axis=1)
@@ -186,6 +187,7 @@ if __name__ == "__main__":
     CONFIDENCE_SCORE = False
     ROWS_TO_CLASSIFY = None
     RAW_RESULTS = True # saves the raw model results rather than the formatted normalized name results
+    ASSERTION = True
 
     FILENAME = "TestData_11.22.23.xlsx"
     INPUT_COLUMN = "Product Type"
@@ -193,4 +195,4 @@ if __name__ == "__main__":
 
     INPUT_PATH = DATA_DIR + FILENAME
 
-    inference_handler(model, tokenizer, input_path=INPUT_PATH, data_dir=DATA_DIR, device=device, sheet_name=SHEET_NUMBER, input_column=INPUT_COLUMN, rows_to_classify=ROWS_TO_CLASSIFY, highlight=HIGHLIGHT, confidence_score=CONFIDENCE_SCORE, raw_results=RAW_RESULTS)
+    inference_handler(model, tokenizer, input_path=INPUT_PATH, data_dir=DATA_DIR, device=device, sheet_name=SHEET_NUMBER, input_column=INPUT_COLUMN, rows_to_classify=ROWS_TO_CLASSIFY, highlight=HIGHLIGHT, confidence_score=CONFIDENCE_SCORE, raw_results=RAW_RESULTS, assertion=ASSERTION)
