@@ -142,7 +142,7 @@ GROUP_CATEGORY_VALIDATION = {
     "Milk & Dairy": ["Butter", "Cheese", "Milk", "Yogurt", "Milk & Dairy"],
     "Meat": ["Beef", "Chicken", "Eggs", "Pork", "Turkey, Other Poultry", "Meat"], # "Meat" is used for other items without a category like bison, lamb, venison, rabbit, etc.
     "Seafood": ["Fish (Farm-Raised)", "Fish (Wild)", "Seafood"],# "Seafood" is used for fish that are unconfirmed farm-raised or wild, shellfish, crab, mollusks, scallops, clams, shrimp, etc.
-    "Bread, Grains & Legumes": ["Grain Products", "Legumes", "Rice", "Tree Nuts & Seeds", "Bread, Grains & Legumes"] # "Bread, Grains & Legumes" is used to account for items not belonging to the other categories
+    "Bread, Grains & Legumes": ["Grain Products", "Legumes", "Rice", "Tree Nuts & Seeds", "Bread, Grains & Legumes"], # "Bread, Grains & Legumes" is used to account for items not belonging to the other categories
     "Beverages": ["Beverages"],
     "Meals": ["Meals"], # TODO: Figure out how to set something up for primary food product category here
     "Condiments & Snacks": ["Condiments & Snacks"]
