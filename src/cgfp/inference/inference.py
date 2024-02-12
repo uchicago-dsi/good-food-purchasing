@@ -2,6 +2,7 @@ import torch
 import pandas as pd
 import os
 import logging
+import numpy as np
 
 from cgfp.config import GROUP_CATEGORY_VALIDATION
 from cgfp.training.models import MultiTaskModel
@@ -95,7 +96,7 @@ def highlight_uncertain_preds(df, threshold=0.85):
 def save_output(df, filename, data_dir):
     os.chdir(data_dir)  # ensures this saves in the expected directory in Colab
     output_path = filename.rstrip(".xlsx") + "_classified.xlsx"
-    df = df.replace("None", pd.NA)
+    df = df.replace("None", np.nan)
     df.to_excel(output_path, index=False)
     print(f"Classification completed! File saved to {output_path}")
     return
