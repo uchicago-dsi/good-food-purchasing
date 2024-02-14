@@ -86,12 +86,6 @@ last-errs:
 
 ##### HUGGINGFACE #####
 
-# TODO: can probably standardize the pipeline to upload a model to huggingface
-
-# mv /net/projects/cgfp/model-files/2024-02-05_10-56/* /net/projects/cgfp/huggingface/cgfp-classifier-dev/
-# cd /net/projects/cgfp/huggingface/cgfp-classifier-dev/
-# git commit -m "model trained on clean-ish dataset" && git push
-
 # Usage: make update-dev-model MODEL_DIR=2024-02-05_10-56
 update-dev-model:
 	@echo "Moving model files from $(MODEL_DIR)..."

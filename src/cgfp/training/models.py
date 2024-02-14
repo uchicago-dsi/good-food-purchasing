@@ -13,11 +13,15 @@ from transformers import (
     PreTrainedModel,
     DistilBertConfig,
     DistilBertModel,
+    RobertaModel,
+    RobertaTokenizerFast,
+    RobertaConfig,
 )
 from transformers.modeling_outputs import SequenceClassifierOutput
 
-
-class MultiTaskConfig(DistilBertConfig):
+# TODO: probably need a factory function to switch the class dynamically
+# class MultiTaskConfig(DistilBertConfig):
+class MultiTaskConfig(RobertaConfig):
     def __init__(
         self,
         classification="linear",
@@ -35,8 +39,10 @@ class MultiTaskConfig(DistilBertConfig):
         self.columns = columns
         self.classification = classification  # choices are "linear" or "mlp"
         self.fpg_idx = fpg_idx
-        self.basic_type_idx=basic_type_idx
-        self.inference_masks=inference_masks
+        self.basic_type_idx = basic_type_idx
+        self.inference_masks = inference_masks
+        # TODO: this is for RoBERTa
+        self.dim = self.hidden_size
 
 
 class MultiTaskModel(PreTrainedModel):
@@ -44,7 +50,8 @@ class MultiTaskModel(PreTrainedModel):
 
     def __init__(self, config, *args, **kwargs):
         super().__init__(config)
-        self.distilbert = DistilBertModel(config)
+        # self.distilbert = DistilBertModel(config)
+        self.llm = RobertaModel(config)
         self.num_categories_per_task = config.num_categories_per_task
         self.decoders = config.decoders
         self.columns = config.columns
@@ -53,8 +60,10 @@ class MultiTaskModel(PreTrainedModel):
         self.basic_type_idx = config.basic_type_idx
         self.inference_masks = {key: torch.tensor(value) for key, value in json.loads(config.inference_masks).items()}
 
+        # Attributes that differ between DistilBERT and RoBERTa
+        self.dropout_rate = getattr(config, 'seq_classif_dropout', getattr(config, 'hidden_dropout_prob', 0.2))
+        # TODO: move config.dim to here
 
-        # TODO:
         if self.classification == "mlp":
             # TODO: wait...the config.dim should be downsampled here probably...
             self.classification_heads = nn.ModuleList(
@@ -62,7 +71,7 @@ class MultiTaskModel(PreTrainedModel):
                     nn.Sequential(
                         nn.Linear(config.dim, config.dim // 2),
                         nn.ReLU(),
-                        nn.Dropout(config.seq_classif_dropout),
+                        nn.Dropout(self.dropout_rate),
                         nn.Linear(config.dim // 2, num_categories),
                     )
                     for num_categories in self.num_categories_per_task
@@ -90,7 +99,7 @@ class MultiTaskModel(PreTrainedModel):
         output_hidden_states=None,
         return_dict=None,
     ):
-        distilbert_output = self.distilbert(
+        llm_output = self.llm(
             input_ids=input_ids,
             attention_mask=attention_mask,
             head_mask=head_mask,
@@ -98,7 +107,7 @@ class MultiTaskModel(PreTrainedModel):
             output_attentions=output_attentions,
             output_hidden_states=output_hidden_states,
         )
-        hidden_state = distilbert_output[0]
+        hidden_state = llm_output[0]
         pooled_output = hidden_state[:, 0]
 
         logits = [classifier(pooled_output) for classifier in self.classification_heads]
@@ -113,7 +122,7 @@ class MultiTaskModel(PreTrainedModel):
                 losses.append(loss_fct(logit, label.view(-1)))
             loss = sum(losses)
 
-        output = (logits,) + distilbert_output[
+        output = (logits,) + llm_output[
             1:
         ]  # TODO why activations? see https://github.com/huggingface/transformers/blob/6f316016877197014193b9463b2fd39fa8f0c8e4/src/transformers/models/distilbert/modeling_distilbert.py#L824
 
@@ -123,6 +132,6 @@ class MultiTaskModel(PreTrainedModel):
         return SequenceClassifierOutput(
             loss=loss,
             logits=logits,
-            hidden_states=distilbert_output.hidden_states,
-            attentions=distilbert_output.attentions,
+            hidden_states=llm_output.hidden_states,
+            attentions=llm_output.attentions,
         )
