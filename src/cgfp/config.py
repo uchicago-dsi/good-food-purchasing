@@ -29,6 +29,7 @@ TOKEN_MAP_DICT = {
     "segment": "cut",
     ## WHOLE GRAIN ##
     "whole wheat": "whole grain rich",
+    "whole grain": "whole grain rich",
     ## COOKED ##
     "baked": "cooked",
     "fried": "cooked",
@@ -51,15 +52,22 @@ SKIP_TOKENS = {
     "cheerios",
     "coke",
     "pikes place",
+    ## BONELESS ##
+    "boneless",
+    ## CEREAL TYPES ##
+    "chex",
     ## COLORS ##
     "red",
+    "light red",
+    "dark red",
     "yellow",
     "green",
     "gold",
     "white",
-    # "blue", # TODO: we want to keep this for cheese so create a rule
-    ## BONELESS ##
-    "boneless",
+    "blue",
+    ## DESCRIPTORS ##
+    "mini",
+    "snack",
     ## PASTA TYPES ##
     "elbow",
     "rigatoni",
@@ -94,7 +102,63 @@ SKIP_TOKENS = {
     "ziti",
     ## PACKAGING ##
     "aerosol",
+    ## RICE TYPES ##
+    "long grain",
 }
+
+SKIP_FLAVORS = {"drink", "tea", "coffee", "candy", "chip", "condiment"}
+
+FLAVORS = {
+    ## BEVERAGES & DRINKS ##
+    # spices #
+    "vanilla",
+    "cinnamon",
+    # fruits #
+    "orange",
+    "guava",
+    "apple",
+    "berry",
+    "lemon",
+    "strawberry",
+    "raspberry",
+    "passion fruit",
+    # misc #
+    "maple",
+    ## CANDY ##
+    "butterscotch",
+    "coffee",
+    "caramel",
+    "m&m",
+    "toffee",
+    "milk",
+    ## CHIPS ##
+    "barbecue",
+    "barbeque",
+    "sea salt",
+    "flamin hot",
+    "cheddar",
+    "sour",
+    "white cheddar",
+    "sour cream",
+    "variety",
+    ## CONDIMENT (SYRUP, ETC.) ##
+    "maple",
+}
+
+SHAPE_EXTRAS = {
+    ## CANDY ##
+    "truffle",
+    "bar",
+    "bark",
+    ## CHIPS ##
+    "tortilla",
+    "triangle",
+    "ridge",
+    "round",
+}
+
+# TODO: is this ok?
+CHOCOLATE = {"dark chocolate", "chocolate covered"}
 
 # FOOD PRODUCT CATEGORY & GROUP STRUCTURE #
 """
@@ -140,12 +204,31 @@ Bread, Grains & Legumes
 GROUP_CATEGORY_VALIDATION = {
     "Produce": ["Fruit", "Vegetables", "Roots & Tubers"],
     "Milk & Dairy": ["Butter", "Cheese", "Milk", "Yogurt", "Milk & Dairy"],
-    "Meat": ["Beef", "Chicken", "Eggs", "Pork", "Turkey, Other Poultry", "Meat"], # "Meat" is used for other items without a category like bison, lamb, venison, rabbit, etc.
-    "Seafood": ["Fish (Farm-Raised)", "Fish (Wild)", "Seafood"],# "Seafood" is used for fish that are unconfirmed farm-raised or wild, shellfish, crab, mollusks, scallops, clams, shrimp, etc.
-    "Bread, Grains & Legumes": ["Grain Products", "Legumes", "Rice", "Tree Nuts & Seeds", "Bread, Grains & Legumes"], # "Bread, Grains & Legumes" is used to account for items not belonging to the other categories
+    "Meat": [
+        "Beef",
+        "Chicken",
+        "Eggs",
+        "Pork",
+        "Turkey, Other Poultry",
+        "Meat",
+    ],  # "Meat" is used for other items without a category like bison, lamb, venison, rabbit, etc.
+    "Seafood": [
+        "Fish (Farm-Raised)",
+        "Fish (Wild)",
+        "Seafood",
+    ],  # "Seafood" is used for fish that are unconfirmed farm-raised or wild, shellfish, crab, mollusks, scallops, clams, shrimp, etc.
+    "Bread, Grains & Legumes": [
+        "Grain Products",
+        "Legumes",
+        "Rice",
+        "Tree Nuts & Seeds",
+        "Bread, Grains & Legumes",
+    ],  # "Bread, Grains & Legumes" is used to account for items not belonging to the other categories
     "Beverages": ["Beverages"],
-    "Meals": ["Meals"], # TODO: Figure out how to set something up for primary food product category here
-    "Condiments & Snacks": ["Condiments & Snacks"]
+    "Meals": [
+        "Meals"
+    ],  # TODO: Figure out how to set something up for primary food product category here
+    "Condiments & Snacks": ["Condiments & Snacks"],
 }
 
 GROUP_TAGS = {

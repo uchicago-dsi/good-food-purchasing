@@ -2,7 +2,15 @@ import pandas as pd
 import os
 from datetime import datetime
 
-from cgfp.config import create_combined_tags, TOKEN_MAP_DICT, SKIP_TOKENS
+from cgfp.config import (
+    create_combined_tags,
+    TOKEN_MAP_DICT,
+    SKIP_TOKENS,
+    FLAVORS,
+    CHOCOLATE,
+    SHAPE_EXTRAS,
+    SKIP_FLAVORS,
+)
 
 # TODO: set this up so there's a make command that handles filepaths well
 # Right now have to run this from the scripts folder
@@ -69,13 +77,38 @@ def clean_df(df):
     return df
 
 
-def token_handler(token, basic_type):
-    # Handle specific edge cases
+def token_handler(token, food_product_group, food_product_category, basic_type):
+    # Handle edge cases where a token is allowed
     if token == "baby" and basic_type == "carrot":
         return token
 
-    # Include all the flavor logic here
-    # Need to convert some tokens into "flavored" and let others "pass through" (ie for cheese)
+    if token == "blue" and basic_type == "cheese":
+        return token
+
+    # Handle edge cases where a token is not allowed
+    if basic_type == "plant milk" and token in ["nonfat", "low fat"]:
+        return None
+
+    # Map flavored tokens to "flavored" for beverages
+    # TODO: Is this right for beverages?
+    if food_product_group == "Beverages" and token in FLAVORS:
+        return "flavored"
+
+    # Skip flavors and shapes for candy, chips, condiments, etc.
+    if basic_type in SKIP_FLAVORS and token in (FLAVORS | SHAPE_EXTRAS):
+        return None
+
+    # Map chocolate tokens to "chocolate" for candy
+    if basic_type == "candy" and token in CHOCOLATE:
+        return "chocolate"
+
+    # Remove wheat from most grain products
+    if (
+        food_product_category == "Grain Products"
+        and basic_type not in ["cereal"]
+        and token == "wheat"
+    ):
+        return None
 
     # Skip outdated tokens from old name normalization format
     if token in SKIP_TOKENS:
@@ -100,10 +133,11 @@ def clean_name(
             basic_type = token
             normalized_name["Basic Type"] = token
             continue
-        token = token_handler(token, basic_type)
+        token = token_handler(
+            token, food_product_group, food_product_category, basic_type
+        )
         if token is None:
             continue
-        token = TOKEN_MAP_DICT.get(token, token)
         # Check if token is in tags — if so, enter the tagging loop
         if token in group_tags_dict.get(food_product_group, {}).get(
             "All", []
@@ -176,6 +210,16 @@ if __name__ == "__main__":
         axis=1,
     )
 
+    # Replace multiple flavors for juices with "blend"
+    condition = (
+        (df_split["Basic Type"] == "juice")
+        & (df_split["Sub-Type 1"].isin(FLAVORS))
+        & (df_split["Sub-Type 2"].isin(FLAVORS))
+    )
+
+    df_split[condition]["Sub Type 1"] = "blend"
+    df_split[condition]["Sub Type 2"] = None
+
     # Save unallocated tags for manual review
     misc = df_split[df_split["Misc"].apply(lambda x: x != [])][
         [
@@ -188,7 +232,23 @@ if __name__ == "__main__":
             "Misc",
         ]
     ]
+
+    MISC_SORT_ORDER = [
+        "Food Product Group",
+        "Food Product Category",
+        "Basic Type",
+        "Misc",
+    ]
+    misc = misc.sort_values.by(MISC_SORT_ORDER)
     misc.to_csv(MISC_PATH, index=False)
 
-    df_split = df_split[COLUMNS_ORDER]
+    TAGS_SORT_ORDER = [
+        "Food Product Group",
+        "Food Product Category",
+        "Basic Type",
+        "Sub-Type 1",
+        "Sub-Type 2",
+    ]
+
+    df_split = df_split[COLUMNS_ORDER].sort_values.by(TAGS_SORT_ORDER)
     df_split.to_csv(CLEAN_PATH, index=False)

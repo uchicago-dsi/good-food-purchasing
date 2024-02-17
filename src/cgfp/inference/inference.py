@@ -13,6 +13,7 @@ from transformers import AutoTokenizer
 logger = logging.getLogger("inference_logger")
 logger.setLevel(logging.INFO)
 
+
 def prediction_to_string(model, scores, idx):
     max_idx = torch.argmax(scores[idx])
     # model.decoders is a tuple of column name and actual decoding dictionary
@@ -39,7 +40,9 @@ def inference(model, tokenizer, text, device, assertion=True, confidence_score=T
     inference_mask = model.inference_masks[fpg].to(device)
 
     # actually mask the basic type scores
-    softmaxed_scores[model.basic_type_idx] = inference_mask * softmaxed_scores[model.basic_type_idx]
+    softmaxed_scores[model.basic_type_idx] = (
+        inference_mask * softmaxed_scores[model.basic_type_idx]
+    )
 
     # get the score for each task
     scores = [
@@ -62,7 +65,9 @@ def inference(model, tokenizer, text, device, assertion=True, confidence_score=T
         prob, idx = score
 
         try:
-            pred = decoder[str(idx.item())]  # decoders have been serialized so keys are strings
+            pred = decoder[
+                str(idx.item())
+            ]  # decoders have been serialized so keys are strings
             legible_preds[col] = pred if not assertion_failed else None
             if confidence_score:
                 legible_preds[col + "_score"] = prob.item()
@@ -101,6 +106,7 @@ def save_output(df, filename, data_dir):
     print(f"Classification completed! File saved to {output_path}")
     return
 
+
 def inference_handler(
     model,
     tokenizer,
@@ -114,7 +120,7 @@ def inference_handler(
     threshold=0.85,
     rows_to_classify=None,
     raw_results=False,
-    assertion=True
+    assertion=True,
 ):
     if device is None:
         device = "cuda:0" if torch.cuda.is_available() else "cpu"
@@ -130,7 +136,9 @@ def inference_handler(
 
     output = (
         df[input_column]
-        .apply(lambda text: inference(model, tokenizer, text, device, assertion=assertion))
+        .apply(
+            lambda text: inference(model, tokenizer, text, device, assertion=assertion)
+        )
         .apply(pd.Series)
     )
     results = pd.concat([df[input_column], output], axis=1)
@@ -177,8 +185,9 @@ def inference_handler(
     save_output(df_formatted, input_path, data_dir)
     return
 
+
 if __name__ == "__main__":
-    HUGGINGFACE = 'cgfp-classifier-dev'
+    HUGGINGFACE = "cgfp-classifier-dev"
     model = MultiTaskModel.from_pretrained(f"uchicago-dsi/{HUGGINGFACE}")
     tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
@@ -187,7 +196,7 @@ if __name__ == "__main__":
     HIGHLIGHT = False
     CONFIDENCE_SCORE = False
     ROWS_TO_CLASSIFY = None
-    RAW_RESULTS = True # saves the raw model results rather than the formatted normalized name results
+    RAW_RESULTS = True  # saves the raw model results rather than the formatted normalized name results
     ASSERTION = True
 
     FILENAME = "TestData_11.22.23.xlsx"
@@ -196,4 +205,17 @@ if __name__ == "__main__":
 
     INPUT_PATH = DATA_DIR + FILENAME
 
-    inference_handler(model, tokenizer, input_path=INPUT_PATH, data_dir=DATA_DIR, device=device, sheet_name=SHEET_NUMBER, input_column=INPUT_COLUMN, rows_to_classify=ROWS_TO_CLASSIFY, highlight=HIGHLIGHT, confidence_score=CONFIDENCE_SCORE, raw_results=RAW_RESULTS, assertion=ASSERTION)
+    inference_handler(
+        model,
+        tokenizer,
+        input_path=INPUT_PATH,
+        data_dir=DATA_DIR,
+        device=device,
+        sheet_name=SHEET_NUMBER,
+        input_column=INPUT_COLUMN,
+        rows_to_classify=ROWS_TO_CLASSIFY,
+        highlight=HIGHLIGHT,
+        confidence_score=CONFIDENCE_SCORE,
+        raw_results=RAW_RESULTS,
+        assertion=ASSERTION,
+    )
