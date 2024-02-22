@@ -79,14 +79,23 @@ def clean_df(df):
 
 def token_handler(token, food_product_group, food_product_category, basic_type):
     # Handle edge cases where a token is allowed
-    if token == "baby" and basic_type == "carrot":
+    if token == "blue" and basic_type == "cheese":
         return token
 
-    if token == "blue" and basic_type == "cheese":
+    if token == "instant" and food_product_group == "Beverages":
+        return token
+
+    if token == "black" and basic_type in ["tea", "drink"]:
         return token
 
     # Handle edge cases where a token is not allowed
     if basic_type == "plant milk" and token in ["nonfat", "low fat"]:
+        return None
+
+    if basic_type == "bean" and token == "turtle":
+        return None
+
+    if food_product_group == "Milk & Dairy" and token == "in brine":
         return None
 
     # Map flavored tokens to "flavored" for beverages
@@ -237,9 +246,8 @@ if __name__ == "__main__":
         "Food Product Group",
         "Food Product Category",
         "Basic Type",
-        "Misc",
     ]
-    misc = misc.sort_values.by(MISC_SORT_ORDER)
+    misc = misc.sort_values(by=MISC_SORT_ORDER)
     misc.to_csv(MISC_PATH, index=False)
 
     TAGS_SORT_ORDER = [
@@ -250,5 +258,5 @@ if __name__ == "__main__":
         "Sub-Type 2",
     ]
 
-    df_split = df_split[COLUMNS_ORDER].sort_values.by(TAGS_SORT_ORDER)
+    df_split = df_split[COLUMNS_ORDER].sort_values(by=TAGS_SORT_ORDER)
     df_split.to_csv(CLEAN_PATH, index=False)

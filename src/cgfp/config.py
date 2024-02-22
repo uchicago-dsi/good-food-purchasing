@@ -27,9 +27,11 @@ TOKEN_MAP_DICT = {
     "chopped": "cut",
     "wedge": "cut",
     "segment": "cut",
+    "baby": "cut",
     ## WHOLE GRAIN ##
     "whole wheat": "whole grain rich",
     "whole grain": "whole grain rich",
+    "white whole wheat": "whole grain rich",
     ## COOKED ##
     "baked": "cooked",
     "fried": "cooked",
@@ -46,8 +48,14 @@ TOKEN_MAP_DICT = {
 }
 
 SKIP_TOKENS = {
+    ## GENERAL ##
+    "organic",
+    ## BEVERAGES ##
+    "frappaccino",
+    "frappuccino",
+    "cold brew",
+    "guatemala",
     ## PRODUCE ##
-    "baby",
     ## BRAND NAMES ##
     "cheerios",
     "coke",
@@ -56,6 +64,15 @@ SKIP_TOKENS = {
     "boneless",
     ## CEREAL TYPES ##
     "chex",
+    "spooners",
+    "kids stuff",
+    "homestyle",
+    "instant",
+    ## BREAD ##
+    "loaf",
+    "round",
+    "country white",
+    "old fashioned",
     ## COLORS ##
     "red",
     "light red",
@@ -65,6 +82,8 @@ SKIP_TOKENS = {
     "gold",
     "white",
     "blue",
+    "black",
+    "brown",
     ## DESCRIPTORS ##
     "mini",
     "snack",
@@ -104,12 +123,26 @@ SKIP_TOKENS = {
     "aerosol",
     ## RICE TYPES ##
     "long grain",
+    ## CHEESE ##
 }
 
-SKIP_FLAVORS = {"drink", "tea", "coffee", "candy", "chip", "condiment"}
+# For these basic types, skip anything that is in the FLAVORS set
+SKIP_FLAVORS = {
+    "drink",
+    "tea",
+    "coffee",
+    "candy",
+    "chip",
+    "condiment",
+    "cereal",
+    "oat",
+    "bean",
+}
 
 FLAVORS = {
     ## BEVERAGES & DRINKS ##
+    # sweet drinks #
+    "mocha",
     # spices #
     "vanilla",
     "cinnamon",
@@ -122,6 +155,9 @@ FLAVORS = {
     "strawberry",
     "raspberry",
     "passion fruit",
+    "pomegranate",
+    "acai",
+    "blueberry",
     # misc #
     "maple",
     ## CANDY ##
@@ -143,6 +179,10 @@ FLAVORS = {
     "variety",
     ## CONDIMENT (SYRUP, ETC.) ##
     "maple",
+    ## CEREAL ##
+    "brown sugar",
+    ## LEGUMES ##
+    "seasoned",
 }
 
 SHAPE_EXTRAS = {
@@ -365,7 +405,6 @@ GROUP_TAGS = {
     "Produce": {
         "Flavor/Cut": {"blend", "variety", "salad mix"},
         "Shape": {
-            "baby",
             "bite",
             "cob",
             "coin",
@@ -456,7 +495,7 @@ GROUP_TAGS = {
 ADDED_GROUP_TAGS = {
     "Beverages": {
         "Flavor/Cut": set(),
-        "Shape": {"ground", "kcup", "mix", "powder", "whole bean"},
+        "Shape": {"ground", "kcup", "mix", "powder", "whole bean", "base"},
         "Skin": set(),
         "Seed/Bone": set(),
         "Processing": set(),
@@ -492,7 +531,7 @@ ADDED_GROUP_TAGS = {
             "reduced fat",
             "low fat",
         },
-        "Additives": set(),
+        "Additives": {"additives"},
         "Dietary Accommodation": set(),
         "Frozen": set(),
         "Packaging": {"canned"},
@@ -691,6 +730,7 @@ CATEGORY_TAGS = {
             "stick",
             "string",
             "shredded",
+            "crumble",
         },
         "Skin": set(),
         "Seed/Bone": set(),
@@ -778,7 +818,7 @@ ADDED_CATEGORY_TAGS = {
     ## GROUP: MILK & DAIRY ##
     "Cheese": {
         "Flavor/Cut": set(),
-        "Shape": set(),
+        "Shape": {"crumble"},
         "Skin": set(),
         "Seed/Bone": set(),
         "Processing": set(),
