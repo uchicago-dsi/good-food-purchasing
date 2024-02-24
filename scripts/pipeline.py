@@ -2,8 +2,9 @@ import pandas as pd
 import os
 from datetime import datetime
 
-from cgfp.config import (
-    create_combined_tags,
+from cgfp.config_tags import (
+    CATEGORY_TAGS,
+    GROUP_TAGS,
     TOKEN_MAP_DICT,
     SKIP_TOKENS,
     FLAVORS,
@@ -179,6 +180,12 @@ def clean_name(
     return normalized_name
 
 
+def pool_tags(tags_dict):
+    for top_level in tags_dict.keys():
+        tags_dict[top_level]["All"] = set.union(*tags_dict[top_level].values())
+    return tags_dict
+
+
 if __name__ == "__main__":
     # TODO: Add args for filepath, etc.
     INPUT_FILE = "CONFIDENTIAL_CGFP bulk data_073123.csv"
@@ -193,8 +200,8 @@ if __name__ == "__main__":
     df["Misc"] = None
     df = clean_df(df)
 
-    combined_group_tags = create_combined_tags(level="group")
-    combined_category_tags = create_combined_tags(level="category")
+    group_tags = pool_tags(GROUP_TAGS)
+    category_tags = pool_tags(CATEGORY_TAGS)
 
     # Get a dictionary back with split tags allocated to appropriate columns
     # Then convert dictionary to dataframe
@@ -203,8 +210,8 @@ if __name__ == "__main__":
             row["Product Name"].split(","),
             row["Food Product Group"],
             row["Food Product Category"],
-            combined_group_tags,
-            combined_category_tags,
+            group_tags,
+            category_tags,
         ),
         axis=1,
     )
@@ -219,6 +226,7 @@ if __name__ == "__main__":
         axis=1,
     )
 
+    # TODO: Handle sub-type 3 when we add that
     # Replace multiple flavors for juices with "blend"
     condition = (
         (df_split["Basic Type"] == "juice")
