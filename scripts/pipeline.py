@@ -1,5 +1,6 @@
 import pandas as pd
 import os
+import argparse
 
 from cgfp.config_tags import (
     CATEGORY_TAGS,
@@ -21,14 +22,8 @@ from cgfp.config_pipeline import (
     COLUMNS_ORDER,
 )
 
-# TODO: set this up so there's a make command that handles filepaths well
-# Right now have to run this from the scripts folder
-
 if not os.path.exists(CLEAN_FOLDER + RUN_FOLDER):
     os.makedirs(CLEAN_FOLDER + RUN_FOLDER)
-
-# TODO: Move this stuff to the config file and figure out the best structure
-# for keeping track of the input columns, intermediate steps, and output file
 
 
 def clean_df(df):
@@ -70,7 +65,6 @@ def token_handler(token, food_product_group, food_product_category, basic_type):
         return None
 
     # Map flavored tokens to "flavored" for beverages
-    # TODO: Is this right for beverages?
     if food_product_group == "Beverages" and token in FLAVORS:
         return "flavored"
 
@@ -157,13 +151,30 @@ def pool_tags(tags_dict):
 
 
 if __name__ == "__main__":
-    # TODO: Add args for filepath, etc.
-    INPUT_FILE = "CONFIDENTIAL_CGFP bulk data_073123.csv"
-    MISC_FILE = "misc.csv"
-    CLEAN_FILE = "clean_" + INPUT_FILE
+    parser = argparse.ArgumentParser(description="Process some files.")
 
-    INPUT_PATH = RAW_FOLDER + INPUT_FILE
-    MISC_PATH = CLEAN_FOLDER + RUN_FOLDER + MISC_FILE
+    default_input_file = "CONFIDENTIAL_CGFP bulk data_073123.csv"
+    default_misc_file = "misc.csv"
+    clean_file_prefix = "clean_"
+
+    parser.add_argument(
+        "--input_file", default=default_input_file, help="Input file path"
+    )
+    parser.add_argument(
+        "--misc_file", default=default_misc_file, help="Miscellaneous file path"
+    )
+    parser.add_argument(
+        "--clean_file",
+        default="",
+        help="Clean file path. If not specified, it will be automatically generated based on the input file.",
+    )
+
+    args = parser.parse_args()
+
+    CLEAN_FILE = clean_file_prefix + args.input_file
+
+    INPUT_PATH = RAW_FOLDER + args.input_file
+    MISC_PATH = CLEAN_FOLDER + RUN_FOLDER + args.misc_file
     CLEAN_PATH = CLEAN_FOLDER + RUN_FOLDER + CLEAN_FILE
 
     df = pd.read_csv(INPUT_PATH)
