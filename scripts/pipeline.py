@@ -172,6 +172,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     CLEAN_FILE = clean_file_prefix + args.input_file
+    CLEAN_FILE = CLEAN_FILE.replace(" ", "_")
 
     INPUT_PATH = RAW_FOLDER + args.input_file
     MISC_PATH = CLEAN_FOLDER + RUN_FOLDER + args.misc_file

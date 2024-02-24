@@ -6,7 +6,7 @@ project_root = os.path.join(script_dir, "../..")
 DATA_FOLDER = os.path.join(project_root, "data/")
 RAW_FOLDER = os.path.join(DATA_FOLDER, "raw/")
 CLEAN_FOLDER = os.path.join(DATA_FOLDER, "clean/")
-RUN_FOLDER = f"pipeline-{datetime.now().strftime('%Y-%m-%d %H-%M')}/"
+RUN_FOLDER = f"pipeline-{datetime.now().strftime('%Y-%m-%d %H-%M')}/".replace(" ", "_")
 
 GROUP_COLUMNS = [
     "Product Type",
