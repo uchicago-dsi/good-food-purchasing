@@ -55,7 +55,13 @@ NORMALIZED_COLUMNS = [
 # TODO: Pretty sure this can be done better
 # Need to review the expected input and outputs to clean this up
 COLUMNS_ORDER = (
-    ["Product Type", "Food Product Group", "Food Product Category", "Product Name"]
+    [
+        "Product Type",
+        "Food Product Group",
+        "Food Product Category",
+        "Primary Food Product Category",
+        "Product Name",
+    ]
     + ["Basic Type"]
     + NORMALIZED_COLUMNS
 )
