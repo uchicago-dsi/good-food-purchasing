@@ -16,6 +16,10 @@ from transformers import (
 )
 from transformers.modeling_outputs import SequenceClassifierOutput
 
+from openai import OpenAI
+
+from cgfp.config_tags import GROUP_TAGS, CATEGORY_TAGS, GROUP_CATEGORY_VALIDATION
+
 
 class MultiTaskConfig(DistilBertConfig):
     def __init__(
@@ -27,7 +31,7 @@ class MultiTaskConfig(DistilBertConfig):
         fpg_idx=0,
         basic_type_idx=2,
         inference_masks=None,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self.num_categories_per_task = num_categories_per_task
@@ -35,8 +39,8 @@ class MultiTaskConfig(DistilBertConfig):
         self.columns = columns
         self.classification = classification  # choices are "linear" or "mlp"
         self.fpg_idx = fpg_idx
-        self.basic_type_idx=basic_type_idx
-        self.inference_masks=inference_masks
+        self.basic_type_idx = basic_type_idx
+        self.inference_masks = inference_masks
 
 
 class MultiTaskModel(PreTrainedModel):
@@ -51,8 +55,10 @@ class MultiTaskModel(PreTrainedModel):
         self.classification = config.classification
         self.fpg_idx = config.fpg_idx  # index for the food product group task
         self.basic_type_idx = config.basic_type_idx
-        self.inference_masks = {key: torch.tensor(value) for key, value in json.loads(config.inference_masks).items()}
-
+        self.inference_masks = {
+            key: torch.tensor(value)
+            for key, value in json.loads(config.inference_masks).items()
+        }
 
         # TODO:
         if self.classification == "mlp":
@@ -126,3 +132,103 @@ class MultiTaskModel(PreTrainedModel):
             hidden_states=distilbert_output.hidden_states,
             attentions=distilbert_output.attentions,
         )
+
+
+class GPTAPI:
+    def __init__(self):
+        self.client = OpenAI()
+
+    def forward(self, example, model="gpt-3.5-turbo-0125"):
+        content = f"""
+                    We are trying to help a small non-profit label food items that come from invoices and purchase orders using a hierarchical tagging system. 
+
+                    The tags are organized as follows and should be output for each item in csv format:
+                    Food Product Group, Food Product Category, Product Name, Basic Type, Sub-Type 1, Sub-Type 2, Flavor/Cut, Shape, Skin, Seed/Bone	Processing, Cooked/Cleaned, WG/WGR, Dietary Concern, Additives, Dietary Accommodation, Frozen	Packaging, Commodity
+
+                    Here are the allowed tags for each food product group in dictionary format:\n
+                    {str(GROUP_TAGS)}
+                    """
+        content += f"""\n
+                    The food product category is a level 'below' the food product group. Here are the allowed food product categories for each food product group:\n
+                    {str(GROUP_CATEGORY_VALIDATION)}
+                    """
+        content += f"""\n
+                    Here are some additional allowed tags for each food product category:\n
+                    {str(CATEGORY_TAGS)}
+                    """
+        content += """\n
+                Each column can have at most one tag and columns (other than food product group, food product category, and basic type) can all be blank.
+
+                Basic type is the main food type present in the food. Sub type 1 and sub type 2 are used to provide additional detail about the food item if necessary. Something like the kind of cheese, the kind of cereal (oat, corn, or rice), etc.
+
+                Please include an empty dictionary entry if the output is none for a specific category. Remember that Food Product Group, Food Product Category, and Basic Type must always have an entry. None and empty strings are not valid. 
+
+                Here are a few examples of the task. 
+
+                ONLY OUTPUT THE DICTIONARY ADD A CONFIDENCE SCORE! Do not explain yourself or add context. This will be used in an API so it's very important that you only return a dictionary.
+
+                Prompt: beef patty 2 oz	
+                Output: {
+                "Food Product Group": "Meat", 
+                "Food Product Category": "Beef", 
+                "Basic Type": "beef", 
+                "Sub-Type 1": None, 
+                "Sub-Type 2": None, 
+                "Flavor/Cut": None, 
+                "Shape": "patty", 
+                "Skin": None, 
+                "Seed/Bone": None,
+                "Processing": None, 
+                "Cooked/Cleaned": None, 
+                "WG/WGR": None, 
+                "Dietary Concern": None, 
+                "Additives": None, 
+                "Dietary Accommodation": None, 
+                "Frozen": None,
+                "Packaging": None, 
+                "Commodity": None
+                }
+
+                Prompt: CHEESE CUP ULTIMATE CHEDDAR
+                Output: {
+                "Food Product Group": "Milk & Dairy", 
+                "Food Product Category": "Cheese", 
+                "Basic Type": "sauce", 
+                "Sub-Type 1": "cheese", 
+                "Sub-Type 2": "cheddar", 
+                "Flavor/Cut": None, 
+                "Shape": "patty", 
+                "Skin": None, 
+                "Seed/Bone": None,
+                "Processing": None, 
+                "Cooked/Cleaned": None, 
+                "WG/WGR": None, 
+                "Dietary Concern": None, 
+                "Additives": None, 
+                "Dietary Accommodation": None, 
+                "Frozen": None,
+                "Packaging": "ss", 
+                "Commodity": None
+                }"""
+
+        content += f"""Prompt: {example}\n
+        Output:
+        """
+
+        stream = self.client.chat.completions.create(
+            model=model,
+            messages=[{"role": "user", "content": content}],
+            stream=True,
+        )
+
+        response = ""
+        for chunk in stream:
+            if chunk.choices[0].delta.content is not None:
+                response += chunk.choices[0].delta.content
+
+        try:
+            parsed_response = json.loads(response)
+        except Exception as e:
+            print(f"Response was not valid JSON. {e}")
+
+        return parsed_response
