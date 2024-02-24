@@ -1,6 +1,5 @@
 import pandas as pd
 import os
-from datetime import datetime
 
 from cgfp.config_tags import (
     CATEGORY_TAGS,
@@ -13,58 +12,23 @@ from cgfp.config_tags import (
     SKIP_FLAVORS,
 )
 
+from cgfp.config_pipeline import (
+    RAW_FOLDER,
+    CLEAN_FOLDER,
+    RUN_FOLDER,
+    NORMALIZED_COLUMNS,
+    GROUP_COLUMNS,
+    COLUMNS_ORDER,
+)
+
 # TODO: set this up so there's a make command that handles filepaths well
 # Right now have to run this from the scripts folder
-
-DATA_FOLDER = "../data/"
-RAW_FOLDER = DATA_FOLDER + "raw/"
-CLEAN_FOLDER = DATA_FOLDER + "clean/"
-RUN_FOLDER = f"pipeline-{datetime.now().strftime('%Y-%m-%d %H-%M')}/"
 
 if not os.path.exists(CLEAN_FOLDER + RUN_FOLDER):
     os.makedirs(CLEAN_FOLDER + RUN_FOLDER)
 
 # TODO: Move this stuff to the config file and figure out the best structure
 # for keeping track of the input columns, intermediate steps, and output file
-GROUP_COLUMNS = [
-    "Product Type",
-    "Product Name",
-    "Food Product Group",
-    "Food Product Category",
-    "Primary Food Product Category",
-]
-
-NORMALIZED_COLUMNS = [
-    "Sub-Type 1",
-    "Sub-Type 2",
-    "Flavor/Cut",
-    "Shape",
-    "Skin",
-    "Seed/Bone",
-    "Processing",
-    "Cooked/Cleaned",
-    "WG/WGR",
-    "Dietary Concern",
-    "Additives",
-    "Dietary Accommodation",
-    "Frozen",
-    "Packaging",
-    "Commodity",
-]
-
-# TODO: Pretty sure this can be done better
-# Need to review the expected input and outputs to clean this up
-COLUMNS_ORDER = (
-    [
-        "Product Type",
-        "Food Product Group",
-        "Food Product Category",
-        "Primary Food Product Category",
-        "Product Name",
-    ]
-    + ["Basic Type"]
-    + NORMALIZED_COLUMNS
-)
 
 
 def clean_df(df):
