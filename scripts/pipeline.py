@@ -151,7 +151,9 @@ def pool_tags(tags_dict):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Process some files.")
+    parser = argparse.ArgumentParser(
+        description="Extract tagging structure from Center for Good Food Purchasing normalized names"
+    )
 
     default_input_file = "CONFIDENTIAL_CGFP bulk data_073123.csv"
     default_misc_file = "misc.csv"

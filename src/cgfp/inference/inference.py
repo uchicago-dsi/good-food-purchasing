@@ -2,10 +2,11 @@ import torch
 import pandas as pd
 import os
 import logging
+import argparse
 import numpy as np
 
-from cgfp.config import GROUP_CATEGORY_VALIDATION
-from cgfp.training.models import MultiTaskModel
+from cgfp.config_tags import GROUP_CATEGORY_VALIDATION
+from cgfp.training.models import MultiTaskModel, GPTAPI
 
 from transformers import AutoTokenizer
 
@@ -186,36 +187,101 @@ def inference_handler(
     return
 
 
+# TODO: There is definitely a better way to handle multiple models here
+def gpt_inference_handler(
+    model,
+    input_path,
+    input_column,
+    data_dir="/content",
+    sheet_name=0,
+    rows_to_classify=None,
+):
+
+    try:
+        df = pd.read_excel(input_path, sheet_name=sheet_name)
+    except FileNotFoundError as e:
+        print("FileNotFound: {e}\n. Please double check the filename: {input_path}")
+        raise
+
+    if rows_to_classify:
+        df = df.head(rows_to_classify)
+
+    output = df[input_column].apply(lambda text: model.forward(text)).apply(pd.Series)
+    results = pd.concat([df[input_column], output], axis=1)
+    results = results.replace("None", pd.NA)
+
+    results_full = pd.DataFrame()
+    for col in df.columns:
+        if col in results:
+            results_full[col] = results[col]
+        elif col == "Center Product ID":
+            results_full[col] = df[col]
+        else:
+            results_full[col] = pd.Series([None] * len(results))
+
+    output_filename = os.path.basename(input_path)
+
+    save_output(results_full, output_filename, data_dir)
+    return
+
+
 if __name__ == "__main__":
-    HUGGINGFACE = "cgfp-classifier-dev"
-    model = MultiTaskModel.from_pretrained(f"uchicago-dsi/{HUGGINGFACE}")
-    tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
-    device = "cuda:0" if torch.cuda.is_available() else "cpu"
+    parser = argparse.ArgumentParser(description="Get normalized names from raw names")
 
-    SHEET_NUMBER = 0
-    HIGHLIGHT = False
-    CONFIDENCE_SCORE = False
-    ROWS_TO_CLASSIFY = None
-    RAW_RESULTS = True  # saves the raw model results rather than the formatted normalized name results
-    ASSERTION = True
+    default_input_file = "TestData_11.22.23.xlsx"
+    default_data_dir = "/net/projects/cgfp/data/"
+    default_input_col = "Product Type"
+    default_model = "distilbert"
 
-    FILENAME = "TestData_11.22.23.xlsx"
-    INPUT_COLUMN = "Product Type"
-    DATA_DIR = "/net/projects/cgfp/data/"
-
-    INPUT_PATH = DATA_DIR + FILENAME
-
-    inference_handler(
-        model,
-        tokenizer,
-        input_path=INPUT_PATH,
-        data_dir=DATA_DIR,
-        device=device,
-        sheet_name=SHEET_NUMBER,
-        input_column=INPUT_COLUMN,
-        rows_to_classify=ROWS_TO_CLASSIFY,
-        highlight=HIGHLIGHT,
-        confidence_score=CONFIDENCE_SCORE,
-        raw_results=RAW_RESULTS,
-        assertion=ASSERTION,
+    parser.add_argument(
+        "--input_file", default=default_input_file, help="Input file path"
     )
+    parser.add_argument(
+        "--data_dir", default=default_data_dir, help="Path to data files"
+    )
+    parser.add_argument(
+        "--input_col", default=default_input_col, help="Column to classify"
+    )
+    parser.add_argument("--model", default=default_model, help="Input file path")
+    parser.add_argument("--rows", default=None, type=int, help="Rows to classify")
+
+    args = parser.parse_args()
+
+    INPUT_PATH = args.data_dir + args.input_file
+
+    if args.model == "gpt":
+        gpt_inference_handler(
+            GPTAPI(),
+            INPUT_PATH,
+            args.input_col,
+            data_dir=args.data_dir,
+            rows_to_classify=args.rows,
+        )
+
+    else:
+        HUGGINGFACE = "cgfp-classifier-dev"
+        model = MultiTaskModel.from_pretrained(f"uchicago-dsi/{HUGGINGFACE}")
+        tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
+        device = "cuda:0" if torch.cuda.is_available() else "cpu"
+
+        SHEET_NUMBER = 0
+        HIGHLIGHT = False
+        CONFIDENCE_SCORE = False
+        ROWS_TO_CLASSIFY = None
+        RAW_RESULTS = True  # saves the raw model results rather than the formatted normalized name results
+        ASSERTION = True
+
+        inference_handler(
+            model,
+            tokenizer,
+            input_path=INPUT_PATH,
+            data_dir=args.data_dir,
+            device=device,
+            sheet_name=SHEET_NUMBER,
+            input_column=args.input_col,
+            rows_to_classify=ROWS_TO_CLASSIFY,
+            highlight=HIGHLIGHT,
+            confidence_score=CONFIDENCE_SCORE,
+            raw_results=RAW_RESULTS,
+            assertion=ASSERTION,
+        )

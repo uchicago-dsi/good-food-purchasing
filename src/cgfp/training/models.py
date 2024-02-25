@@ -19,6 +19,7 @@ from transformers.modeling_outputs import SequenceClassifierOutput
 from openai import OpenAI
 
 from cgfp.config_tags import GROUP_TAGS, CATEGORY_TAGS, GROUP_CATEGORY_VALIDATION
+from cgfp.config_prompt import HINTS
 
 
 class MultiTaskConfig(DistilBertConfig):
@@ -163,9 +164,11 @@ class GPTAPI:
 
                 Please include an empty dictionary entry if the output is none for a specific category. Remember that Food Product Group, Food Product Category, and Basic Type must always have an entry. None and empty strings are not valid. 
 
-                Here are a few examples of the task. 
+                Below you will see few examples of the task. 
 
                 ONLY OUTPUT THE DICTIONARY ADD A CONFIDENCE SCORE! Do not explain yourself or add context. This will be used in an API so it's very important that you only return a dictionary.
+
+                Also, please be extra careful to make sure that the : is in the right spot on every line. If there's no :, the response will generate an error and won't be able to be parsed correctly.
 
                 Prompt: beef patty 2 oz	
                 Output: {
@@ -210,7 +213,8 @@ class GPTAPI:
                 "Packaging": "ss", 
                 "Commodity": None
                 }"""
-
+        content += f"""Here's some hints on how to do this task better: \n
+                    {HINTS}"""
         content += f"""Prompt: {example}\n
         Output:
         """
@@ -227,8 +231,9 @@ class GPTAPI:
                 response += chunk.choices[0].delta.content
 
         try:
-            parsed_response = json.loads(response)
+            # replace None with null since JSON expects null
+            parsed_response = json.loads(response.replace("None", "null"))
+            return parsed_response
         except Exception as e:
-            print(f"Response was not valid JSON. {e}")
-
-        return parsed_response
+            print(f"Response was not valid JSON. {e} \n Response: {response}")
+            return {}  # Can be converted into a
