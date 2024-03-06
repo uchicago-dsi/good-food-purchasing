@@ -4,7 +4,7 @@ import os
 import logging
 import numpy as np
 
-from cgfp.config import GROUP_CATEGORY_VALIDATION
+from cgfp.config_tags import GROUP_CATEGORY_VALIDATION
 from cgfp.training.models import MultiTaskModel
 
 from transformers import AutoTokenizer
