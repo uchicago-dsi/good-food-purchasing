@@ -29,6 +29,11 @@ TOKEN_MAP_DICT = {
     "wedge": "cut",
     "segment": "cut",
     "baby": "cut",
+    "julienne": "cut",
+    "julienned": "cut",
+    "quartered": "cut",
+    "cubed": "cut",
+    "chunk": "cut",
     ## WHOLE GRAIN ##
     "whole wheat": "whole grain rich",
     "whole grain": "whole grain rich",
@@ -46,21 +51,32 @@ TOKEN_MAP_DICT = {
     ## FLAVORED ##
     ## PACKAGING ##
     "bag": "ss",
+    ## IN JUICE ##
+    "in pear juice": "in juice",
+    ## SMOKED ##
+    "pecanwood smoked": "smoked",
 }
 
 SKIP_TOKENS = {
     ## GENERAL ##
     "organic",
+    "breakfast",
+    "superfood",
     ## BEVERAGES ##
     "frappaccino",
     "frappuccino",
     "cold brew",
     "guatemala",
     ## PRODUCE ##
+    "fresh",
+    "with pits",
     ## BRAND NAMES ##
     "cheerios",
     "coke",
     "pikes place",
+    "kind",
+    ## FLAVORS (BUT DON'T TAG AS FLAVORED) ##
+    "honey wheat",
     ## BONELESS ##
     "boneless",
     ## CEREAL TYPES ##
@@ -125,6 +141,8 @@ SKIP_TOKENS = {
     ## RICE TYPES ##
     "long grain",
     ## CHEESE ##
+    ## SEAFOOD ##
+    "claw",
 }
 
 # For these basic types, skip anything that is in the FLAVORS set
@@ -154,6 +172,7 @@ FLAVORS = {
     "berry",
     "lemon",
     "strawberry",
+    "banana",
     "raspberry",
     "passion fruit",
     "pomegranate",
@@ -486,7 +505,7 @@ GROUP_TAGS = {
             "smoked",
         },
         "WG/WGR": set(),
-        "Dietary Concern": {"low sodium"},
+        "Dietary Concern": {"low sodium", "reduced sodium", "reduced fat"},
         "Additives": {"no additives"},
         "Dietary Accommodation": {"gluten free", "halal", "kosher"},
         "Frozen": {"frozen"},
@@ -541,6 +560,7 @@ GROUP_TAGS = {
             "shredded",
             "in juice",
             "in water",
+            "dried"
         },
         "Cooked/Cleaned": {"cleaned", "roasted", "cooked"},
         "WG/WGR": set(),
