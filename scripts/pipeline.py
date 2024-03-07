@@ -7,10 +7,12 @@ from cgfp.config_tags import (
     GROUP_TAGS,
     TOKEN_MAP_DICT,
     SKIP_TOKENS,
-    FLAVORS,
+    ALL_FLAVORS,
+    FRUITS,
     CHOCOLATE,
     SHAPE_EXTRAS,
     SKIP_FLAVORS,
+    FLAVORED_BASIC_TYPES
 )
 
 from cgfp.config_pipeline import (
@@ -45,31 +47,26 @@ def clean_df(df):
 
 def token_handler(token, food_product_group, food_product_category, basic_type):
     # Handle edge cases where a token is allowed
-    if token == "blue" and basic_type == "cheese":
-        return token
-
-    if token == "instant" and food_product_group == "Beverages":
-        return token
-
-    if token == "black" and basic_type in ["tea", "drink"]:
+    if (token == "blue" and basic_type == "cheese") or \
+        (token == "instant" and food_product_group == "Beverages") or \
+        (token == "black" and basic_type in ["tea", "drink"]):
         return token
 
     # Handle edge cases where a token is not allowed
-    if basic_type == "plant milk" and token in ["nonfat", "low fat"]:
-        return None
-
-    if basic_type == "bean" and token == "turtle":
-        return None
-
-    if food_product_group == "Milk & Dairy" and token == "in brine":
+    if (food_product_group == "Milk & Dairy" and token == "in brine") or \
+        (food_product_group == "Meat" and token == "ketchup") or \
+        (basic_type == "plant milk" and token in ["nonfat", "low fat"]) or \
+        (basic_type == "bean" and token == "turtle") or \
+        (basic_type == "supplement" and token == "liquid") or \
+        (basic_type == "bar" and token == "cereal"):
         return None
 
     # Map flavored tokens to "flavored" for beverages
-    if food_product_group == "Beverages" and token in FLAVORS:
+    if (food_product_group == "Beverages" or basic_type in FLAVORED_BASIC_TYPES) and token in ALL_FLAVORS:
         return "flavored"
 
     # Skip flavors and shapes for candy, chips, condiments, etc.
-    if basic_type in SKIP_FLAVORS and token in (FLAVORS | SHAPE_EXTRAS):
+    if basic_type in SKIP_FLAVORS and token in (ALL_FLAVORS | SHAPE_EXTRAS):
         return None
 
     # Map chocolate tokens to "chocolate" for candy
@@ -153,7 +150,7 @@ def pool_tags(tags_dict):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process some files.")
 
-    default_input_file = "CONFIDENTIAL_CGFP bulk data_073123.csv"
+    default_input_file = "CONFIDENTIAL_CGFP bulk data_073123.xlsx"
     default_misc_file = "misc.csv"
     clean_file_prefix = "clean_"
 
@@ -178,7 +175,9 @@ if __name__ == "__main__":
     MISC_PATH = CLEAN_FOLDER + RUN_FOLDER + args.misc_file
     CLEAN_PATH = CLEAN_FOLDER + RUN_FOLDER + CLEAN_FILE
 
-    df = pd.read_csv(INPUT_PATH)
+    file_extension = os.path.splitext(INPUT_PATH)[1]
+    df = pd.read_excel(INPUT_PATH) if file_extension in ['.xls', '.xlsx'] else pd.read_csv(INPUT_PATH)
+
     df["Misc"] = None
     df = clean_df(df)
 
@@ -209,15 +208,25 @@ if __name__ == "__main__":
     )
 
     # TODO: Handle sub-type 3 when we add that
-    # Replace multiple flavors for juices with "blend"
-    condition = (
+    # Replace multiple fruits for juices with "blend"
+    juice_blend = (
         (df_split["Basic Type"] == "juice")
-        & (df_split["Sub-Type 1"].isin(FLAVORS))
-        & (df_split["Sub-Type 2"].isin(FLAVORS))
+        & (df_split["Sub-Type 1"].isin(FRUITS))
+        & (df_split["Sub-Type 2"].isin(FRUITS))
     )
 
-    df_split[condition]["Sub Type 1"] = "blend"
-    df_split[condition]["Sub Type 2"] = None
+    df_split[juice_blend]["Sub Type 1"] = "blend"
+    df_split[juice_blend]["Sub Type 2"] = None
+
+    # TODO: Replace multiple fruit flavors with "fruit"
+    # Also fix the sliced dataframe warning here
+    multiple_fruits = (
+        (df_split["Food Product Category"] != "Fruit")
+        & (df_split["Sub-Type 1"].isin(FRUITS))
+        & (df_split["Sub-Type 2"].isin(FRUITS))
+    )
+    df_split[multiple_fruits]["Sub Type 1"] = "fruit"
+    df_split[multiple_fruits]["Sub Type 2"] = None
 
     # Save unallocated tags for manual review
     misc = df_split[df_split["Misc"].apply(lambda x: x != [])][
@@ -248,5 +257,6 @@ if __name__ == "__main__":
         "Sub-Type 2",
     ]
 
+    # TODO: make sure this saves the clean file as .csv
     df_split = df_split[COLUMNS_ORDER].sort_values(by=TAGS_SORT_ORDER)
     df_split.to_csv(CLEAN_PATH, index=False)

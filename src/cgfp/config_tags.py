@@ -6,6 +6,8 @@
 # also white corn, etc.
 # TODO: "whole weat" for pasta? ravioli?
 
+
+# TODO: Maybe I should pull out some of the common mappings like "cut" and include some sort of set membership check
 TOKEN_MAP_DICT = {
     ## TYPOS ##
     "whole grain rich  rich": "whole grain rich",
@@ -34,6 +36,7 @@ TOKEN_MAP_DICT = {
     "quartered": "cut",
     "cubed": "cut",
     "chunk": "cut",
+    "trimmed": "cut",
     ## WHOLE GRAIN ##
     "whole wheat": "whole grain rich",
     "whole grain": "whole grain rich",
@@ -90,6 +93,7 @@ SKIP_TOKENS = {
     "round",
     "country white",
     "old fashioned",
+    "seeded",
     ## COLORS ##
     "red",
     "light red",
@@ -104,6 +108,17 @@ SKIP_TOKENS = {
     ## DESCRIPTORS ##
     "mini",
     "snack",
+    ## SAUSAGE TYPES ##
+    "andouille",
+    "polish",
+    "chorizo",
+    "louisiana",
+    "kielbasa",
+    "italian", # TODO: what about salad dressings?
+    ## SORT OF FLAVORED ##
+    "spicy",
+    "hot and spicy",
+    "glazed",
     ## PASTA TYPES ##
     "elbow",
     "rigatoni",
@@ -158,6 +173,13 @@ SKIP_FLAVORS = {
     "bean",
 }
 
+# For these basic types, tag anything that includes a FLAVORS tag as "flavored"
+# TODO: what happens if we return flavored twice? should probably have some deduping eventually
+# Check "bread, naan, garlic, chili" to see what happes here
+FLAVORED_BASIC_TYPES = {
+    "bread"
+}
+
 FLAVORS = {
     ## BEVERAGES & DRINKS ##
     # sweet drinks #
@@ -165,19 +187,6 @@ FLAVORS = {
     # spices #
     "vanilla",
     "cinnamon",
-    # fruits #
-    "orange",
-    "guava",
-    "apple",
-    "berry",
-    "lemon",
-    "strawberry",
-    "banana",
-    "raspberry",
-    "passion fruit",
-    "pomegranate",
-    "acai",
-    "blueberry",
     # misc #
     "maple",
     ## CANDY ##
@@ -187,6 +196,9 @@ FLAVORS = {
     "m&m",
     "toffee",
     "milk",
+    ## BREAD ###
+    "garlic",
+    "chili",
     ## CHIPS ##
     "barbecue",
     "barbeque",
@@ -204,6 +216,26 @@ FLAVORS = {
     ## LEGUMES ##
     "seasoned",
 }
+
+FRUITS = {
+    "orange",
+    "guava",
+    "apple",
+    "berry",
+    "lemon",
+    "strawberry",
+    "banana",
+    "raspberry",
+    "passion fruit",
+    "pomegranate",
+    "acai",
+    "blueberry"
+}
+
+ALL_FLAVORS = FLAVORS | FRUITS
+
+CHEESE_TYPES = {}
+
 
 SHAPE_EXTRAS = {
     ## CANDY ##
