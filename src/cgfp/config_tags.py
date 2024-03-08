@@ -16,6 +16,7 @@ TOKEN_MAP_DICT = {
     "unsweeted": "unsweetened",
     "peeled & deveined": "peeled and deveined",
     "mangu": "mango",
+    "siced": "sliced",
     ## INCONSISTENCIES ##
     "skin-on": "skin on",
     "carrots": "carrot",
@@ -24,6 +25,7 @@ TOKEN_MAP_DICT = {
     "tail-off": "tail off",
     "sugar-free": "sugar free",
     "fillet": "filet",
+    "fat-free": "fat free",
     ## CUT ##
     "sliced": "cut",
     "diced": "cut",
@@ -37,6 +39,7 @@ TOKEN_MAP_DICT = {
     "cubed": "cut",
     "chunk": "cut",
     "trimmed": "cut",
+    "half": "cut",
     ## WHOLE GRAIN ##
     "whole wheat": "whole grain rich",
     "whole grain": "whole grain rich",
@@ -73,6 +76,7 @@ SKIP_TOKENS = {
     ## PRODUCE ##
     "fresh",
     "with pits",
+    "washed",
     ## BRAND NAMES ##
     "cheerios",
     "coke",
@@ -80,6 +84,7 @@ SKIP_TOKENS = {
     "kind",
     ## FLAVORS (BUT DON'T TAG AS FLAVORED) ##
     "honey wheat",
+    "salted caramel",
     ## BONELESS ##
     "boneless",
     ## CEREAL TYPES ##
@@ -105,9 +110,12 @@ SKIP_TOKENS = {
     "blue",
     "black",
     "brown",
+    "orange", # basic type will still be set to orange since it doesn't pass through token handler
     ## DESCRIPTORS ##
     "mini",
     "snack",
+    ## FRUIT ##
+    "with pits",
     ## SAUSAGE TYPES ##
     "andouille",
     "polish",
@@ -119,6 +127,10 @@ SKIP_TOKENS = {
     "spicy",
     "hot and spicy",
     "glazed",
+    "applewood",
+    ## TEXTURE ##
+    "chewie",
+    "chewy",
     ## PASTA TYPES ##
     "elbow",
     "rigatoni",
@@ -156,8 +168,11 @@ SKIP_TOKENS = {
     ## RICE TYPES ##
     "long grain",
     ## CHEESE ##
+    "small curd",
     ## SEAFOOD ##
     "claw",
+    ## SIZE ##
+    "jumbo"
 }
 
 # For these basic types, skip anything that is in the FLAVORS set
@@ -171,13 +186,14 @@ SKIP_FLAVORS = {
     "cereal",
     "oat",
     "bean",
+    "ice cream"
 }
 
 # For these basic types, tag anything that includes a FLAVORS tag as "flavored"
 # TODO: what happens if we return flavored twice? should probably have some deduping eventually
 # Check "bread, naan, garlic, chili" to see what happes here
 FLAVORED_BASIC_TYPES = {
-    "bread"
+    "bread", "yogurt"
 }
 
 FLAVORS = {
@@ -215,6 +231,13 @@ FLAVORS = {
     "brown sugar",
     ## LEGUMES ##
     "seasoned",
+    ## CHEESE ##
+    "horseradish",
+    "chives",
+    "sauce",
+    "beer",
+    ## SEAFOOD ##
+    "chipotle"
 }
 
 FRUITS = {
@@ -234,6 +257,7 @@ FRUITS = {
 
 ALL_FLAVORS = FLAVORS | FRUITS
 
+# TODO: Set this up for adding "blend" for multiple kinds of cheese
 CHEESE_TYPES = {}
 
 

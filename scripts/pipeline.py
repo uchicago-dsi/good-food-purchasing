@@ -7,7 +7,7 @@ from cgfp.config_tags import (
     GROUP_TAGS,
     TOKEN_MAP_DICT,
     SKIP_TOKENS,
-    ALL_FLAVORS,
+    FLAVORS, 
     FRUITS,
     CHOCOLATE,
     SHAPE_EXTRAS,
@@ -23,6 +23,8 @@ from cgfp.config_pipeline import (
     GROUP_COLUMNS,
     COLUMNS_ORDER,
 )
+
+ALL_FLAVORS = FLAVORS | FRUITS
 
 if not os.path.exists(CLEAN_FOLDER + RUN_FOLDER):
     os.makedirs(CLEAN_FOLDER + RUN_FOLDER)
@@ -53,17 +55,24 @@ def token_handler(token, food_product_group, food_product_category, basic_type):
         return token
 
     # Handle edge cases where a token is not allowed
-    if (food_product_group == "Milk & Dairy" and token == "in brine") or \
+    if (food_product_group == "Milk & Dairy" and token in ["in brine", "nectar", "honey"]) or \
+        (food_product_category == "Cheese" and token in ["in water", "ball", "low moisture", "whole milk", "logs", "unsalted", "in oil"]) or \
         (food_product_group == "Meat" and token == "ketchup") or \
+        (food_product_group == "Produce" and token in ["whole", "peeled", "kosher", "gluten free"]) or \
+        (food_product_group == "Seafood" and token in ["seasoned", "stuffed", "lime"]) or \
         (basic_type == "plant milk" and token in ["nonfat", "low fat"]) or \
         (basic_type == "bean" and token == "turtle") or \
         (basic_type == "supplement" and token == "liquid") or \
-        (basic_type == "bar" and token == "cereal"):
+        (basic_type == "bar" and token in ["cereal", "cocoa", "seed"]) or \
+        (basic_type == "ice cream" and token in ["crunch", "taco", "chocolate covered", "cookie"]):
         return None
 
-    # Map flavored tokens to "flavored" for beverages
-    if (food_product_group == "Beverages" or basic_type in FLAVORED_BASIC_TYPES) and token in ALL_FLAVORS:
+    # Map flavored tokens to "flavored"
+    if ((food_product_group == "Beverages" or food_product_category == "Cheese" or basic_type in FLAVORED_BASIC_TYPES) and token in ALL_FLAVORS) or \
+        (basic_type == "bar" and token in FLAVORS) or \
+        (food_product_group == "Seafood" and token in FLAVORS):
         return "flavored"
+    
 
     # Skip flavors and shapes for candy, chips, condiments, etc.
     if basic_type in SKIP_FLAVORS and token in (ALL_FLAVORS | SHAPE_EXTRAS):
