@@ -5,3 +5,4 @@ isort==5.12.*
 pytest==7.4.*
 xlsx2csv==0.8.*
 py
+pandas

@@ -110,7 +110,7 @@ SKIP_TOKENS = {
     "blue",
     "black",
     "brown",
-    "orange", # basic type will still be set to orange since it doesn't pass through token handler
+    "orange",  # basic type will still be set to orange since it doesn't pass through token handler
     ## DESCRIPTORS ##
     "mini",
     "snack",
@@ -122,7 +122,7 @@ SKIP_TOKENS = {
     "chorizo",
     "louisiana",
     "kielbasa",
-    "italian", # TODO: what about salad dressings?
+    "italian",  # TODO: what about salad dressings?
     ## SORT OF FLAVORED ##
     "spicy",
     "hot and spicy",
@@ -172,7 +172,7 @@ SKIP_TOKENS = {
     ## SEAFOOD ##
     "claw",
     ## SIZE ##
-    "jumbo"
+    "jumbo",
 }
 
 # For these basic types, skip anything that is in the FLAVORS set
@@ -186,15 +186,13 @@ SKIP_FLAVORS = {
     "cereal",
     "oat",
     "bean",
-    "ice cream"
+    "ice cream",
 }
 
 # For these basic types, tag anything that includes a FLAVORS tag as "flavored"
 # TODO: what happens if we return flavored twice? should probably have some deduping eventually
 # Check "bread, naan, garlic, chili" to see what happes here
-FLAVORED_BASIC_TYPES = {
-    "bread", "yogurt"
-}
+FLAVORED_BASIC_TYPES = {"bread", "yogurt"}
 
 FLAVORS = {
     ## BEVERAGES & DRINKS ##
@@ -237,7 +235,7 @@ FLAVORS = {
     "sauce",
     "beer",
     ## SEAFOOD ##
-    "chipotle"
+    "chipotle",
 }
 
 FRUITS = {
@@ -252,7 +250,7 @@ FRUITS = {
     "passion fruit",
     "pomegranate",
     "acai",
-    "blueberry"
+    "blueberry",
 }
 
 ALL_FLAVORS = FLAVORS | FRUITS
@@ -616,7 +614,7 @@ GROUP_TAGS = {
             "shredded",
             "in juice",
             "in water",
-            "dried"
+            "dried",
         },
         "Cooked/Cleaned": {"cleaned", "roasted", "cooked"},
         "WG/WGR": set(),
