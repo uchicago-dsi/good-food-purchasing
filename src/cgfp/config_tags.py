@@ -6,7 +6,6 @@
 # also white corn, etc.
 # TODO: "whole weat" for pasta? ravioli?
 
-
 # TODO: Maybe I should pull out some of the common mappings like "cut" and include some sort of set membership check
 TOKEN_MAP_DICT = {
     ## TYPOS ##
@@ -628,6 +627,7 @@ GROUP_TAGS = {
     "Seafood": {
         "Flavor/Cut": {"loin", "meat", "shank", "steak"},
         "Shape": {
+            "cut",
             "cake",
             "chunk",
             "filet",
