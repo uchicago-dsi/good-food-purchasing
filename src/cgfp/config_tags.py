@@ -39,6 +39,8 @@ TOKEN_MAP_DICT = {
     "chunk": "cut",
     "trimmed": "cut",
     "half": "cut",
+    "spear": "cut",
+    "crinkle cut": "cut",
     ## WHOLE GRAIN ##
     "whole wheat": "whole grain rich",
     "whole grain": "whole grain rich",
@@ -84,6 +86,7 @@ SKIP_TOKENS = {
     ## FLAVORS (BUT DON'T TAG AS FLAVORED) ##
     "honey wheat",
     "salted caramel",
+    "spicy",
     ## BONELESS ##
     "boneless",
     ## CEREAL TYPES ##
@@ -98,6 +101,7 @@ SKIP_TOKENS = {
     "country white",
     "old fashioned",
     "seeded",
+    "sprouted",
     ## COLORS ##
     "red",
     "light red",
@@ -172,6 +176,8 @@ SKIP_TOKENS = {
     "claw",
     ## SIZE ##
     "jumbo",
+    ## SNACKS ##
+    "elf",
 }
 
 # For these basic types, skip anything that is in the FLAVORS set
@@ -180,18 +186,20 @@ SKIP_FLAVORS = {
     "tea",
     "coffee",
     "candy",
-    "chip",
     "condiment",
     "cereal",
     "oat",
     "bean",
     "ice cream",
+    "cheesecake",
+    "cracker",
+    "dessert",
 }
 
 # For these basic types, tag anything that includes a FLAVORS tag as "flavored"
 # TODO: what happens if we return flavored twice? should probably have some deduping eventually
 # Check "bread, naan, garlic, chili" to see what happes here
-FLAVORED_BASIC_TYPES = {"bread", "yogurt"}
+FLAVORED_BASIC_TYPES = {"bread", "yogurt", "french toast", "chip"}
 
 FLAVORS = {
     ## BEVERAGES & DRINKS ##
@@ -222,6 +230,7 @@ FLAVORS = {
     "white cheddar",
     "sour cream",
     "variety",
+    "extreme heat",
     ## CONDIMENT (SYRUP, ETC.) ##
     "maple",
     ## CEREAL ##
@@ -252,10 +261,21 @@ FRUITS = {
     "blueberry",
 }
 
+NUTS = {"almond", "cashew", "pecan"}
+
 ALL_FLAVORS = FLAVORS | FRUITS
 
 # TODO: Set this up for adding "blend" for multiple kinds of cheese
-CHEESE_TYPES = {}
+CHEESE_TYPES = {
+    "cheddar",
+    "monterey jack",
+    "mozzarella",
+    "jack",
+    "provolone",
+    "blue",
+    "havarti",
+    "gouda",
+}
 
 
 SHAPE_EXTRAS = {

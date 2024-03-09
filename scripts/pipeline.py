@@ -13,6 +13,8 @@ from cgfp.config_tags import (
     SHAPE_EXTRAS,
     SKIP_FLAVORS,
     FLAVORED_BASIC_TYPES,
+    NUTS,
+    CHEESE_TYPES,
 )
 
 from cgfp.config_pipeline import (
@@ -109,9 +111,17 @@ def token_handler(token, food_product_group, food_product_category, basic_type):
     ):
         return "flavored"
 
+    # Map nut tokens to "nut" for some basic types
+    if basic_type == "bar" and token in NUTS:
+        return "nut"
+
     # Skip flavors and shapes for candy, chips, condiments, etc.
     if basic_type in SKIP_FLAVORS and token in (ALL_FLAVORS | SHAPE_EXTRAS):
         return None
+
+    # Relabel cheese type as "cheese"
+    if food_product_group == "Meals" and token in CHEESE_TYPES:
+        return "cheese"
 
     # Map chocolate tokens to "chocolate" for candy
     if basic_type == "candy" and token in CHOCOLATE:
@@ -257,7 +267,7 @@ if __name__ == "__main__":
         axis=1,
     )
 
-    # TODO: Handle sub-type 3 when we add that
+    # TODO: Handle sub-type 3 when we add that » if more than one sub-type is fruit (or whatever) then replace the string
     # TODO: Maybe want to abstract and functionalize this setup
     # Replace multiple fruits for juices with "blend"
     juice_blend = (
@@ -269,13 +279,20 @@ if __name__ == "__main__":
     df_split.loc[juice_blend, "Sub Type 1"] = "blend"
     df_split.loc[juice_blend, "Sub Type 2"] = None
 
-    # TODO: Replace multiple fruit flavors with "fruit"
     multiple_fruits = (
         (df_split["Food Product Category"] != "Fruit")
         & (df_split["Sub-Type 1"].isin(FRUITS))
         & (df_split["Sub-Type 2"].isin(FRUITS))
     )
     df_split.loc[multiple_fruits, "Sub Type 1"] = "fruit"
+    df_split.loc[multiple_fruits, "Sub Type 2"] = None
+
+    multiple_cheeses = (
+        (df_split["Food Product Category"] == "Cheese")
+        & (df_split["Sub-Type 1"].isin(CHEESE_TYPES))
+        & (df_split["Sub-Type 2"].isin(CHEESE_TYPES))
+    )
+    df_split.loc[multiple_fruits, "Sub Type 1"] = "blend"
     df_split.loc[multiple_fruits, "Sub Type 2"] = None
 
     # Save unallocated tags for manual review
@@ -307,6 +324,6 @@ if __name__ == "__main__":
         "Sub-Type 2",
     ]
 
-    # TODO: make sure this saves the clean file as .csv
     df_split = df_split[COLUMNS_ORDER].sort_values(by=TAGS_SORT_ORDER)
     df_split.to_csv(CSV_PATH, index=False)
+    print(f"Pipeline complete! File saved to {CSV_PATH}")
