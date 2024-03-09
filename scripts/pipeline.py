@@ -217,7 +217,9 @@ if __name__ == "__main__":
 
     INPUT_PATH = RAW_FOLDER + args.input_file
     MISC_PATH = CLEAN_FOLDER + RUN_FOLDER + args.misc_file
-    CLEAN_PATH = CLEAN_FOLDER + RUN_FOLDER + CLEAN_FILE
+    CLEAN_PATH = os.path.join(CLEAN_FOLDER, RUN_FOLDER, CLEAN_FILE)
+    root, _ = os.path.splitext(CLEAN_PATH)
+    CSV_PATH = root + ".csv"
 
     file_extension = os.path.splitext(INPUT_PATH)[1]
     df = (
@@ -307,4 +309,4 @@ if __name__ == "__main__":
 
     # TODO: make sure this saves the clean file as .csv
     df_split = df_split[COLUMNS_ORDER].sort_values(by=TAGS_SORT_ORDER)
-    df_split.to_csv(CLEAN_PATH, index=False)
+    df_split.to_csv(CSV_PATH, index=False)
