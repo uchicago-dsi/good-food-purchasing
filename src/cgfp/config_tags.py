@@ -86,6 +86,7 @@ SKIP_TOKENS = {
     "coke",
     "pikes place",
     "kind",
+    "6th avenue bistro",
     ## FLAVORS (BUT DON'T TAG AS FLAVORED) ##
     "honey wheat",
     "salted caramel",
@@ -134,7 +135,7 @@ SKIP_TOKENS = {
     "hot and spicy",
     "glazed",
     "applewood",
-    "parmesan and basil",
+    "parmesan basil",
     ## TEXTURE ##
     "chewie",
     "chewy",
