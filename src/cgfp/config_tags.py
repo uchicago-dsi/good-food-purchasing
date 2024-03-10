@@ -62,6 +62,9 @@ TOKEN_MAP_DICT = {
     "in pear juice": "in juice",
     ## SMOKED ##
     "pecanwood smoked": "smoked",
+    ## MIXED VEGGIES ##
+    "vegetable blend": "vegetable",
+    "vegetable cup": "vegetable",
 }
 
 SKIP_TOKENS = {
@@ -131,6 +134,7 @@ SKIP_TOKENS = {
     "hot and spicy",
     "glazed",
     "applewood",
+    "parmesan and basil",
     ## TEXTURE ##
     "chewie",
     "chewy",
@@ -176,6 +180,7 @@ SKIP_TOKENS = {
     "claw",
     ## SIZE ##
     "jumbo",
+    "king size",
     ## SNACKS ##
     "elf",
 }
@@ -199,7 +204,7 @@ SKIP_FLAVORS = {
 # For these basic types, tag anything that includes a FLAVORS tag as "flavored"
 # TODO: what happens if we return flavored twice? should probably have some deduping eventually
 # Check "bread, naan, garlic, chili" to see what happes here
-FLAVORED_BASIC_TYPES = {"bread", "yogurt", "french toast", "chip"}
+FLAVORED_BASIC_TYPES = {"bread", "yogurt", "french toast", "chip", "cranberyy"}
 
 FLAVORS = {
     ## BEVERAGES & DRINKS ##
@@ -261,6 +266,9 @@ FRUITS = {
     "blueberry",
 }
 
+# TODO: Maybe dynamically generate fruits and vegetables
+VEGETABLES = {"produce", "carrot", "cauliflower", "carrot", "pea", "celery", "broccoli"}
+
 NUTS = {"almond", "cashew", "pecan"}
 
 ALL_FLAVORS = FLAVORS | FRUITS
@@ -275,7 +283,10 @@ CHEESE_TYPES = {
     "blue",
     "havarti",
     "gouda",
+    "muenster",
 }
+
+MELON_TYPES = {"cantaloupe", "honeydew", "watermelon"}
 
 
 SHAPE_EXTRAS = {

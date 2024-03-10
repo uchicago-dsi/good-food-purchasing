@@ -15,6 +15,8 @@ from cgfp.config_tags import (
     FLAVORED_BASIC_TYPES,
     NUTS,
     CHEESE_TYPES,
+    VEGETABLES,
+    MELON_TYPES,
 )
 
 from cgfp.config_pipeline import (
@@ -293,6 +295,22 @@ if __name__ == "__main__":
         & (df_split["Sub-Type 2"].isin(CHEESE_TYPES))
     )
     df_split.loc[multiple_fruits, "Sub Type 1"] = "blend"
+    df_split.loc[multiple_fruits, "Sub Type 2"] = None
+
+    multiple_veggies = (
+        (df_split["Basic Type"] == "vegetable")
+        & (df_split["Sub-Type 1"].isin(VEGETABLES))
+        & (df_split["Sub-Type 2"].isin(VEGETABLES))
+    )
+    df_split.loc[multiple_fruits, "Sub Type 1"] = "blend"
+    df_split.loc[multiple_fruits, "Sub Type 2"] = None
+
+    multiple_melon = (
+        (df_split["Basic Type"] == "melon")
+        & (df_split["Sub-Type 1"].isin(MELON_TYPES))
+        & (df_split["Sub-Type 2"].isin(MELON_TYPES))
+    )
+    df_split.loc[multiple_fruits, "Sub Type 1"] = "variety"
     df_split.loc[multiple_fruits, "Sub Type 2"] = None
 
     # Save unallocated tags for manual review
