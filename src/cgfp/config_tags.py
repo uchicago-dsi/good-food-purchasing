@@ -6,62 +6,14 @@
 # also white corn, etc.
 # TODO: "whole weat" for pasta? ravioli?
 
-TOKEN_MAP_DICT = {
-    ## TYPOS ##
-    "whole grain rich  rich": "whole grain rich",
-    "orchiette": "orecchiette",
-    "campanelli": "campanelle",
-    "unsweeted": "unsweetened",
-    "peeled & deveined": "peeled and deveined",
-    "mangu": "mango",
-    ## INCONSISTENCIES ##
-    "skin-on": "skin on",
-    "carrots": "carrot",
-    "gluten-free": "gluten free",
-    "tail-on": "tail on",
-    "tail-off": "tail off",
-    "sugar-free": "sugar free",
-    "fillet": "filet",
-    ## CUT ##
-    "sliced": "cut",
-    "diced": "cut",
-    "chopped": "cut",
-    "wedge": "cut",
-    "segment": "cut",
-    "baby": "cut",
-    "julienne": "cut",
-    "julienned": "cut",
-    "quartered": "cut",
-    "cubed": "cut",
-    "chunk": "cut",
-    ## WHOLE GRAIN ##
-    "whole wheat": "whole grain rich",
-    "whole grain": "whole grain rich",
-    "white whole wheat": "whole grain rich",
-    ## COOKED ##
-    "baked": "cooked",
-    "fried": "cooked",
-    "roasted": "cooked",
-    "parboiled": "cooked",
-    "parcooked": "cooked",
-    "broiled": "cooked",
-    "parbaked": "cooked",
-    "broiled": "cooked",
-    "parfried": "cooked",
-    ## FLAVORED ##
-    ## PACKAGING ##
-    "bag": "ss",
-    ## IN JUICE ##
-    "in pear juice": "in juice",
-    ## SMOKED ##
-    "pecanwood smoked": "smoked",
-}
+from cgfp.config_token_map import TOKEN_MAP_DICT
 
 SKIP_TOKENS = {
     ## GENERAL ##
     "organic",
     "breakfast",
     "superfood",
+    "holiday",
     ## BEVERAGES ##
     "frappaccino",
     "frappuccino",
@@ -70,13 +22,19 @@ SKIP_TOKENS = {
     ## PRODUCE ##
     "fresh",
     "with pits",
+    "washed",
     ## BRAND NAMES ##
     "cheerios",
     "coke",
     "pikes place",
     "kind",
+    "6th avenue bistro",
+    "ybarra",
+    "sriracha",  # TODO: Seems like sriracha is allowed...sometimes?
+    "fantastix",
     ## FLAVORS (BUT DON'T TAG AS FLAVORED) ##
     "honey wheat",
+    "salted caramel",
     ## BONELESS ##
     "boneless",
     ## CEREAL TYPES ##
@@ -90,6 +48,10 @@ SKIP_TOKENS = {
     "round",
     "country white",
     "old fashioned",
+    "seeded",
+    "sprouted",
+    ## SNACKS, PASTRIES, ETC. ##
+    "long john",
     ## COLORS ##
     "red",
     "light red",
@@ -101,9 +63,36 @@ SKIP_TOKENS = {
     "blue",
     "black",
     "brown",
+    "orange",  # basic type will still be set to orange since it doesn't pass through token handler
     ## DESCRIPTORS ##
     "mini",
     "snack",
+    ## FRUIT ##
+    "with pits",
+    ## SAUSAGE TYPES ##
+    "andouille",
+    "polish",
+    "chorizo",
+    "louisiana",
+    "kielbasa",
+    "italian",  # TODO: what about salad dressings?
+    "uncured",
+    ## SORT OF FLAVORED ##
+    "spicy",
+    "hot and spicy",
+    "glazed",
+    "applewood",
+    "parmesan basil",
+    "extra spicy",
+    "extreme heat",
+    "plain",  # TODO: can we always skip this
+    ## OLIVE OIL ##
+    "virgin",
+    "extra virgin",
+    "oil blend",
+    ## TEXTURE ##
+    "chewie",
+    "chewy",
     ## PASTA TYPES ##
     "elbow",
     "rigatoni",
@@ -141,8 +130,28 @@ SKIP_TOKENS = {
     ## RICE TYPES ##
     "long grain",
     ## CHEESE ##
+    "small curd",
     ## SEAFOOD ##
     "claw",
+    ## SIZE ##
+    "jumbo",
+    "king size",
+    "giant",
+    ## SNACKS ##
+    "elf",
+    "teddy",
+    "bear",
+    "bunny",
+    "goldfish",
+    ## SHAPE ##
+    "hole",
+    "ring",
+    "twist",
+    "pocket",
+    ## SPICES ##
+    "pasilla negro",
+    ## TEXTURE ##
+    "soft",
 }
 
 # For these basic types, skip anything that is in the FLAVORS set
@@ -151,11 +160,33 @@ SKIP_FLAVORS = {
     "tea",
     "coffee",
     "candy",
-    "chip",
     "condiment",
     "cereal",
     "oat",
     "bean",
+    "ice cream",
+    "cheesecake",
+    "cracker",
+    "dessert",
+    "pastry",
+    "cracker",
+    "cookie",
+}
+
+# For these basic types, tag anything that includes a FLAVORS tag as "flavored"
+# TODO: what happens if we return flavored twice? should probably have some deduping eventually
+# Check "bread, naan, garlic, chili" to see what happes here
+FLAVORED_BASIC_TYPES = {
+    "bread",
+    "yogurt",
+    "french toast",
+    "chip",
+    "cranberry",
+    "spread",
+    "butter",
+    "fruit ice",
+    "popsicle",
+    "mix",
 }
 
 FLAVORS = {
@@ -165,19 +196,6 @@ FLAVORS = {
     # spices #
     "vanilla",
     "cinnamon",
-    # fruits #
-    "orange",
-    "guava",
-    "apple",
-    "berry",
-    "lemon",
-    "strawberry",
-    "banana",
-    "raspberry",
-    "passion fruit",
-    "pomegranate",
-    "acai",
-    "blueberry",
     # misc #
     "maple",
     ## CANDY ##
@@ -187,9 +205,13 @@ FLAVORS = {
     "m&m",
     "toffee",
     "milk",
+    ## BREAD ###
+    "garlic",
+    "chili",
     ## CHIPS ##
     "barbecue",
     "barbeque",
+    "bbq",
     "sea salt",
     "flamin hot",
     "cheddar",
@@ -197,13 +219,37 @@ FLAVORS = {
     "white cheddar",
     "sour cream",
     "variety",
+    "extreme heat",
+    "buffalo ranch",
+    "queso",
+    "cheddar and black pepper",
+    "cheddar sour cream",
+    "salt",
+    "vinegar",
+    "dill pickle",
+    "jalapeno cheddar",
     ## CONDIMENT (SYRUP, ETC.) ##
     "maple",
     ## CEREAL ##
     "brown sugar",
+    "apple cinnamon",
+    "cinnamon toast crunch",
     ## LEGUMES ##
     "seasoned",
+    ## CHEESE ##
+    "horseradish",
+    "chives",
+    "sauce",
+    "beer",
+    ## SEAFOOD ##
+    "chipotle",
+    ## HERBS ##
+    "mint",
+    ## SNACKS ##
+    "chocolate",
 }
+
+SKIP_SHAPE = {"chip", "candy"}
 
 SHAPE_EXTRAS = {
     ## CANDY ##
@@ -215,7 +261,54 @@ SHAPE_EXTRAS = {
     "triangle",
     "ridge",
     "round",
+    "ridged",
+    "lattice cut",
+    "popped",
+    "bowl",
+    "scoop",
+    "crisps",
 }
+
+FRUITS = {
+    "orange",
+    "guava",
+    "apple",
+    "berry",
+    "lemon",
+    "lime",
+    "strawberry",
+    "banana",
+    "raspberry",
+    "passion fruit",
+    "pomegranate",
+    "acai",
+    "blueberry",
+    "cherry",
+}
+
+ALL_FLAVORS = FLAVORS | FRUITS
+
+# TODO: Maybe dynamically generate fruits and vegetables
+VEGETABLES = {"produce", "carrot", "cauliflower", "carrot", "pea", "celery", "broccoli"}
+
+NUTS = {"almond", "cashew", "pecan", "pistachio"}
+
+# TODO: Set this up for adding "blend" for multiple kinds of cheese
+CHEESE_TYPES = {
+    "cheddar",
+    "monterey jack",
+    "mozzarella",
+    "jack",
+    "provolone",
+    "blue",
+    "havarti",
+    "gouda",
+    "muenster",
+    "white cheddar",
+}
+
+MELON_TYPES = {"cantaloupe", "honeydew", "watermelon"}
+
 
 # TODO: is this ok?
 CHOCOLATE = {"dark chocolate", "chocolate covered"}
@@ -560,7 +653,7 @@ GROUP_TAGS = {
             "shredded",
             "in juice",
             "in water",
-            "dried"
+            "dried",
         },
         "Cooked/Cleaned": {"cleaned", "roasted", "cooked"},
         "WG/WGR": set(),
@@ -574,6 +667,7 @@ GROUP_TAGS = {
     "Seafood": {
         "Flavor/Cut": {"loin", "meat", "shank", "steak"},
         "Shape": {
+            "cut",
             "cake",
             "chunk",
             "filet",
@@ -723,6 +817,21 @@ CATEGORY_TAGS = {
         "Dietary Concern": set(),
         "Additives": set(),
         "Dietary Accommodation": {"lactose free"},
+        "Frozen": set(),
+        "Packaging": {"bag", "ss"},
+        "Commodity": {"commodity"},
+    },
+    "Yogurt": {
+        "Flavor/Cut": {"flavored"},
+        "Shape": {"thickened"},
+        "Skin": set(),
+        "Seed/Bone": set(),
+        "Processing": set(),
+        "Cooked/Cleaned": set(),
+        "WG/WGR": set(),
+        "Dietary Concern": set(),
+        "Additives": set(),
+        "Dietary Accommodation": {"lactose free", "gluten free"},
         "Frozen": set(),
         "Packaging": {"bag", "ss"},
         "Commodity": {"commodity"},

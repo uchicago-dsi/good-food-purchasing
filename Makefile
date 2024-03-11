@@ -106,3 +106,4 @@ update-prod-model:
 	cp $(CGFP_DIR)model-files/$(MODEL_DIR)/config.json $(CGFP_DIR)huggingface/cgfp-classifier/
 	@echo "Committing changes..."
 	cd $(CGFP_DIR)huggingface/cgfp-classifier/ && git add -u && git commit -m "update prod model" && git push
+
