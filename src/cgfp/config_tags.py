@@ -30,7 +30,7 @@ SKIP_TOKENS = {
     "kind",
     "6th avenue bistro",
     "ybarra",
-    "sriracha",
+    "sriracha",  # TODO: Seems like sriracha is allowed...sometimes?
     "fantastix",
     ## FLAVORS (BUT DON'T TAG AS FLAVORED) ##
     "honey wheat",
@@ -146,8 +146,12 @@ SKIP_TOKENS = {
     ## SHAPE ##
     "hole",
     "ring",
+    "twist",
+    "pocket",
     ## SPICES ##
     "pasilla negro",
+    ## TEXTURE ##
+    "soft",
 }
 
 # For these basic types, skip anything that is in the FLAVORS set
@@ -180,6 +184,9 @@ FLAVORED_BASIC_TYPES = {
     "cranberry",
     "spread",
     "butter",
+    "fruit ice",
+    "popsicle",
+    "mix",
 }
 
 FLAVORS = {
@@ -268,6 +275,7 @@ FRUITS = {
     "apple",
     "berry",
     "lemon",
+    "lime",
     "strawberry",
     "banana",
     "raspberry",
@@ -275,6 +283,7 @@ FRUITS = {
     "pomegranate",
     "acai",
     "blueberry",
+    "cherry",
 }
 
 ALL_FLAVORS = FLAVORS | FRUITS
@@ -282,7 +291,7 @@ ALL_FLAVORS = FLAVORS | FRUITS
 # TODO: Maybe dynamically generate fruits and vegetables
 VEGETABLES = {"produce", "carrot", "cauliflower", "carrot", "pea", "celery", "broccoli"}
 
-NUTS = {"almond", "cashew", "pecan"}
+NUTS = {"almond", "cashew", "pecan", "pistachio"}
 
 # TODO: Set this up for adding "blend" for multiple kinds of cheese
 CHEESE_TYPES = {
@@ -295,6 +304,7 @@ CHEESE_TYPES = {
     "havarti",
     "gouda",
     "muenster",
+    "white cheddar",
 }
 
 MELON_TYPES = {"cantaloupe", "honeydew", "watermelon"}

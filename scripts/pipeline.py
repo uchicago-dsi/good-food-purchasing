@@ -104,6 +104,8 @@ def token_handler(token, food_product_group, food_product_category, basic_type):
         )
         or (basic_type == "condiment" and token in ["thick", "thin", "sweet"])
         or (basic_type == "cookie" and token in ["sugar"])
+        or (basic_type == "dessert" and token in ["crumb", "graham cracker"])
+        or (basic_type == "mix" and token in ["custard"])
     ):
         return None
 
@@ -138,7 +140,9 @@ def token_handler(token, food_product_group, food_product_category, basic_type):
         return "nut"
 
     # Relabel cheese type as "cheese"
-    if food_product_group == "Meals" and token in CHEESE_TYPES:
+    if (
+        food_product_group == "Meals" or basic_type == "snack"
+    ) and token in CHEESE_TYPES:
         return "cheese"
 
     # Map chocolate tokens to "chocolate" for candy
