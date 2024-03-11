@@ -6,6 +6,138 @@
 # also white corn, etc.
 # TODO: "whole weat" for pasta? ravioli?
 
+SKIP_TOKENS = {
+    ## GENERAL ##
+    "organic",
+    "breakfast",
+    "superfood",
+    ## BEVERAGES ##
+    "frappaccino",
+    "frappuccino",
+    "cold brew",
+    "guatemala",
+    ## PRODUCE ##
+    "fresh",
+    "with pits",
+    "washed",
+    ## BRAND NAMES ##
+    "cheerios",
+    "coke",
+    "pikes place",
+    "kind",
+    "6th avenue bistro",
+    "ybarra",
+    "sriracha",
+    ## FLAVORS (BUT DON'T TAG AS FLAVORED) ##
+    "honey wheat",
+    "salted caramel",
+    ## BONELESS ##
+    "boneless",
+    ## CEREAL TYPES ##
+    "chex",
+    "spooners",
+    "kids stuff",
+    "homestyle",
+    "instant",
+    ## BREAD ##
+    "loaf",
+    "round",
+    "country white",
+    "old fashioned",
+    "seeded",
+    "sprouted",
+    ## SNACKS, PASTRIES, ETC. ##
+    "long john",
+    ## COLORS ##
+    "red",
+    "light red",
+    "dark red",
+    "yellow",
+    "green",
+    "gold",
+    "white",
+    "blue",
+    "black",
+    "brown",
+    "orange",  # basic type will still be set to orange since it doesn't pass through token handler
+    ## DESCRIPTORS ##
+    "mini",
+    "snack",
+    ## FRUIT ##
+    "with pits",
+    ## SAUSAGE TYPES ##
+    "andouille",
+    "polish",
+    "chorizo",
+    "louisiana",
+    "kielbasa",
+    "italian",  # TODO: what about salad dressings?
+    "uncured",
+    ## SORT OF FLAVORED ##
+    "spicy",
+    "hot and spicy",
+    "glazed",
+    "applewood",
+    "parmesan basil",
+    "extra spicy",
+    ## OLIVE OIL ##
+    "virgin",
+    "extra virgin",
+    ## TEXTURE ##
+    "chewie",
+    "chewy",
+    ## PASTA TYPES ##
+    "elbow",
+    "rigatoni",
+    "angel hair",
+    "acini de pepe",
+    "bow tie",
+    "campanelle",
+    "capelli",
+    "cavatappi",
+    "ditalini",
+    "farfalle",
+    "fetuccine",
+    "fusilli",
+    "gnocchi",
+    "lasagna",
+    "macaroni",
+    "manicotti",
+    "orzo",
+    "pappardelle",
+    "penne",
+    "penne rigate",
+    "pennette",
+    "rigate",
+    "rigatoni",
+    "rotini",
+    "shell",
+    "spaetzle",
+    "spaghetti",
+    "stuffed shell",
+    "tortellini",
+    "vermicelli",
+    "ziti",
+    ## PACKAGING ##
+    "aerosol",
+    ## RICE TYPES ##
+    "long grain",
+    ## CHEESE ##
+    "small curd",
+    ## SEAFOOD ##
+    "claw",
+    ## SIZE ##
+    "jumbo",
+    "king size",
+    ## SNACKS ##
+    "elf",
+    ## SHAPE ##
+    "hole",
+    "ring",
+    ## SPICES ##
+    "pasilla negro",
+}
+
 # TODO: Maybe I should pull out some of the common mappings like "cut" and include some sort of set membership check
 TOKEN_MAP_DICT = {
     ## TYPOS ##
@@ -67,125 +199,6 @@ TOKEN_MAP_DICT = {
     "vegetable cup": "vegetable",
 }
 
-SKIP_TOKENS = {
-    ## GENERAL ##
-    "organic",
-    "breakfast",
-    "superfood",
-    ## BEVERAGES ##
-    "frappaccino",
-    "frappuccino",
-    "cold brew",
-    "guatemala",
-    ## PRODUCE ##
-    "fresh",
-    "with pits",
-    "washed",
-    ## BRAND NAMES ##
-    "cheerios",
-    "coke",
-    "pikes place",
-    "kind",
-    "6th avenue bistro",
-    ## FLAVORS (BUT DON'T TAG AS FLAVORED) ##
-    "honey wheat",
-    "salted caramel",
-    "spicy",
-    ## BONELESS ##
-    "boneless",
-    ## CEREAL TYPES ##
-    "chex",
-    "spooners",
-    "kids stuff",
-    "homestyle",
-    "instant",
-    ## BREAD ##
-    "loaf",
-    "round",
-    "country white",
-    "old fashioned",
-    "seeded",
-    "sprouted",
-    ## COLORS ##
-    "red",
-    "light red",
-    "dark red",
-    "yellow",
-    "green",
-    "gold",
-    "white",
-    "blue",
-    "black",
-    "brown",
-    "orange",  # basic type will still be set to orange since it doesn't pass through token handler
-    ## DESCRIPTORS ##
-    "mini",
-    "snack",
-    ## FRUIT ##
-    "with pits",
-    ## SAUSAGE TYPES ##
-    "andouille",
-    "polish",
-    "chorizo",
-    "louisiana",
-    "kielbasa",
-    "italian",  # TODO: what about salad dressings?
-    ## SORT OF FLAVORED ##
-    "spicy",
-    "hot and spicy",
-    "glazed",
-    "applewood",
-    "parmesan basil",
-    ## TEXTURE ##
-    "chewie",
-    "chewy",
-    ## PASTA TYPES ##
-    "elbow",
-    "rigatoni",
-    "angel hair",
-    "acini de pepe",
-    "bow tie",
-    "campanelle",
-    "capelli",
-    "cavatappi",
-    "ditalini",
-    "farfalle",
-    "fetuccine",
-    "fusilli",
-    "gnocchi",
-    "lasagna",
-    "macaroni",
-    "manicotti",
-    "orzo",
-    "pappardelle",
-    "penne",
-    "penne rigate",
-    "pennette",
-    "rigate",
-    "rigatoni",
-    "rotini",
-    "shell",
-    "spaetzle",
-    "spaghetti",
-    "stuffed shell",
-    "tortellini",
-    "vermicelli",
-    "ziti",
-    ## PACKAGING ##
-    "aerosol",
-    ## RICE TYPES ##
-    "long grain",
-    ## CHEESE ##
-    "small curd",
-    ## SEAFOOD ##
-    "claw",
-    ## SIZE ##
-    "jumbo",
-    "king size",
-    ## SNACKS ##
-    "elf",
-}
-
 # For these basic types, skip anything that is in the FLAVORS set
 SKIP_FLAVORS = {
     "drink",
@@ -200,12 +213,20 @@ SKIP_FLAVORS = {
     "cheesecake",
     "cracker",
     "dessert",
+    "pastry",
 }
 
 # For these basic types, tag anything that includes a FLAVORS tag as "flavored"
 # TODO: what happens if we return flavored twice? should probably have some deduping eventually
 # Check "bread, naan, garlic, chili" to see what happes here
-FLAVORED_BASIC_TYPES = {"bread", "yogurt", "french toast", "chip", "cranberyy"}
+FLAVORED_BASIC_TYPES = {
+    "bread",
+    "yogurt",
+    "french toast",
+    "chip",
+    "cranberry",
+    "spread",
+}
 
 FLAVORS = {
     ## BEVERAGES & DRINKS ##
@@ -241,6 +262,8 @@ FLAVORS = {
     "maple",
     ## CEREAL ##
     "brown sugar",
+    "apple cinnamon",
+    "cinnamon toast crunch",
     ## LEGUMES ##
     "seasoned",
     ## CHEESE ##
@@ -250,6 +273,8 @@ FLAVORS = {
     "beer",
     ## SEAFOOD ##
     "chipotle",
+    ## HERBS ##
+    "mint",
 }
 
 FRUITS = {
@@ -267,12 +292,12 @@ FRUITS = {
     "blueberry",
 }
 
+ALL_FLAVORS = FLAVORS | FRUITS
+
 # TODO: Maybe dynamically generate fruits and vegetables
 VEGETABLES = {"produce", "carrot", "cauliflower", "carrot", "pea", "celery", "broccoli"}
 
 NUTS = {"almond", "cashew", "pecan"}
-
-ALL_FLAVORS = FLAVORS | FRUITS
 
 # TODO: Set this up for adding "blend" for multiple kinds of cheese
 CHEESE_TYPES = {

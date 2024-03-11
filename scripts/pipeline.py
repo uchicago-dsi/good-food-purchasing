@@ -95,6 +95,12 @@ def token_handler(token, food_product_group, food_product_category, basic_type):
             basic_type == "ice cream"
             and token in ["crunch", "taco", "chocolate covered", "cookie"]
         )
+        or (basic_type == "salsa" and token in ["thick", "chunky", "mild"])
+        or (
+            food_product_category == "Grain Products"
+            and basic_type not in ["cereal"]
+            and token == "wheat"
+        )
     ):
         return None
 
@@ -108,18 +114,22 @@ def token_handler(token, food_product_group, food_product_category, basic_type):
             )
             and token in ALL_FLAVORS
         )
-        or (basic_type == "bar" and token in FLAVORS)
+        or (
+            basic_type == "bar" and token in FLAVORS
+        )  # TODO: this doesn't work since sub-type 1 is bar
         or (food_product_group == "Seafood" and token in FLAVORS)
     ):
         return "flavored"
 
-    # Map nut tokens to "nut" for some basic types
-    if basic_type == "bar" and token in NUTS:
-        return "nut"
-
     # Skip flavors and shapes for candy, chips, condiments, etc.
     if basic_type in SKIP_FLAVORS and token in (ALL_FLAVORS | SHAPE_EXTRAS):
         return None
+
+    ### EDGE CASES FOR RENAMING TOKENS ###
+
+    # Map nut tokens to "nut" for some basic types
+    if basic_type == "snack" and token in NUTS:
+        return "nut"
 
     # Relabel cheese type as "cheese"
     if food_product_group == "Meals" and token in CHEESE_TYPES:
@@ -129,15 +139,8 @@ def token_handler(token, food_product_group, food_product_category, basic_type):
     if basic_type == "candy" and token in CHOCOLATE:
         return "chocolate"
 
-    # Remove wheat from most grain products
-    if (
-        food_product_category == "Grain Products"
-        and basic_type not in ["cereal"]
-        and token == "wheat"
-    ):
-        return None
-
     # Skip outdated tokens from old name normalization format
+    # Do this last since some rules override this
     if token in SKIP_TOKENS:
         return None
     return token
@@ -150,6 +153,8 @@ def clean_name(
     group_tags_dict,
     category_tags_dict,
 ):
+    # TODO: Should set this up so that normalized name starts with every column
+    # Then we add the tokens to the appropriate column based on membership
     normalized_name = {}
     misc_col = {"Misc": []}  # make a list so we can append unmatched tokens
     for i, token in enumerate(name_list):
@@ -172,6 +177,7 @@ def clean_name(
             matched = False
             for col in NORMALIZED_COLUMNS:
                 # TODO: Write better documentation here
+                # TODO: This is where the logic for categories is broken
                 # Find the category that the token is in and add to normalized_name
                 if col in group_tags_dict[food_product_group]:
                     if token in group_tags_dict[food_product_group][col]:
@@ -181,6 +187,7 @@ def clean_name(
             if matched:
                 continue
         # First token after basic type is sub-type 1 if it's not from the later tags
+        # TODO: set this up so that I'm saving sub-types as a list
         if "Sub-Type 1" not in normalized_name:
             normalized_name["Sub-Type 1"] = token
             continue
@@ -271,6 +278,7 @@ if __name__ == "__main__":
 
     # TODO: Handle sub-type 3 when we add that » if more than one sub-type is fruit (or whatever) then replace the string
     # TODO: Maybe want to abstract and functionalize this setup
+    # TODO: This should be done with a list for subtypes
     # Replace multiple fruits for juices with "blend"
     juice_blend = (
         (df_split["Basic Type"] == "juice")
@@ -281,6 +289,7 @@ if __name__ == "__main__":
     df_split.loc[juice_blend, "Sub Type 1"] = "blend"
     df_split.loc[juice_blend, "Sub Type 2"] = None
 
+    # If anything that is not a fruit has more than one fruit, relabel it as "fruit"
     multiple_fruits = (
         (df_split["Food Product Category"] != "Fruit")
         & (df_split["Sub-Type 1"].isin(FRUITS))
