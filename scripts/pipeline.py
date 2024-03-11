@@ -17,6 +17,7 @@ from cgfp.config_tags import (
     CHEESE_TYPES,
     VEGETABLES,
     MELON_TYPES,
+    SKIP_SHAPE,
 )
 
 from cgfp.config_pipeline import (
@@ -101,6 +102,8 @@ def token_handler(token, food_product_group, food_product_category, basic_type):
             and basic_type not in ["cereal"]
             and token == "wheat"
         )
+        or (basic_type == "condiment" and token in ["thick", "thin", "sweet"])
+        or (basic_type == "cookie" and token in ["sugar"])
     ):
         return None
 
@@ -121,8 +124,11 @@ def token_handler(token, food_product_group, food_product_category, basic_type):
     ):
         return "flavored"
 
-    # Skip flavors and shapes for candy, chips, condiments, etc.
-    if basic_type in SKIP_FLAVORS and token in (ALL_FLAVORS | SHAPE_EXTRAS):
+    # Skip flavors and shapes for some basic types
+    if basic_type in SKIP_FLAVORS and token in ALL_FLAVORS:
+        return None
+
+    if basic_type in SKIP_SHAPE and token in SHAPE_EXTRAS:
         return None
 
     ### EDGE CASES FOR RENAMING TOKENS ###

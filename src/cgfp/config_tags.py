@@ -6,11 +6,14 @@
 # also white corn, etc.
 # TODO: "whole weat" for pasta? ravioli?
 
+from cgfp.config_token_map import TOKEN_MAP_DICT
+
 SKIP_TOKENS = {
     ## GENERAL ##
     "organic",
     "breakfast",
     "superfood",
+    "holiday",
     ## BEVERAGES ##
     "frappaccino",
     "frappuccino",
@@ -28,6 +31,7 @@ SKIP_TOKENS = {
     "6th avenue bistro",
     "ybarra",
     "sriracha",
+    "fantastix",
     ## FLAVORS (BUT DON'T TAG AS FLAVORED) ##
     "honey wheat",
     "salted caramel",
@@ -80,9 +84,12 @@ SKIP_TOKENS = {
     "applewood",
     "parmesan basil",
     "extra spicy",
+    "extreme heat",
+    "plain",  # TODO: can we always skip this
     ## OLIVE OIL ##
     "virgin",
     "extra virgin",
+    "oil blend",
     ## TEXTURE ##
     "chewie",
     "chewy",
@@ -129,74 +136,18 @@ SKIP_TOKENS = {
     ## SIZE ##
     "jumbo",
     "king size",
+    "giant",
     ## SNACKS ##
     "elf",
+    "teddy",
+    "bear",
+    "bunny",
+    "goldfish",
     ## SHAPE ##
     "hole",
     "ring",
     ## SPICES ##
     "pasilla negro",
-}
-
-# TODO: Maybe I should pull out some of the common mappings like "cut" and include some sort of set membership check
-TOKEN_MAP_DICT = {
-    ## TYPOS ##
-    "whole grain rich  rich": "whole grain rich",
-    "orchiette": "orecchiette",
-    "campanelli": "campanelle",
-    "unsweeted": "unsweetened",
-    "peeled & deveined": "peeled and deveined",
-    "mangu": "mango",
-    "siced": "sliced",
-    ## INCONSISTENCIES ##
-    "skin-on": "skin on",
-    "carrots": "carrot",
-    "gluten-free": "gluten free",
-    "tail-on": "tail on",
-    "tail-off": "tail off",
-    "sugar-free": "sugar free",
-    "fillet": "filet",
-    "fat-free": "fat free",
-    ## CUT ##
-    "sliced": "cut",
-    "diced": "cut",
-    "chopped": "cut",
-    "wedge": "cut",
-    "segment": "cut",
-    "baby": "cut",
-    "julienne": "cut",
-    "julienned": "cut",
-    "quartered": "cut",
-    "cubed": "cut",
-    "chunk": "cut",
-    "trimmed": "cut",
-    "half": "cut",
-    "spear": "cut",
-    "crinkle cut": "cut",
-    ## WHOLE GRAIN ##
-    "whole wheat": "whole grain rich",
-    "whole grain": "whole grain rich",
-    "white whole wheat": "whole grain rich",
-    ## COOKED ##
-    "baked": "cooked",
-    "fried": "cooked",
-    "roasted": "cooked",
-    "parboiled": "cooked",
-    "parcooked": "cooked",
-    "broiled": "cooked",
-    "parbaked": "cooked",
-    "broiled": "cooked",
-    "parfried": "cooked",
-    ## FLAVORED ##
-    ## PACKAGING ##
-    "bag": "ss",
-    ## IN JUICE ##
-    "in pear juice": "in juice",
-    ## SMOKED ##
-    "pecanwood smoked": "smoked",
-    ## MIXED VEGGIES ##
-    "vegetable blend": "vegetable",
-    "vegetable cup": "vegetable",
 }
 
 # For these basic types, skip anything that is in the FLAVORS set
@@ -214,6 +165,8 @@ SKIP_FLAVORS = {
     "cracker",
     "dessert",
     "pastry",
+    "cracker",
+    "cookie",
 }
 
 # For these basic types, tag anything that includes a FLAVORS tag as "flavored"
@@ -226,6 +179,7 @@ FLAVORED_BASIC_TYPES = {
     "chip",
     "cranberry",
     "spread",
+    "butter",
 }
 
 FLAVORS = {
@@ -250,6 +204,7 @@ FLAVORS = {
     ## CHIPS ##
     "barbecue",
     "barbeque",
+    "bbq",
     "sea salt",
     "flamin hot",
     "cheddar",
@@ -258,6 +213,14 @@ FLAVORS = {
     "sour cream",
     "variety",
     "extreme heat",
+    "buffalo ranch",
+    "queso",
+    "cheddar and black pepper",
+    "cheddar sour cream",
+    "salt",
+    "vinegar",
+    "dill pickle",
+    "jalapeno cheddar",
     ## CONDIMENT (SYRUP, ETC.) ##
     "maple",
     ## CEREAL ##
@@ -275,6 +238,28 @@ FLAVORS = {
     "chipotle",
     ## HERBS ##
     "mint",
+    ## SNACKS ##
+    "chocolate",
+}
+
+SKIP_SHAPE = {"chip", "candy"}
+
+SHAPE_EXTRAS = {
+    ## CANDY ##
+    "truffle",
+    "bar",
+    "bark",
+    ## CHIPS ##
+    "tortilla",
+    "triangle",
+    "ridge",
+    "round",
+    "ridged",
+    "lattice cut",
+    "popped",
+    "bowl",
+    "scoop",
+    "crisps",
 }
 
 FRUITS = {
@@ -314,18 +299,6 @@ CHEESE_TYPES = {
 
 MELON_TYPES = {"cantaloupe", "honeydew", "watermelon"}
 
-
-SHAPE_EXTRAS = {
-    ## CANDY ##
-    "truffle",
-    "bar",
-    "bark",
-    ## CHIPS ##
-    "tortilla",
-    "triangle",
-    "ridge",
-    "round",
-}
 
 # TODO: is this ok?
 CHOCOLATE = {"dark chocolate", "chocolate covered"}
