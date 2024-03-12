@@ -269,7 +269,7 @@ if __name__ == "__main__":
         training_args.greater_is_better = True
 
     # TODO: depending on how we're actually training an LR scheduler is probably useful
-    # Samet hing with learning rate
+    # Same thing with learning rate
     adamW = AdamW(model.parameters(), lr=lr)
     # TODO: pass this from args...maybe include an option for None
     # Should prob actually use: torch.optim.lr_scheduler.ReduceLROnPlateau

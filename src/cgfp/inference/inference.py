@@ -54,6 +54,9 @@ def inference(model, tokenizer, text, device, assertion=True, confidence_score=T
     # are in those sets
 
     # assertion to make sure fpg & fpg match
+    # TODO: Maybe good assertion behavior would be something like:
+    # » If food product group + food product category + basic type don't match, ask GPT
+    # » If one of these pairs doesn't match, just highlight
     # TODO: Add argument here to turn this behavior on and off
     assertion_failed = False
     if fpc not in GROUP_CATEGORY_VALIDATION[fpg] and assertion:
@@ -76,6 +79,9 @@ def inference(model, tokenizer, text, device, assertion=True, confidence_score=T
             # TODO: what do we want to actually happen here?
             # Can we log or print base on where we are?
             # logging.info(f"Exception: {e}")
+        
+    if legible_preds["Sub-Type 1"] != "None":
+        breakpoint()
     return legible_preds
 
 
