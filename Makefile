@@ -100,10 +100,11 @@ update-dev-model:
 	@echo "Committing changes..."
 	cd $(CGFP_DIR)huggingface/cgfp-classifier-dev/ && git add -u && git commit -m "update dev model" && git push
 
+# Usage: This upgrades the dev model to production
 update-prod-model:
 	@echo "Moving model files from $(MODEL_DIR)..."
-	cp $(CGFP_DIR)model-files/$(MODEL_DIR)/pytorch_model.bin $(CGFP_DIR)huggingface/cgfp-classifier/
-	cp $(CGFP_DIR)model-files/$(MODEL_DIR)/config.json $(CGFP_DIR)huggingface/cgfp-classifier/
+	cp $(CGFP_DIR)huggingface/cgfp-classifier-dev/pytorch_model.bin $(CGFP_DIR)huggingface/cgfp-classifier/
+	cp $(CGFP_DIR)huggingface/cgfp-classifier-dev/config.json $(CGFP_DIR)huggingface/cgfp-classifier/
 	@echo "Committing changes..."
 	cd $(CGFP_DIR)huggingface/cgfp-classifier/ && git add -u && git commit -m "update prod model" && git push
 
