@@ -23,6 +23,8 @@ CONDA_ENV_FILE := environment.yml
 
 CONDA_RUN = conda run -p $(CONDA_ENV_PATH)
 
+CGFP_DIR=/net/projects/cgfp/
+
 .PHONY: clean
 clean:
 	find . | grep -E ".*/__pycache__$$" | xargs rm -rf
@@ -89,3 +91,19 @@ last-errs:
 # mv /net/projects/cgfp/model-files/2024-02-05_10-56/* /net/projects/cgfp/huggingface/cgfp-classifier-dev/
 # cd /net/projects/cgfp/huggingface/cgfp-classifier-dev/
 # git commit -m "model trained on clean-ish dataset" && git push
+
+# Usage: make update-dev-model MODEL_DIR=2024-02-05_10-56
+update-dev-model:
+	@echo "Moving model files from $(MODEL_DIR)..."
+	cp $(CGFP_DIR)model-files/$(MODEL_DIR)/pytorch_model.bin $(CGFP_DIR)huggingface/cgfp-classifier-dev/
+	cp $(CGFP_DIR)model-files/$(MODEL_DIR)/config.json $(CGFP_DIR)huggingface/cgfp-classifier-dev/
+	@echo "Committing changes..."
+	cd $(CGFP_DIR)huggingface/cgfp-classifier-dev/ && git add -u && git commit -m "update dev model" && git push
+
+update-prod-model:
+	@echo "Moving model files from $(MODEL_DIR)..."
+	cp $(CGFP_DIR)model-files/$(MODEL_DIR)/pytorch_model.bin $(CGFP_DIR)huggingface/cgfp-classifier/
+	cp $(CGFP_DIR)model-files/$(MODEL_DIR)/config.json $(CGFP_DIR)huggingface/cgfp-classifier/
+	@echo "Committing changes..."
+	cd $(CGFP_DIR)huggingface/cgfp-classifier/ && git add -u && git commit -m "update prod model" && git push
+
