@@ -4,7 +4,7 @@ import json
 from datetime import datetime
 
 from sklearn.preprocessing import LabelEncoder
-from sklearn.metrics import accuracy_score, precision_recall_fscore_support
+from sklearn.metrics import accuracy_score, f1_score
 import polars as pl
 import numpy as np
 
@@ -12,7 +12,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.optim import AdamW
-from torch.optim.lr_scheduler import CosineAnnealingLR, ReduceLROnPlateau
+from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
+
 
 from transformers import (
     DistilBertForSequenceClassification,
@@ -63,11 +64,12 @@ FPG_IDX = LABELS.index("Food Product Group")
 BASIC_TYPE_IDX = LABELS.index("Basic Type")
 
 # TODO: add args to MODEL_PATH and logging path
+# TODO: make model path name more descriptive
 MODEL_PATH = (
     f"/net/projects/cgfp/model-files/{datetime.now().strftime('%Y-%m-%d_%H-%M')}"
 )
 
-SMOKE_TEST = True
+SMOKE_TEST = False
 SAVE_BEST = True
 
 FREEZE_LAYERS = True
@@ -77,13 +79,20 @@ if SMOKE_TEST:
 
 
 def read_data(data_path):
-    return pl.read_csv(data_path, infer_schema_length=1, null_values=["NULL"]).lazy()
+    df = pl.read_csv(data_path, infer_schema_length=1, null_values=["NULL"]).lazy()
+    df_cleaned = df.select(TEXT_FIELD, *LABELS)
+    # TODO: We should probably drop rows that contain integers
+    # For now, just convert to string so we can run this
+    # Reminder: polars syntax is different than pandas syntax
+    df_cleaned = df_cleaned.with_columns(pl.col(TEXT_FIELD).cast(pl.Utf8))
+    df_cleaned = df_cleaned.filter(pl.col(TEXT_FIELD).is_not_null())
+    df_cleaned = df_cleaned.fill_null("None")
+    return df_cleaned
 
 
 ### Data prep
 
 # Training
-
 
 def compute_metrics(pred):
     """
@@ -101,19 +110,22 @@ def compute_metrics(pred):
     array([[ 5],
        [26]])
     """
-
     num_tasks = len(pred.predictions)
     preds = [pred.predictions[i].argmax(-1) for i in range(num_tasks)]
     labels = [pred.label_ids[:, i, 0].tolist() for i in range(num_tasks)]
 
     accuracies = {}
+    f1_scores = {}
     for i, task in enumerate(zip(preds, labels)):
         pred, lbl = task
         accuracies[i] = accuracy_score(lbl, pred)
+        f1_scores[i] = f1_score(lbl, pred, average='weighted')  # Use weighted for multi-class classification
+
 
     mean_accuracy = sum(accuracies.values()) / num_tasks
+    mean_f1_score = sum(f1_scores.values()) / num_tasks
 
-    return {"mean_accuracy": mean_accuracy, "accuracies": accuracies}
+    return {"mean_accuracy": mean_accuracy, "accuracies": accuracies, "mean_f1_score": mean_f1_score, "f1_scores": f1_scores}
 
 
 if __name__ == "__main__":
@@ -133,23 +145,17 @@ if __name__ == "__main__":
     # Data preparation
 
     # TODO: Set this up so data file comes out of data pipeline
-    data_path = sys.argv[1] if len(sys.argv) > 1 else "data"
+    # TODO: Fix this also so that the arguments make more sense...
+    data_path = sys.argv[1] if len(sys.argv) > 1 else "/net/projects/cgfp/data/clean/clean_CONFIDENTIAL_CGFP_bulk_data_073123.csv"
     logging.info(f"Reading data from path : {data_path}")
-    df = read_data(data_path)
-    columns = df.columns
-    df_cleaned = df.select(TEXT_FIELD, *LABELS)
-    # TODO: this is to handle random integers that show up in the input column and break stuff
-    # Should handle these somehow (drop rows — check the pipeline)
-    # For now, just convert to string so we can run this
-    # Reminder: polars syntax is different than pandas syntax
-    df_cleaned = df_cleaned.with_columns(pl.col(TEXT_FIELD).cast(pl.Utf8))
-    df_cleaned = df_cleaned.filter(pl.col(TEXT_FIELD).is_not_null())
-    df_cleaned = df_cleaned.fill_null("None")
+    df_train = read_data(data_path)
+    df_eval = read_data("/net/projects/cgfp/data/clean/clean_New_Raw_Data_030724.csv")
+    df_combined = pl.concat([df_train, df_eval]) # combine training and eval so we have all valid outputs for evaluation
 
     encoders = {}
     for column in LABELS:
         encoder = LabelEncoder()
-        encoder.fit_transform(df_cleaned.select(column).collect().to_numpy().ravel())
+        encoder.fit_transform(df_combined.select(column).collect().to_numpy().ravel())
         encoders[column] = encoder
 
     # Create decoders to save to model config
@@ -166,9 +172,9 @@ if __name__ == "__main__":
     # Save valid basic types for each food product group
     # Reminder: polars syntax is different than pandas
     inference_masks = {}
-    basic_types = df_cleaned.select("Basic Type").unique().collect()['Basic Type'].to_list()
-    for fpg in df_cleaned.select('Food Product Group').unique().collect()['Food Product Group']:
-        valid_basic_types = df_cleaned.filter(pl.col("Food Product Group") == fpg).select("Basic Type").unique().collect()['Basic Type'].to_list()
+    basic_types = df_combined.select("Basic Type").unique().collect()['Basic Type'].to_list()
+    for fpg in df_combined.select('Food Product Group').unique().collect()['Food Product Group']:
+        valid_basic_types = df_combined.filter(pl.col("Food Product Group") == fpg).select("Basic Type").unique().collect()['Basic Type'].to_list()
 
         # logging to inspect basic types
         # logging.info(f"{fpg} basic types")
@@ -180,10 +186,11 @@ if __name__ == "__main__":
         inference_masks[fpg] = mask.tolist()
 
     logging.info("Preparing dataset")
-    dataset = Dataset.from_pandas(df_cleaned.collect().to_pandas())
+    train_dataset = Dataset.from_pandas(df_train.collect().to_pandas())
+    eval_dataset = Dataset.from_pandas(df_eval.collect().to_pandas())
 
     if SMOKE_TEST:
-        dataset = dataset.select(range(1000))
+        train_dataset = train_dataset.select(range(1000))
 
     tokenizer = DistilBertTokenizerFast.from_pretrained(MODEL_NAME)
 
@@ -196,16 +203,20 @@ if __name__ == "__main__":
         ]
         return tokenized_inputs
 
-    dataset = dataset.map(tokenize)
+    # TODO: there's a better way to do this...
+    # Should probably put most (or all) of this in a function and handle the config stuff after the dataset is setup
+    train_dataset = train_dataset.map(tokenize)
+    eval_dataset = eval_dataset.map(tokenize)
     for i in range(5):
-        logging.info(dataset[i])
+        logging.info(train_dataset[i])
 
-    dataset.set_format("torch", columns=["input_ids", "attention_mask", "labels"])
-    dataset = dataset.train_test_split(test_size=0.2)
+    train_dataset.set_format("torch", columns=["input_ids", "attention_mask", "labels"])
+    eval_dataset.set_format("torch", columns=["input_ids", "attention_mask", "labels"])
+    # train_dataset = train_dataset.train_test_split(test_size=0.2)
     logging.info("Dataset is prepared")
 
-    logging.info(f"Structure of the dataset : {dataset}")
-    logging.info(f"Sample record from the dataset : {dataset['train'][0]}")
+    logging.info(f"Structure of the dataset : {train_dataset}")
+    logging.info(f"Sample record from the dataset : {train_dataset[0]}")
 
     # Training
 
@@ -220,7 +231,7 @@ if __name__ == "__main__":
     config = MultiTaskConfig(
         num_categories_per_task=num_categories_per_task,
         decoders=decoders,
-        columns=columns,
+        columns=LABELS,
         classification=classification,
         fpg_idx=FPG_IDX,
         basic_type_idx=BASIC_TYPE_IDX,
@@ -243,24 +254,19 @@ if __name__ == "__main__":
         for param in model.classification_heads.parameters():
             param.requires_grad = True
 
-    # TODO: set this up to come from args
-    lr = 0.001
-
     # TODO: Training logs argument doesn't seem to work. Logs are in the normal logging folder?
-    # Add info to logging file name
+    # TODO: Add info to logging file name
     training_args = TrainingArguments(
+        # TODO: come up with may to manage storage space for checkpoints
         output_dir="/net/projects/cgfp/checkpoints",
         evaluation_strategy="epoch",
         save_strategy="epoch",
         num_train_epochs=epochs,
         per_device_train_batch_size=32,
         per_device_eval_batch_size=64,
-        lr_scheduler_type="linear",
-        learning_rate=lr,
         warmup_steps=100,
-        weight_decay=0.01,
         logging_dir="./training-logs",
-        # logging_dir = '/home/tnief/good-food-purchasing/training-logs'
+        max_grad_norm=1.0,
     )
 
     if SAVE_BEST:
@@ -268,34 +274,18 @@ if __name__ == "__main__":
         training_args.metric_for_best_model = "mean_accuracy"
         training_args.greater_is_better = True
 
-    # TODO: depending on how we're actually training an LR scheduler is probably useful
-    # Same thing with learning rate
-    adamW = AdamW(model.parameters(), lr=lr)
-    # TODO: pass this from args...maybe include an option for None
-    # Should prob actually use: torch.optim.lr_scheduler.ReduceLROnPlateau
-    # scheduler = ReduceLROnPlateau(adamW) doesn't work great with trainer
-
-    # idea from ChatGPT:
-    # class ReduceOnPlateauCallback(TrainerCallback):
-    # def __init__(self, optimizer, *args, **kwargs):
-    #     self.scheduler = ReduceLROnPlateau(optimizer, *args, **kwargs)
-
-    # def on_evaluate(self, args, state, control, **kwargs):
-    #     metrics = kwargs.get('metrics', {})
-    #     validation_loss = metrics.get('eval_loss', None)
-    #     if validation_loss is not None:
-    #         self.scheduler.step(validation_loss)
-    #
-    # add this to trainer args:
-    # callbacks=[ReduceOnPlateauCallback(optimizer, mode='min', factor=0.1, patience=10)]
+    # TODO: set this up to come from args
+    lr = 0.001
+    adamW = AdamW(model.parameters(), lr=lr, betas=(0.9, 0.95), eps=1e-5, weight_decay=0.1)
+    scheduler = CosineAnnealingWarmRestarts(adamW, T_0=2000, T_mult=1, eta_min=lr*0.1)
 
     trainer = Trainer(
         model=model,
         args=training_args,
         compute_metrics=compute_metrics,
-        train_dataset=dataset["train"],
-        eval_dataset=dataset["test"],
-        optimizers=(adamW, None),  # Optimizer, LR scheduler
+        train_dataset=train_dataset,
+        eval_dataset=train_dataset,
+        optimizers=(adamW, scheduler),  # Pass optimizers here (rather than training_args) for more fine-grained control
     )
 
     logging.info("Training...")
@@ -304,9 +294,10 @@ if __name__ == "__main__":
     logging.info("Training complete")
     logging.info(f"Validation Results: {trainer.evaluate()}")
 
-    logging.info("Saving the model")
-    model.save_pretrained(MODEL_PATH)
-    tokenizer.save_pretrained(MODEL_PATH)
+    if not SMOKE_TEST:
+        logging.info("Saving the model")
+        model.save_pretrained(MODEL_PATH)
+        tokenizer.save_pretrained(MODEL_PATH)
 
     logging.info("Complete!")
 

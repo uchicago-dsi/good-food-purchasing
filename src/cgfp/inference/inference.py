@@ -3,6 +3,7 @@ import pandas as pd
 import os
 import logging
 import numpy as np
+import argparse
 
 from cgfp.config_tags import GROUP_CATEGORY_VALIDATION
 from cgfp.training.models import MultiTaskModel
@@ -79,9 +80,6 @@ def inference(model, tokenizer, text, device, assertion=True, confidence_score=T
             # TODO: what do we want to actually happen here?
             # Can we log or print base on where we are?
             # logging.info(f"Exception: {e}")
-        
-    if legible_preds["Sub-Type 1"] != "None":
-        breakpoint()
     return legible_preds
 
 
@@ -157,6 +155,7 @@ def inference_handler(
     # Add all columns to results to match name normalization format
     # Assumes that the input dataframe is in the expected name normalization format
     # TODO: Add a check for that
+    # TODO: Seems like sub-types get dropped here?
     results_full = pd.DataFrame()
     for col in df.columns:
         if col in results:
@@ -193,8 +192,13 @@ def inference_handler(
 
 
 if __name__ == "__main__":
-    HUGGINGFACE = "cgfp-classifier-dev"
-    model = MultiTaskModel.from_pretrained(f"uchicago-dsi/{HUGGINGFACE}")
+    parser = argparse.ArgumentParser(description="Load model checkpoint.")
+    parser.add_argument("--checkpoint", type=str, help="Path to the model checkpoint directory or Huggingface model name.")
+    
+    args = parser.parse_args()
+    checkpoint = args.checkpoint if args.checkpoint else "uchicago-dsi/cgfp-classifier-dev"
+
+    model = MultiTaskModel.from_pretrained(checkpoint)
     tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
@@ -202,12 +206,12 @@ if __name__ == "__main__":
     HIGHLIGHT = False
     CONFIDENCE_SCORE = False
     ROWS_TO_CLASSIFY = None
-    RAW_RESULTS = True  # saves the raw model results rather than the formatted normalized name results
+    RAW_RESULTS = False  # saves the raw model results rather than the formatted normalized name results
     ASSERTION = True
 
     FILENAME = "TestData_11.22.23.xlsx"
     INPUT_COLUMN = "Product Type"
-    DATA_DIR = "/net/projects/cgfp/data/"
+    DATA_DIR = "/net/projects/cgfp/data/clean/"
 
     INPUT_PATH = DATA_DIR + FILENAME
 
