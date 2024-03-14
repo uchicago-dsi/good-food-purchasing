@@ -156,6 +156,7 @@ def inference_handler(
     # Assumes that the input dataframe is in the expected name normalization format
     # TODO: Add a check for that
     # TODO: Seems like sub-types get dropped here?
+    # Should make these all lowercase and rename them when we finally save it
     results_full = pd.DataFrame()
     for col in df.columns:
         if col in results:
@@ -211,7 +212,7 @@ if __name__ == "__main__":
 
     FILENAME = "TestData_11.22.23.xlsx"
     INPUT_COLUMN = "Product Type"
-    DATA_DIR = "/net/projects/cgfp/data/clean/"
+    DATA_DIR = "/net/projects/cgfp/data/raw/"
 
     INPUT_PATH = DATA_DIR + FILENAME
 
