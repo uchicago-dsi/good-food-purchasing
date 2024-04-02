@@ -84,7 +84,7 @@ SKIP_TOKENS = {
     "parmesan basil",
     "extra spicy",
     "extreme heat",
-    "plain",  # TODO: can we always skip this
+    "plain",
     ## OLIVE OIL ##
     "virgin",
     "extra virgin",
@@ -292,6 +292,8 @@ FRUITS = {
     "cherry",
     "peach",
     "pear",
+    "watermelon",
+    "watermelon strawberry",
 }
 
 ALL_FLAVORS = FLAVORS | FRUITS

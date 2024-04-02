@@ -64,9 +64,11 @@ def token_handler(token, food_product_group, food_product_category, basic_type):
     # Handle edge cases where a token is not allowed
     if (
         # Food product group rules
-        food_product_group == "Milk & Dairy"
-        and token in ["in brine", "nectar", "honey"]
-        or (food_product_group == "Meat" and token == "ketchup")
+        (
+            food_product_group == "Milk & Dairy"
+            and token in ["in brine", "nectar", "honey"]
+        )
+        or (food_product_group == "Meat" and token in ["ketchup", "italian"])
         or (
             food_product_group == "Produce"
             and token in ["whole", "peeled", "kosher", "gluten free"]
@@ -110,7 +112,6 @@ def token_handler(token, food_product_group, food_product_category, basic_type):
             or (basic_type == "cookie" and token in ["sugar"])
             or (basic_type == "dessert" and token in ["crumb", "graham cracker"])
             or (basic_type == "mix" and token in ["custard"])
-            or (basic_type == "sausage" and token in ["italian"])
         )
     ):
         return None
@@ -181,6 +182,13 @@ def clean_name(
             basic_type = token
             normalized_name["Basic Type"] = token
             continue
+        # Handle edge cases for basic type
+        if basic_type == "snack" and token in [
+            "bar",
+        ]:
+            basic_type = "bar"
+            continue
+
         token = token_handler(
             token, food_product_group, food_product_category, basic_type
         )
@@ -313,12 +321,10 @@ if __name__ == "__main__":
     )
     # TODO: make better logic for this
     # for sparkling water, we want to replace multiple fruits with "flavored"
+    # for everything else we want it to be "fruit"
     fruit_water = (df_split["Basic Type"] == "water") & multiple_fruits
-
-    # Condition for when Basic Type is not 'water'
     not_fruit_water = (df_split["Basic Type"] != "water") & multiple_fruits
 
-    # Apply conditions
     df_split.loc[fruit_water, "Sub Type 1"] = "flavored"
     df_split.loc[fruit_water, "Sub Type 2"] = None
     df_split.loc[not_fruit_water, "Sub Type 1"] = "fruit"
