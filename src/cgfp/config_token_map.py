@@ -17,6 +17,7 @@ TOKEN_MAP_DICT = {
     "sugar-free": "sugar free",
     "fillet": "filet",
     "fat-free": "fat free",
+    "rice crispies": "rice krispies",
     ## CUT ##
     "sliced": "cut",
     "diced": "cut",

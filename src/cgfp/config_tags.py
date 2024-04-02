@@ -75,7 +75,6 @@ SKIP_TOKENS = {
     "chorizo",
     "louisiana",
     "kielbasa",
-    "italian",  # TODO: what about salad dressings?
     "uncured",
     ## SORT OF FLAVORED ##
     "spicy",
@@ -148,10 +147,13 @@ SKIP_TOKENS = {
     "ring",
     "twist",
     "pocket",
+    "rope",
     ## SPICES ##
     "pasilla negro",
     ## TEXTURE ##
     "soft",
+    "hard",
+    "liquid",
 }
 
 # For these basic types, skip anything that is in the FLAVORS set
@@ -171,6 +173,10 @@ SKIP_FLAVORS = {
     "pastry",
     "cracker",
     "cookie",
+    "cake",
+    "danish",
+    "pastry",
+    "dessert",
 }
 
 # For these basic types, tag anything that includes a FLAVORS tag as "flavored"
@@ -284,6 +290,8 @@ FRUITS = {
     "acai",
     "blueberry",
     "cherry",
+    "peach",
+    "pear",
 }
 
 ALL_FLAVORS = FLAVORS | FRUITS
@@ -474,6 +482,7 @@ GROUP_TAGS = {
         },
         "WG/WGR": {"whole grain rich"},
         "Dietary Concern": {
+            "no sodium",
             "low sodium",
             "no sugar added",
             "reduced fat",
@@ -577,6 +586,7 @@ GROUP_TAGS = {
             "sliced",
             "cut",
             "stick",
+            "crumble",
         },
         "Skin": {"skinless"},
         "Seed/Bone": {"bone-in"},

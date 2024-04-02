@@ -63,23 +63,9 @@ def token_handler(token, food_product_group, food_product_category, basic_type):
 
     # Handle edge cases where a token is not allowed
     if (
-        (
-            food_product_group == "Milk & Dairy"
-            and token in ["in brine", "nectar", "honey"]
-        )
-        or (
-            food_product_category == "Cheese"
-            and token
-            in [
-                "in water",
-                "ball",
-                "low moisture",
-                "whole milk",
-                "logs",
-                "unsalted",
-                "in oil",
-            ]
-        )
+        # Food product group rules
+        food_product_group == "Milk & Dairy"
+        and token in ["in brine", "nectar", "honey"]
         or (food_product_group == "Meat" and token == "ketchup")
         or (
             food_product_group == "Produce"
@@ -88,24 +74,44 @@ def token_handler(token, food_product_group, food_product_category, basic_type):
         or (
             food_product_group == "Seafood" and token in ["seasoned", "stuffed", "lime"]
         )
-        or (basic_type == "plant milk" and token in ["nonfat", "low fat"])
-        or (basic_type == "bean" and token == "turtle")
-        or (basic_type == "supplement" and token == "liquid")
-        or (basic_type == "bar" and token in ["cereal", "cocoa", "seed"])
         or (
-            basic_type == "ice cream"
-            and token in ["crunch", "taco", "chocolate covered", "cookie"]
+            food_product_group == "Condiments & Snacks"
+            and token in ["shredded", "non-dairy"]
+            # Food product category rules
+            or (
+                food_product_category == "Cheese"
+                and token
+                in [
+                    "in water",
+                    "ball",
+                    "low moisture",
+                    "whole milk",
+                    "logs",
+                    "unsalted",
+                    "in oil",
+                ]
+            )
+            # Basic type rules
+            or (basic_type == "plant milk" and token in ["nonfat", "low fat"])
+            or (basic_type == "bean" and token == "turtle")
+            or (basic_type == "supplement" and token == "liquid")
+            or (basic_type == "bar" and token in ["cereal", "cocoa", "seed"])
+            or (
+                basic_type == "ice cream"
+                and token in ["crunch", "taco", "chocolate covered", "cookie"]
+            )
+            or (basic_type == "salsa" and token in ["thick", "chunky", "mild"])
+            or (
+                food_product_category == "Grain Products"
+                and basic_type not in ["cereal"]
+                and token == "wheat"
+            )
+            or (basic_type == "condiment" and token in ["thick", "thin", "sweet"])
+            or (basic_type == "cookie" and token in ["sugar"])
+            or (basic_type == "dessert" and token in ["crumb", "graham cracker"])
+            or (basic_type == "mix" and token in ["custard"])
+            or (basic_type == "sausage" and token in ["italian"])
         )
-        or (basic_type == "salsa" and token in ["thick", "chunky", "mild"])
-        or (
-            food_product_category == "Grain Products"
-            and basic_type not in ["cereal"]
-            and token == "wheat"
-        )
-        or (basic_type == "condiment" and token in ["thick", "thin", "sweet"])
-        or (basic_type == "cookie" and token in ["sugar"])
-        or (basic_type == "dessert" and token in ["crumb", "graham cracker"])
-        or (basic_type == "mix" and token in ["custard"])
     ):
         return None
 
@@ -305,8 +311,18 @@ if __name__ == "__main__":
         & (df_split["Sub-Type 1"].isin(FRUITS))
         & (df_split["Sub-Type 2"].isin(FRUITS))
     )
-    df_split.loc[multiple_fruits, "Sub Type 1"] = "fruit"
-    df_split.loc[multiple_fruits, "Sub Type 2"] = None
+    # TODO: make better logic for this
+    # for sparkling water, we want to replace multiple fruits with "flavored"
+    fruit_water = (df_split["Basic Type"] == "water") & multiple_fruits
+
+    # Condition for when Basic Type is not 'water'
+    not_fruit_water = (df_split["Basic Type"] != "water") & multiple_fruits
+
+    # Apply conditions
+    df_split.loc[fruit_water, "Sub Type 1"] = "flavored"
+    df_split.loc[fruit_water, "Sub Type 2"] = None
+    df_split.loc[not_fruit_water, "Sub Type 1"] = "fruit"
+    df_split.loc[not_fruit_water, "Sub Type 2"] = None
 
     multiple_cheeses = (
         (df_split["Food Product Category"] == "Cheese")
