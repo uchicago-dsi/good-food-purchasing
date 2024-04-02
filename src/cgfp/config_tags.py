@@ -154,6 +154,8 @@ SKIP_TOKENS = {
     "soft",
     "hard",
     "liquid",
+    ## MISC ##
+    "sea salt",
 }
 
 # For these basic types, skip anything that is in the FLAVORS set
@@ -249,6 +251,8 @@ FLAVORS = {
     "beer",
     ## SEAFOOD ##
     "chipotle",
+    "chive and cheddar",
+    "parmesan basil",
     ## HERBS ##
     "mint",
     ## SNACKS ##
@@ -677,7 +681,7 @@ GROUP_TAGS = {
         "Commodity": {"commodity"},
     },
     "Seafood": {
-        "Flavor/Cut": {"loin", "meat", "shank", "steak"},
+        "Flavor/Cut": {"loin", "meat", "shank", "steak", "flavored"},
         "Shape": {
             "cut",
             "cake",

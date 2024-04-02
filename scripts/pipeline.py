@@ -188,6 +188,9 @@ def clean_name(
         ]:
             basic_type = "bar"
             continue
+        if basic_type == "sea salt":
+            basic_type = "salt"
+            continue
 
         token = token_handler(
             token, food_product_group, food_product_category, basic_type
