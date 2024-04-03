@@ -211,6 +211,11 @@ def clean_name(
                         normalized_name[col] = token
                         matched = True
                         break
+                if col in category_tags_dict.get(food_product_category, {}):
+                    if token in category_tags_dict[food_product_category][col]:
+                        normalized_name[col] = token
+                        matched = True
+                        break
             if matched:
                 continue
         # First token after basic type is sub-type 1 if it's not from the later tags
