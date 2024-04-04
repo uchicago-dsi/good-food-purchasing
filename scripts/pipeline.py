@@ -52,12 +52,15 @@ def clean_df(df):
     return df
 
 
-def token_handler(token, food_product_group, food_product_category, basic_type):
+def token_handler(
+    token, food_product_group, food_product_category, basic_type, sub_type_1
+):
     # Handle edge cases where a token is allowed
     if (
         (token == "blue" and basic_type == "cheese")
         or (token == "instant" and food_product_group == "Beverages")
         or (token == "black" and basic_type in ["tea", "drink"])
+        or (token == "gluten free" and sub_type_1 in ["parfait"])
     ):
         return token
 
@@ -156,6 +159,10 @@ def token_handler(token, food_product_group, food_product_category, basic_type):
     if basic_type == "candy" and token in CHOCOLATE:
         return "chocolate"
 
+    # "chip" should be mapped to "cut" for pickles...but "chip" is valid for snacks
+    if sub_type_1 == "pickle" and token == "chip":
+        return "cut"
+
     # Skip outdated tokens from old name normalization format
     # Do this last since some rules override this
     if token in SKIP_TOKENS:
@@ -174,6 +181,8 @@ def clean_name(
     # Then we add the tokens to the appropriate column based on membership
     normalized_name = {}
     misc_col = {"Misc": []}  # make a list so we can append unmatched tokens
+    # Initialize sub-type 1 since we need to pass it to token_handler
+    sub_type_1 = None
     for i, token in enumerate(name_list):
         token = token.strip()
         token = TOKEN_MAP_DICT.get(token, token)
@@ -193,7 +202,7 @@ def clean_name(
             continue
 
         token = token_handler(
-            token, food_product_group, food_product_category, basic_type
+            token, food_product_group, food_product_category, basic_type, sub_type_1
         )
         if token is None:
             continue
@@ -221,7 +230,8 @@ def clean_name(
         # First token after basic type is sub-type 1 if it's not from the later tags
         # TODO: set this up so that I'm saving sub-types as a list
         if "Sub-Type 1" not in normalized_name:
-            normalized_name["Sub-Type 1"] = token
+            sub_type_1 = token
+            normalized_name["Sub-Type 1"] = sub_type_1
             continue
         elif "Sub-Type 2" not in normalized_name:
             normalized_name["Sub-Type 2"] = token
