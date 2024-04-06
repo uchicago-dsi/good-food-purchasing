@@ -69,10 +69,12 @@ MODEL_PATH = (
     f"/net/projects/cgfp/model-files/{datetime.now().strftime('%Y-%m-%d_%H-%M')}"
 )
 
-SMOKE_TEST = False
+SMOKE_TEST = True
 SAVE_BEST = True
 
-FREEZE_LAYERS = True
+FREEZE_LAYERS = False
+FREEZE_MLPS = True
+
 
 if SMOKE_TEST:
     MODEL_PATH += "-smoke-test"
@@ -151,6 +153,9 @@ if __name__ == "__main__":
     df_train = read_data(data_path)
     df_eval = read_data("/net/projects/cgfp/data/clean/clean_New_Raw_Data_030724.csv")
     df_combined = pl.concat([df_train, df_eval]) # combine training and eval so we have all valid outputs for evaluation
+
+    # TODO: uhhhh...the dataframe isn't loading anymore?
+    breakpoint()
 
     encoders = {}
     for column in LABELS:
@@ -244,7 +249,6 @@ if __name__ == "__main__":
     epochs = 5 if SMOKE_TEST else 40
 
     # TODO: add an arg for freezing layers
-    # Is gradient still calculated here? If so, we should figure out how to not do that
     # Freeze all layers
     if FREEZE_LAYERS:
         for param in model.parameters():
@@ -253,6 +257,24 @@ if __name__ == "__main__":
         # Unfreeze classification heads
         for param in model.classification_heads.parameters():
             param.requires_grad = True
+
+    breakpoint()
+
+    if FREEZE_MLPS:
+        for param in model.parameters():
+            param.requires_grad = False
+
+        # Unfreeze attention heads
+        for name, param in model.named_parameters():
+            if "attention" in name or "output" in name:
+                param.requires_grad = True
+
+        # Unfreeze classification heads
+        for param in model.classification_heads.parameters():
+            param.requires_grad = True
+
+
+
 
     # TODO: Training logs argument doesn't seem to work. Logs are in the normal logging folder?
     # TODO: Add info to logging file name
