@@ -66,10 +66,11 @@ MODEL_PATH = (
     f"/net/projects/cgfp/model-files/{datetime.now().strftime('%Y-%m-%d_%H-%M')}"
 )
 
-SMOKE_TEST = False
+SMOKE_TEST = True
 SAVE_BEST = True
 
-FREEZE_LAYERS = True
+FREEZE_LAYERS = False
+FREEZE_MLPS = True
 
 if SMOKE_TEST:
     MODEL_PATH += "-smoke-test"
@@ -132,7 +133,8 @@ if __name__ == "__main__":
     # Data preparation
 
     # TODO: Set this up so data file comes out of data pipeline
-    data_path = sys.argv[1] if len(sys.argv) > 1 else "data"
+    # data_path = sys.argv[1] if len(sys.argv) > 1 else "data"
+    data_path = sys.argv[1] if len(sys.argv) > 1 else "/net/projects/cgfp/data/clean/clean_CONFIDENTIAL_CGFP_bulk_data_073123.csv"
     logging.info(f"Reading data from path : {data_path}")
     df = read_data(data_path)
     columns = df.columns
@@ -241,6 +243,23 @@ if __name__ == "__main__":
         # Unfreeze classification heads
         for param in model.classification_heads.parameters():
             param.requires_grad = True
+
+    if FREEZE_MLPS:
+        for param in model.parameters():
+            param.requires_grad = False
+
+        # Unfreeze attention heads and layernorm
+        for name, param in model.named_parameters():
+            if "attention" in name or "output" in name or "layer_norm" in name:
+                param.requires_grad = True
+
+        # Unfreeze classification heads
+        for param in model.classification_heads.parameters():
+            param.requires_grad = True
+
+        for name, param in model.named_parameters():
+            print(f"{name} is {'frozen' if not param.requires_grad else 'unfrozen'}")
+
 
     # TODO: set this up to come from args
     lr = 0.001
