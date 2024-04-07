@@ -14,6 +14,8 @@ import torch.nn.functional as F
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR, ReduceLROnPlateau
 
+import datasets
+
 from transformers import (
     DistilBertForSequenceClassification,
     DistilBertTokenizerFast,
@@ -66,11 +68,11 @@ MODEL_PATH = (
     f"/net/projects/cgfp/model-files/{datetime.now().strftime('%Y-%m-%d_%H-%M')}"
 )
 
-SMOKE_TEST = True
+SMOKE_TEST = False
 SAVE_BEST = True
 
-FREEZE_LAYERS = False
-FREEZE_MLPS = True
+FREEZE_LAYERS = True
+FREEZE_MLPS = False
 
 if SMOKE_TEST:
     MODEL_PATH += "-smoke-test"
@@ -307,11 +309,14 @@ if __name__ == "__main__":
     # add this to trainer args:
     # callbacks=[ReduceOnPlateauCallback(optimizer, mode='min', factor=0.1, patience=10)]
 
+    # TODO: this is a hack to train on everything...but I think we're missing a lot of stuff with our train test split
+    combined_dataset = datasets.concatenate_datasets([dataset["train"], dataset["test"]])
+
     trainer = Trainer(
         model=model,
         args=training_args,
         compute_metrics=compute_metrics,
-        train_dataset=dataset["train"],
+        train_dataset=combined_dataset,
         eval_dataset=dataset["test"],
         optimizers=(adamW, None),  # Optimizer, LR scheduler
     )
