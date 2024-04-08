@@ -1,4 +1,5 @@
 
+# TODO: Set this with environment variable
 SBATCH_MAIL:=tnief@uchicago.edu
 DSI_PARTITION:=general
 
@@ -16,13 +17,13 @@ RUN_LOGS:=$(LOG_DIR)/$(TIMESTAMP)
 
 LAST_LOGS:=$(shell find logs |grep -E "logs/[^/]*$$" |sort |tail -n 1)
 
-# CONDA_ENV_PATH := ./tmp/conda/cgfp
-# TODO: What do we actually want to do with this?
-CONDA_ENV_PATH := /net/projects/cgfp/conda-environment
+# TODO: set this with an environment variable
+CONDA_ENV_PATH := /net/projects/veitch/tnief/conda/envs/cgfp
 CONDA_ENV_FILE := environment.yml
 
 CONDA_RUN = conda run -p $(CONDA_ENV_PATH)
 
+# TODO: set with environment variable
 CGFP_DIR=/net/projects/cgfp/
 
 .PHONY: clean
@@ -35,7 +36,8 @@ clean:
 ##### ENVIRONMENT SETUP #####
 
 $(CONDA_ENV_PATH):
-	conda env create --file $(CONDA_ENV_FILE) --prefix $(CONDA_ENV_PATH) -v
+	conda env create --file $(CONDA_ENV_FILE)
+
 
 $(CONDA_ENV_PATH)/.timestamp: $(CONDA_ENV_FILE) $(CONDA_ENV_PATH)
 	conda env update --file $(CONDA_ENV_FILE) --prefix $(CONDA_ENV_PATH) -v
