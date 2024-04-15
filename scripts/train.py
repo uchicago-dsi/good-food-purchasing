@@ -74,16 +74,21 @@ SAVE_BEST = True
 FREEZE_LAYERS = False
 FREEZE_MLPS = False
 
+DROP_MEALS = True
+
 if SMOKE_TEST:
     MODEL_PATH += "-smoke-test"
 
 
-def read_data(data_path):
+def read_data(data_path, drop_meals=DROP_MEALS):
     # Note: polars syntax is different than pandas syntax
     df = pl.read_csv(data_path, infer_schema_length=1, null_values=["NULL"]).lazy()
     df_cleaned = df.select(TEXT_FIELD, *LABELS)
     # Make sure every row is correctly encoded as string
     df_cleaned = df_cleaned.with_columns(pl.col(TEXT_FIELD).cast(pl.Utf8))
+
+    if drop_meals:
+        df_cleaned = df_cleaned.filter(pl.col("Food Product Group") != "Meals")
     df_cleaned = df_cleaned.filter(pl.col(TEXT_FIELD).is_not_null())
     df_cleaned = df_cleaned.fill_null("None")
     return df_cleaned
