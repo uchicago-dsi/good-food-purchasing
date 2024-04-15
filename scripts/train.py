@@ -43,8 +43,8 @@ LABELS = [
     "Food Product Category",
     "Primary Food Product Category",
     "Basic Type",
-    "Sub-type 1",
-    "Sub-type 2",
+    "Sub-Type 1",
+    "Sub-Type 2",
     "Flavor/Cut",
     "Shape",
     "Skin",
@@ -152,9 +152,6 @@ if __name__ == "__main__":
     df_train = read_data(data_path)
     df_eval = read_data("/net/projects/cgfp/data/clean/clean_New_Raw_Data_030724.csv")
     df_combined = pl.concat([df_train, df_eval]) # combine training and eval so we have all valid outputs for evaluation
-
-    # TODO: uhhhh...the dataframe isn't loading anymore?
-    breakpoint()
 
     encoders = {}
     for column in LABELS:
@@ -297,9 +294,6 @@ if __name__ == "__main__":
         training_args.metric_for_best_model = "mean_accuracy"
         training_args.greater_is_better = True
 
-    # TODO: this is a hack to train on everything...but I think we're missing a lot of stuff with our train test split
-    combined_dataset = datasets.concatenate_datasets([dataset["train"], dataset["test"]])
-
     # TODO: set this up to come from args
     lr = 0.001
     adamW = AdamW(model.parameters(), lr=lr, betas=(0.9, 0.95), eps=1e-5, weight_decay=0.1)
@@ -309,8 +303,10 @@ if __name__ == "__main__":
         model=model,
         args=training_args,
         compute_metrics=compute_metrics,
-        train_dataset=combined_dataset,
-        eval_dataset=dataset["test"],
+        # train_dataset=combined_dataset,
+        train_dataset=train_dataset,
+        # eval_dataset=dataset["test"],
+        eval_dataset=eval_dataset,
         optimizers=(adamW, scheduler),  # Pass optimizers here (rather than training_args) for more fine-grained control
     )
 
