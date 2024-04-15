@@ -14,9 +14,7 @@ import torch.nn.functional as F
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 
-
 import datasets
-
 from transformers import (
     DistilBertForSequenceClassification,
     DistilBertTokenizerFast,
@@ -72,12 +70,10 @@ MODEL_PATH = (
 )
 
 SMOKE_TEST = True
-SMOKE_TEST = True
 SAVE_BEST = True
 
 FREEZE_LAYERS = False
-FREEZE_MLPS = True
-
+FREEZE_MLPS = False
 
 if SMOKE_TEST:
     MODEL_PATH += "-smoke-test"

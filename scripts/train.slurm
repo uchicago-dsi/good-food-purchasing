@@ -3,7 +3,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --mail-type=END
-#SBATCH --constraint=a100
+#SBATCH --constraint="a100|h100"
 
 # TODO: can probably force the correct environment here?
 
