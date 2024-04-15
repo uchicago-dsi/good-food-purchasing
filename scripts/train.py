@@ -155,6 +155,7 @@ if __name__ == "__main__":
 
     SMOKE_TEST = args.smoke_test
     DROP_MEALS = not args.keep_meals
+    logging.info(f"DROP_MEALS: {DROP_MEALS}")
 
     logging.info(f"Reading data from path : {args.train_data_path}")
     df_train = read_data(args.train_data_path, drop_meals=DROP_MEALS)
