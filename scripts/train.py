@@ -131,22 +131,18 @@ def compute_metrics(pred):
 
 
 if __name__ == "__main__":
-
-    logging.info(f"MODEL_PATH : {MODEL_PATH}")
-
     ### SETUP ###
-
+    logging.info(f"MODEL_PATH : {MODEL_PATH}")
     logging.info("Starting")
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
     logging.info(f"Training with device : {device}")
-
     logging.info(f"Using base model : {MODEL_NAME}")
     logging.info(f"Predicting based on input field : {TEXT_FIELD}")
     logging.info(f"Predicting categorical fields : {LABELS}")
 
     ### DATA PREP ###
 
-    # TODO: Fix this also so that the arguments make more sense...
+    # TODO: Use an argparser
     data_path = sys.argv[1] if len(sys.argv) > 1 else "/net/projects/cgfp/data/clean/clean_CONFIDENTIAL_CGFP_bulk_data_073123.csv"
     logging.info(f"Reading data from path : {data_path}")
     df_train = read_data(data_path)
@@ -176,11 +172,6 @@ if __name__ == "__main__":
     basic_types = df_combined.select("Basic Type").unique().collect()['Basic Type'].to_list()
     for fpg in df_combined.select('Food Product Group').unique().collect()['Food Product Group']:
         valid_basic_types = df_combined.filter(pl.col("Food Product Group") == fpg).select("Basic Type").unique().collect()['Basic Type'].to_list()
-
-        # logging to inspect basic types
-        # logging.info(f"{fpg} basic types")
-        # logging.info(valid_basic_types)
-
         basic_type_indeces = encoders['Basic Type'].transform(valid_basic_types)
         mask = np.zeros(len(basic_types))
         mask[basic_type_indeces] = 1
