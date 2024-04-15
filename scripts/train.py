@@ -24,6 +24,7 @@ from transformers import (
     PreTrainedModel,
     DistilBertConfig,
     DistilBertModel,
+    TrainerCallback
 )
 from transformers.modeling_outputs import SequenceClassifierOutput
 from datasets import Dataset
@@ -76,14 +77,13 @@ SAVE_BEST = True
 # TODO: Make these settings clearer
 FREEZE_LAYERS = True
 FREEZE_MLPS = False
-
 DROP_MEALS = True
 
 if SMOKE_TEST:
     MODEL_PATH += "-smoke-test"
 
 
-def read_data(data_path, drop_meals=DROP_MEALS):
+def read_data(data_path, drop_meals=False):
     # Note: polars syntax is different than pandas syntax
     df = pl.read_csv(data_path, infer_schema_length=1, null_values=["NULL"]).lazy()
     df_cleaned = df.select(TEXT_FIELD, *LABELS)
@@ -126,11 +126,11 @@ def compute_metrics(pred):
         accuracies[i] = accuracy_score(lbl, pred)
         f1_scores[i] = f1_score(lbl, pred, average='weighted')  # Use weighted for multi-class classification
 
-
+    basic_type_accuracy = accuracies[BASIC_TYPE_IDX]
     mean_accuracy = sum(accuracies.values()) / num_tasks
     mean_f1_score = sum(f1_scores.values()) / num_tasks
 
-    return {"mean_accuracy": mean_accuracy, "accuracies": accuracies, "mean_f1_score": mean_f1_score, "f1_scores": f1_scores}
+    return {"mean_accuracy": mean_accuracy, "accuracies": accuracies, "mean_f1_score": mean_f1_score, "f1_scores": f1_scores, "basic_type_accuracy": basic_type_accuracy}
 
 
 if __name__ == "__main__":
@@ -148,15 +148,17 @@ if __name__ == "__main__":
     parser.add_argument('--train_data_path', default="/net/projects/cgfp/data/clean/clean_CONFIDENTIAL_CGFP_bulk_data_073123.csv", type=str, help="Path to the training data CSV file.")
     parser.add_argument('--eval_data_path', default="/net/projects/cgfp/data/clean/combined_eval_set.csv", type=str, help="Path to the evaluation data CSV file.")
     parser.add_argument('--smoke_test', action='store_true', help="Run in smoke test mode to check basic functionality.")
+    parser.add_argument('--keep_meals', action='store_false', help="Keep Meals items in training and eval datasets")
     # TODO: Add other training config options to argparser
     
     args = parser.parse_args()
 
     SMOKE_TEST = args.smoke_test
+    DROP_MEALS = not args.keep_meals
 
     logging.info(f"Reading data from path : {args.train_data_path}")
-    df_train = read_data(args.train_data_path)
-    df_eval = read_data(args.eval_data_path)
+    df_train = read_data(args.train_data_path, drop_meals=DROP_MEALS)
+    df_eval = read_data(args.eval_data_path, drop_meals=DROP_MEALS)
     df_combined = pl.concat([df_train, df_eval]) # combine training and eval so we have all valid outputs for evaluation
 
     encoders = {}
@@ -273,6 +275,27 @@ if __name__ == "__main__":
     # TODO: set this up to come from args
     lr = 0.001
     epochs = 5 if SMOKE_TEST else 40
+    train_batch_size = 32 # TODO: Probably should experiment with this
+    eval_batch_size = 64
+
+    class SaveBestModelCallback(TrainerCallback):
+        def __init__(self, best_model_metric):
+            self.best_metric = -float('inf')
+            self.best_model_metric = best_model_metric
+            self.best_epoch = None
+
+        def on_evaluate(self, args, state, control, metrics=None, **kwargs):
+            # "eval_" is prepended to the keys in metrics
+            current_metric = metrics["eval_" + self.best_model_metric]
+            if current_metric > self.best_metric:
+                self.best_metric = current_metric
+                self.best_epoch = state.epoch
+                logging.info(f"Best model updated at epoch: {state.epoch} with metric ({current_metric})")
+
+        def on_train_end(self, args, state, control, **kwargs):
+            if self.best_epoch is not None:
+                logging.info(f"The best model was saved from epoch: {self.best_epoch}")
+                logging.info(f"The best result was {self.best_model_metric}: {self.best_metric}")
 
     # TODO: Training logs argument doesn't seem to work. Logs are in the normal logging folder?
     training_args = TrainingArguments(
@@ -280,16 +303,17 @@ if __name__ == "__main__":
         evaluation_strategy="epoch",
         save_strategy="epoch",
         num_train_epochs=epochs,
-        per_device_train_batch_size=32,
-        per_device_eval_batch_size=64,
+        per_device_train_batch_size=train_batch_size,
+        per_device_eval_batch_size=eval_batch_size,
         warmup_steps=100,
         logging_dir="./training-logs",
         max_grad_norm=1.0,
     )
 
+    best_model_metric = "basic_type_accuracy"
     if SAVE_BEST:
         training_args.load_best_model_at_end = True
-        training_args.metric_for_best_model = "mean_f1_score" # TODO: Or accuracy? Maybe should be basic type accuracy?
+        training_args.metric_for_best_model = best_model_metric # TODO: Or accuracy? Maybe should be basic type accuracy?
         training_args.greater_is_better = True
 
     # TODO: set this up to come from args
@@ -302,7 +326,8 @@ if __name__ == "__main__":
         compute_metrics=compute_metrics,
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
-        optimizers=(adamW, scheduler),  # Pass optimizers here (rather than training_args) for more fine-grained control
+        optimizers=(adamW, scheduler), # Pass optimizers here (rather than training_args) for more fine-grained control
+        callbacks=[SaveBestModelCallback(best_model_metric)]
     )
 
     logging.info("Training...")
