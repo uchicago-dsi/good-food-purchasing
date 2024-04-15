@@ -38,6 +38,7 @@ def inference(model, tokenizer, text, device, assertion=True, confidence_score=T
     # TODO: This is fragile. Maybe change config to have a mapping of each column to index
     fpc = prediction_to_string(model, softmaxed_scores, model.fpg_idx + 1)
 
+    # TODO: This seems to not be working: "spice", "herb"
     inference_mask = model.inference_masks[fpg].to(device)
 
     # actually mask the basic type scores
