@@ -32,12 +32,11 @@ from cgfp.training.models import MultiTaskConfig, MultiTaskModel
 
 logging.basicConfig(level=logging.INFO)
 
-### Setup
+### SETUP ###
 
 MODEL_NAME = "distilbert-base-uncased"
 TEXT_FIELD = "Product Type"
-# TODO: This is kind of fragile to changes in capitalization, etc.
-# Fix this so it doesn't matter if the columns are the same case or not
+# Note: Be careful with capitalization here
 LABELS = [
     "Food Product Group",
     "Food Product Category",
@@ -80,20 +79,17 @@ if SMOKE_TEST:
 
 
 def read_data(data_path):
+    # Note: polars syntax is different than pandas syntax
     df = pl.read_csv(data_path, infer_schema_length=1, null_values=["NULL"]).lazy()
     df_cleaned = df.select(TEXT_FIELD, *LABELS)
-    # TODO: We should probably drop rows that contain integers
-    # For now, just convert to string so we can run this
-    # Reminder: polars syntax is different than pandas syntax
+    # Make sure every row is correctly encoded as string
     df_cleaned = df_cleaned.with_columns(pl.col(TEXT_FIELD).cast(pl.Utf8))
     df_cleaned = df_cleaned.filter(pl.col(TEXT_FIELD).is_not_null())
     df_cleaned = df_cleaned.fill_null("None")
     return df_cleaned
 
 
-### Data prep
-
-# Training
+### DATA PREP ###
 
 def compute_metrics(pred):
     """
@@ -133,7 +129,7 @@ if __name__ == "__main__":
 
     logging.info(f"MODEL_PATH : {MODEL_PATH}")
 
-    # Setup
+    ### SETUP ###
 
     logging.info("Starting")
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
@@ -143,9 +139,8 @@ if __name__ == "__main__":
     logging.info(f"Predicting based on input field : {TEXT_FIELD}")
     logging.info(f"Predicting categorical fields : {LABELS}")
 
-    # Data preparation
+    ### DATA PREP ###
 
-    # TODO: Set this up so data file comes out of data pipeline
     # TODO: Fix this also so that the arguments make more sense...
     data_path = sys.argv[1] if len(sys.argv) > 1 else "/net/projects/cgfp/data/clean/clean_CONFIDENTIAL_CGFP_bulk_data_073123.csv"
     logging.info(f"Reading data from path : {data_path}")
@@ -171,7 +166,7 @@ if __name__ == "__main__":
         logging.info(f"{col}: {len(encoder.classes_)} classes")
 
     # Save valid basic types for each food product group
-    # Reminder: polars syntax is different than pandas
+    # Note: polars syntax is different than pandas
     inference_masks = {}
     basic_types = df_combined.select("Basic Type").unique().collect()['Basic Type'].to_list()
     for fpg in df_combined.select('Food Product Group').unique().collect()['Food Product Group']:
@@ -208,18 +203,18 @@ if __name__ == "__main__":
     # Should probably put most (or all) of this in a function and handle the config stuff after the dataset is setup
     train_dataset = train_dataset.map(tokenize)
     eval_dataset = eval_dataset.map(tokenize)
+    logging.info("Example data:")
     for i in range(5):
         logging.info(train_dataset[i])
 
     train_dataset.set_format("torch", columns=["input_ids", "attention_mask", "labels"])
     eval_dataset.set_format("torch", columns=["input_ids", "attention_mask", "labels"])
-    # train_dataset = train_dataset.train_test_split(test_size=0.2)
-    logging.info("Dataset is prepared")
 
+    logging.info("Dataset is prepared")
     logging.info(f"Structure of the dataset : {train_dataset}")
     logging.info(f"Sample record from the dataset : {train_dataset[0]}")
 
-    # Training
+    ### TRAINING ###
 
     logging.info("Instantiating model")
 
@@ -241,8 +236,6 @@ if __name__ == "__main__":
     )
     model = MultiTaskModel(config)
     logging.info("Model instantiated")
-
-    epochs = 5 if SMOKE_TEST else 40
 
     # TODO: add an arg for freezing layers
     # Freeze all layers
@@ -273,11 +266,10 @@ if __name__ == "__main__":
 
     # TODO: set this up to come from args
     lr = 0.001
+    epochs = 5 if SMOKE_TEST else 40
 
     # TODO: Training logs argument doesn't seem to work. Logs are in the normal logging folder?
-    # TODO: Add info to logging file name
     training_args = TrainingArguments(
-        # TODO: come up with may to manage storage space for checkpoints
         output_dir="/net/projects/cgfp/checkpoints",
         evaluation_strategy="epoch",
         save_strategy="epoch",
@@ -295,7 +287,6 @@ if __name__ == "__main__":
         training_args.greater_is_better = True
 
     # TODO: set this up to come from args
-    lr = 0.001
     adamW = AdamW(model.parameters(), lr=lr, betas=(0.9, 0.95), eps=1e-5, weight_decay=0.1)
     scheduler = CosineAnnealingWarmRestarts(adamW, T_0=2000, T_mult=1, eta_min=lr*0.1)
 
@@ -303,9 +294,7 @@ if __name__ == "__main__":
         model=model,
         args=training_args,
         compute_metrics=compute_metrics,
-        # train_dataset=combined_dataset,
         train_dataset=train_dataset,
-        # eval_dataset=dataset["test"],
         eval_dataset=eval_dataset,
         optimizers=(adamW, scheduler),  # Pass optimizers here (rather than training_args) for more fine-grained control
     )
