@@ -15,6 +15,8 @@ from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 
 
+import datasets
+
 from transformers import (
     DistilBertForSequenceClassification,
     DistilBertTokenizerFast,
@@ -69,6 +71,7 @@ MODEL_PATH = (
     f"/net/projects/cgfp/model-files/{datetime.now().strftime('%Y-%m-%d_%H-%M')}"
 )
 
+SMOKE_TEST = True
 SMOKE_TEST = True
 SAVE_BEST = True
 
@@ -258,23 +261,25 @@ if __name__ == "__main__":
         for param in model.classification_heads.parameters():
             param.requires_grad = True
 
-    breakpoint()
-
     if FREEZE_MLPS:
         for param in model.parameters():
             param.requires_grad = False
 
-        # Unfreeze attention heads
+        # Unfreeze attention heads and layernorm
         for name, param in model.named_parameters():
-            if "attention" in name or "output" in name:
+            if "attention" in name or "output" in name or "layer_norm" in name:
                 param.requires_grad = True
 
         # Unfreeze classification heads
         for param in model.classification_heads.parameters():
             param.requires_grad = True
 
+        for name, param in model.named_parameters():
+            print(f"{name} is {'frozen' if not param.requires_grad else 'unfrozen'}")
 
 
+    # TODO: set this up to come from args
+    lr = 0.001
 
     # TODO: Training logs argument doesn't seem to work. Logs are in the normal logging folder?
     # TODO: Add info to logging file name
@@ -296,6 +301,9 @@ if __name__ == "__main__":
         training_args.metric_for_best_model = "mean_accuracy"
         training_args.greater_is_better = True
 
+    # TODO: this is a hack to train on everything...but I think we're missing a lot of stuff with our train test split
+    combined_dataset = datasets.concatenate_datasets([dataset["train"], dataset["test"]])
+
     # TODO: set this up to come from args
     lr = 0.001
     adamW = AdamW(model.parameters(), lr=lr, betas=(0.9, 0.95), eps=1e-5, weight_decay=0.1)
@@ -305,8 +313,8 @@ if __name__ == "__main__":
         model=model,
         args=training_args,
         compute_metrics=compute_metrics,
-        train_dataset=train_dataset,
-        eval_dataset=train_dataset,
+        train_dataset=combined_dataset,
+        eval_dataset=dataset["test"],
         optimizers=(adamW, scheduler),  # Pass optimizers here (rather than training_args) for more fine-grained control
     )
 
