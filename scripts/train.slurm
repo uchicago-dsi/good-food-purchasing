@@ -5,6 +5,6 @@
 #SBATCH --mail-type=END
 #SBATCH --constraint="a100|h100"
 
-# TODO: can probably force the correct environment here?
+# TODO: should conda environment handling be done here?
 
-python scripts/train.py /net/projects/cgfp/data/clean/clean_CONFIDENTIAL_CGFP_bulk_data_073123.csv
+python scripts/train.py

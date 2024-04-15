@@ -2,6 +2,7 @@ import sys
 import logging
 import json
 from datetime import datetime
+import argparse
 
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import accuracy_score, f1_score
@@ -68,10 +69,11 @@ MODEL_PATH = (
     f"/net/projects/cgfp/model-files/{datetime.now().strftime('%Y-%m-%d_%H-%M')}"
 )
 
-SMOKE_TEST = True
+SMOKE_TEST = False
 SAVE_BEST = True
 
-FREEZE_LAYERS = False
+# TODO: Make these settings clearer
+FREEZE_LAYERS = True
 FREEZE_MLPS = False
 
 DROP_MEALS = True
@@ -141,12 +143,18 @@ if __name__ == "__main__":
     logging.info(f"Predicting categorical fields : {LABELS}")
 
     ### DATA PREP ###
+    parser = argparse.ArgumentParser(description="Process the data files for analysis.")
+    parser.add_argument('--train_data_path', default="/net/projects/cgfp/data/clean/clean_CONFIDENTIAL_CGFP_bulk_data_073123.csv", type=str, help="Path to the training data CSV file.")
+    parser.add_argument('--eval_data_path', default="/net/projects/cgfp/data/clean/combined_eval_set.csv", type=str, help="Path to the evaluation data CSV file.")
+    parser.add_argument('--smoke_test', action='store_true', help="Run in smoke test mode to check basic functionality.")
+    
+    args = parser.parse_args()
 
-    # TODO: Use an argparser
-    data_path = sys.argv[1] if len(sys.argv) > 1 else "/net/projects/cgfp/data/clean/clean_CONFIDENTIAL_CGFP_bulk_data_073123.csv"
-    logging.info(f"Reading data from path : {data_path}")
-    df_train = read_data(data_path)
-    df_eval = read_data("/net/projects/cgfp/data/clean/combined_eval_set.csv")
+    SMOKE_TEST = args.smoke_test
+
+    logging.info(f"Reading data from path : {args.train_data_path}")
+    df_train = read_data(args.train_data_path)
+    df_eval = read_data(args.eval_data_path)
     df_combined = pl.concat([df_train, df_eval]) # combine training and eval so we have all valid outputs for evaluation
 
     encoders = {}
@@ -279,7 +287,7 @@ if __name__ == "__main__":
 
     if SAVE_BEST:
         training_args.load_best_model_at_end = True
-        training_args.metric_for_best_model = "mean_accuracy"
+        training_args.metric_for_best_model = "mean_f1_score" # TODO: Or accuracy? Maybe should be basic type accuracy?
         training_args.greater_is_better = True
 
     # TODO: set this up to come from args
