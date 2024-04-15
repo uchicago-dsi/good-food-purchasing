@@ -1,3 +1,7 @@
+# Custom
+*.code-workspace
+
+# Project Folders
 logs/
 data/
 tmp/

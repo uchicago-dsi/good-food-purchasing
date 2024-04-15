@@ -63,6 +63,7 @@ LABELS = [
 FPG_IDX = LABELS.index("Food Product Group")
 BASIC_TYPE_IDX = LABELS.index("Basic Type")
 
+# TODO: Move this stuff so we can handle training settings in
 # TODO: add args to MODEL_PATH and logging path
 # TODO: make model path name more descriptive
 MODEL_PATH = (
@@ -147,6 +148,7 @@ if __name__ == "__main__":
     parser.add_argument('--train_data_path', default="/net/projects/cgfp/data/clean/clean_CONFIDENTIAL_CGFP_bulk_data_073123.csv", type=str, help="Path to the training data CSV file.")
     parser.add_argument('--eval_data_path', default="/net/projects/cgfp/data/clean/combined_eval_set.csv", type=str, help="Path to the evaluation data CSV file.")
     parser.add_argument('--smoke_test', action='store_true', help="Run in smoke test mode to check basic functionality.")
+    # TODO: Add other training config options to argparser
     
     args = parser.parse_args()
 
