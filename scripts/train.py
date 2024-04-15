@@ -145,7 +145,7 @@ if __name__ == "__main__":
     data_path = sys.argv[1] if len(sys.argv) > 1 else "/net/projects/cgfp/data/clean/clean_CONFIDENTIAL_CGFP_bulk_data_073123.csv"
     logging.info(f"Reading data from path : {data_path}")
     df_train = read_data(data_path)
-    df_eval = read_data("/net/projects/cgfp/data/clean/clean_New_Raw_Data_030724.csv")
+    df_eval = read_data("/net/projects/cgfp/data/clean/combined_eval_set.csv")
     df_combined = pl.concat([df_train, df_eval]) # combine training and eval so we have all valid outputs for evaluation
 
     encoders = {}
