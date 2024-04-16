@@ -52,35 +52,26 @@ def clean_df(df):
     return df
 
 
-def token_handler(token, food_product_group, food_product_category, basic_type):
+def token_handler(
+    token, food_product_group, food_product_category, basic_type, sub_type_1
+):
     # Handle edge cases where a token is allowed
     if (
         (token == "blue" and basic_type == "cheese")
         or (token == "instant" and food_product_group == "Beverages")
         or (token == "black" and basic_type in ["tea", "drink"])
+        or (token == "gluten free" and sub_type_1 in ["parfait"])
     ):
         return token
 
     # Handle edge cases where a token is not allowed
     if (
+        # Food product group rules
         (
             food_product_group == "Milk & Dairy"
             and token in ["in brine", "nectar", "honey"]
         )
-        or (
-            food_product_category == "Cheese"
-            and token
-            in [
-                "in water",
-                "ball",
-                "low moisture",
-                "whole milk",
-                "logs",
-                "unsalted",
-                "in oil",
-            ]
-        )
-        or (food_product_group == "Meat" and token == "ketchup")
+        or (food_product_group == "Meat" and token in ["ketchup", "italian"])
         or (
             food_product_group == "Produce"
             and token in ["whole", "peeled", "kosher", "gluten free"]
@@ -88,24 +79,43 @@ def token_handler(token, food_product_group, food_product_category, basic_type):
         or (
             food_product_group == "Seafood" and token in ["seasoned", "stuffed", "lime"]
         )
-        or (basic_type == "plant milk" and token in ["nonfat", "low fat"])
-        or (basic_type == "bean" and token == "turtle")
-        or (basic_type == "supplement" and token == "liquid")
-        or (basic_type == "bar" and token in ["cereal", "cocoa", "seed"])
         or (
-            basic_type == "ice cream"
-            and token in ["crunch", "taco", "chocolate covered", "cookie"]
+            food_product_group == "Condiments & Snacks"
+            and token in ["shredded", "non-dairy"]
+            # Food product category rules
+            or (
+                food_product_category == "Cheese"
+                and token
+                in [
+                    "in water",
+                    "ball",
+                    "low moisture",
+                    "whole milk",
+                    "logs",
+                    "unsalted",
+                    "in oil",
+                ]
+            )
+            # Basic type rules
+            or (basic_type == "plant milk" and token in ["nonfat", "low fat"])
+            or (basic_type == "bean" and token == "turtle")
+            or (basic_type == "supplement" and token == "liquid")
+            or (basic_type == "bar" and token in ["cereal", "cocoa", "seed"])
+            or (
+                basic_type == "ice cream"
+                and token in ["crunch", "taco", "chocolate covered", "cookie"]
+            )
+            or (basic_type == "salsa" and token in ["thick", "chunky", "mild"])
+            or (
+                food_product_category == "Grain Products"
+                and basic_type not in ["cereal"]
+                and token == "wheat"
+            )
+            or (basic_type == "condiment" and token in ["thick", "thin", "sweet"])
+            or (basic_type == "cookie" and token in ["sugar"])
+            or (basic_type == "dessert" and token in ["crumb", "graham cracker"])
+            or (basic_type == "mix" and token in ["custard"])
         )
-        or (basic_type == "salsa" and token in ["thick", "chunky", "mild"])
-        or (
-            food_product_category == "Grain Products"
-            and basic_type not in ["cereal"]
-            and token == "wheat"
-        )
-        or (basic_type == "condiment" and token in ["thick", "thin", "sweet"])
-        or (basic_type == "cookie" and token in ["sugar"])
-        or (basic_type == "dessert" and token in ["crumb", "graham cracker"])
-        or (basic_type == "mix" and token in ["custard"])
     ):
         return None
 
@@ -149,6 +159,10 @@ def token_handler(token, food_product_group, food_product_category, basic_type):
     if basic_type == "candy" and token in CHOCOLATE:
         return "chocolate"
 
+    # "chip" should be mapped to "cut" for pickles...but "chip" is valid for snacks
+    if sub_type_1 == "pickle" and token == "chip":
+        return "cut"
+
     # Skip outdated tokens from old name normalization format
     # Do this last since some rules override this
     if token in SKIP_TOKENS:
@@ -167,6 +181,8 @@ def clean_name(
     # Then we add the tokens to the appropriate column based on membership
     normalized_name = {}
     misc_col = {"Misc": []}  # make a list so we can append unmatched tokens
+    # Initialize sub-type 1 since we need to pass it to token_handler
+    sub_type_1 = None
     for i, token in enumerate(name_list):
         token = token.strip()
         token = TOKEN_MAP_DICT.get(token, token)
@@ -175,8 +191,18 @@ def clean_name(
             basic_type = token
             normalized_name["Basic Type"] = token
             continue
+        # Handle edge cases for basic type
+        if basic_type == "snack" and token in [
+            "bar",
+        ]:
+            basic_type = "bar"
+            continue
+        if basic_type == "sea salt":
+            basic_type = "salt"
+            continue
+
         token = token_handler(
-            token, food_product_group, food_product_category, basic_type
+            token, food_product_group, food_product_category, basic_type, sub_type_1
         )
         if token is None:
             continue
@@ -194,12 +220,18 @@ def clean_name(
                         normalized_name[col] = token
                         matched = True
                         break
+                if col in category_tags_dict.get(food_product_category, {}):
+                    if token in category_tags_dict[food_product_category][col]:
+                        normalized_name[col] = token
+                        matched = True
+                        break
             if matched:
                 continue
         # First token after basic type is sub-type 1 if it's not from the later tags
         # TODO: set this up so that I'm saving sub-types as a list
         if "Sub-Type 1" not in normalized_name:
-            normalized_name["Sub-Type 1"] = token
+            sub_type_1 = token
+            normalized_name["Sub-Type 1"] = sub_type_1
             continue
         elif "Sub-Type 2" not in normalized_name:
             normalized_name["Sub-Type 2"] = token
@@ -286,6 +318,8 @@ if __name__ == "__main__":
         axis=1,
     )
 
+    # TODO: All of this should be aggregated in a function that is applied as postprocessing to the dataframe
+
     # TODO: Handle sub-type 3 when we add that » if more than one sub-type is fruit (or whatever) then replace the string
     # TODO: Maybe want to abstract and functionalize this setup
     # TODO: This should be done with a list for subtypes
@@ -305,8 +339,16 @@ if __name__ == "__main__":
         & (df_split["Sub-Type 1"].isin(FRUITS))
         & (df_split["Sub-Type 2"].isin(FRUITS))
     )
-    df_split.loc[multiple_fruits, "Sub Type 1"] = "fruit"
-    df_split.loc[multiple_fruits, "Sub Type 2"] = None
+    # TODO: make better logic for this
+    # for sparkling water, we want to replace multiple fruits with "flavored"
+    # for everything else we want it to be "fruit"
+    fruit_water = (df_split["Basic Type"] == "water") & multiple_fruits
+    not_fruit_water = (df_split["Basic Type"] != "water") & multiple_fruits
+
+    df_split.loc[fruit_water, "Sub Type 1"] = "flavored"
+    df_split.loc[fruit_water, "Sub Type 2"] = None
+    df_split.loc[not_fruit_water, "Sub Type 1"] = "fruit"
+    df_split.loc[not_fruit_water, "Sub Type 2"] = None
 
     multiple_cheeses = (
         (df_split["Food Product Category"] == "Cheese")
@@ -331,6 +373,22 @@ if __name__ == "__main__":
     )
     df_split.loc[multiple_fruits, "Sub Type 1"] = "variety"
     df_split.loc[multiple_fruits, "Sub Type 2"] = None
+
+    # Handle edge cases for mislabeled data
+    mask_spice = (df_split["Basic Type"] == "spice") & (
+        df_split["Food Product Group"] != "Condiments & Snacks"
+    )
+    df_split.loc[
+        mask_spice,
+        ["Food Product Group", "Food Product Category", "Primary Product Category"],
+    ] = "Condiments & Snacks"
+
+    # Update 'Basic Type' to 'watercress' and 'Sub-Type 1' to None for entries where 'Sub-Type 1' is 'watercress'
+    mask_watercress = (df_split["Sub-Type 1"] == "watercress") & (
+        df_split["Basic Type"] == "herb"
+    )
+    df_split.loc[mask_watercress, "Basic Type"] = "watercress"
+    df_split.loc[mask_watercress, "Sub-Type 1"] = None
 
     # Save unallocated tags for manual review
     misc = df_split[df_split["Misc"].apply(lambda x: x != [])][
