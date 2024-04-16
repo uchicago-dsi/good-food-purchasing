@@ -279,6 +279,27 @@ if __name__ == "__main__":
     train_batch_size = 32 # TODO: Probably should experiment with this
     eval_batch_size = 64
 
+    # TODO: Actually implement FocalLoss
+    # class FocalLoss(torch.nn.Module):
+    #     def __init__(self, alpha=None, gamma=2.0, num_classes=None):
+    #         super(FocalLoss, self).__init__()
+    #         assert (alpha is None and num_classes is not None) or (alpha is not None and num_classes is None), "Specify alpha or num_classes"
+    #         if alpha is None:
+    #             # Automatic calculation based on class frequency
+    #             self.alpha = torch.ones(num_classes) / num_classes  # This could be a more sophisticated function of class frequency
+    #         else:
+    #             # Predefined alpha values
+    #             self.alpha = torch.tensor(alpha)
+    #         self.gamma = gamma
+
+    #     def forward(self, inputs, targets):
+    #         BCE_loss = F.binary_cross_entropy_with_logits(inputs, targets, reduction='none')
+    #         targets = targets.long()
+    #         at = self.alpha.gather(0, targets.data.view(-1))
+    #         pt = torch.exp(-BCE_loss)
+    #         F_loss = at * (1-pt)**self.gamma * BCE_loss
+    #         return F_loss.mean()
+
     class SaveBestModelCallback(TrainerCallback):
         def __init__(self, best_model_metric):
             self.best_metric = -float('inf')
