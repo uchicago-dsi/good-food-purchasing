@@ -387,7 +387,7 @@ if __name__ == "__main__":
     mask_watercress = (df_split["Sub-Type 1"] == "watercress") & (
         df_split["Basic Type"] == "herb"
     )
-    df.loc[mask_watercress, "Basic Type"] = "watercress"
+    df_split.loc[mask_watercress, "Basic Type"] = "watercress"
     df_split.loc[mask_watercress, "Sub-Type 1"] = None
 
     # Save unallocated tags for manual review
