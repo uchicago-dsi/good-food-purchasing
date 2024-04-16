@@ -190,6 +190,13 @@ def clean_name(
         if i == 0:
             basic_type = token
             normalized_name["Basic Type"] = token
+
+            # Handle edge cases for basic type (mislabeled)
+            if basic_type == "spice":
+                normalized_name["Food Product Group"] = "Condiments & Snacks"
+                normalized_name["Food Product Category"] = "Condiments & Snacks"
+                normalized_name["Primary Product Category"] = "Condiments & Snacks"
+
             continue
         # Handle edge cases for basic type
         if basic_type == "snack" and token in [
