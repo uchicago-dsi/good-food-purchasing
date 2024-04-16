@@ -75,7 +75,6 @@ SKIP_TOKENS = {
     "chorizo",
     "louisiana",
     "kielbasa",
-    "italian",  # TODO: what about salad dressings?
     "uncured",
     ## SORT OF FLAVORED ##
     "spicy",
@@ -85,7 +84,7 @@ SKIP_TOKENS = {
     "parmesan basil",
     "extra spicy",
     "extreme heat",
-    "plain",  # TODO: can we always skip this
+    "plain",
     ## OLIVE OIL ##
     "virgin",
     "extra virgin",
@@ -148,10 +147,15 @@ SKIP_TOKENS = {
     "ring",
     "twist",
     "pocket",
+    "rope",
     ## SPICES ##
     "pasilla negro",
     ## TEXTURE ##
     "soft",
+    "hard",
+    "liquid",
+    ## MISC ##
+    "sea salt",
 }
 
 # For these basic types, skip anything that is in the FLAVORS set
@@ -171,6 +175,10 @@ SKIP_FLAVORS = {
     "pastry",
     "cracker",
     "cookie",
+    "cake",
+    "danish",
+    "pastry",
+    "dessert",
 }
 
 # For these basic types, tag anything that includes a FLAVORS tag as "flavored"
@@ -243,6 +251,8 @@ FLAVORS = {
     "beer",
     ## SEAFOOD ##
     "chipotle",
+    "chive and cheddar",
+    "parmesan basil",
     ## HERBS ##
     "mint",
     ## SNACKS ##
@@ -284,6 +294,10 @@ FRUITS = {
     "acai",
     "blueberry",
     "cherry",
+    "peach",
+    "pear",
+    "watermelon",
+    "watermelon strawberry",
 }
 
 ALL_FLAVORS = FLAVORS | FRUITS
@@ -474,6 +488,7 @@ GROUP_TAGS = {
         },
         "WG/WGR": {"whole grain rich"},
         "Dietary Concern": {
+            "no sodium",
             "low sodium",
             "no sugar added",
             "reduced fat",
@@ -577,6 +592,7 @@ GROUP_TAGS = {
             "sliced",
             "cut",
             "stick",
+            "crumble",
         },
         "Skin": {"skinless"},
         "Seed/Bone": {"bone-in"},
@@ -665,7 +681,7 @@ GROUP_TAGS = {
         "Commodity": {"commodity"},
     },
     "Seafood": {
-        "Flavor/Cut": {"loin", "meat", "shank", "steak"},
+        "Flavor/Cut": {"loin", "meat", "shank", "steak", "flavored"},
         "Shape": {
             "cut",
             "cake",
