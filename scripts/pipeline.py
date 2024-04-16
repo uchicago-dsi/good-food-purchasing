@@ -190,13 +190,6 @@ def clean_name(
         if i == 0:
             basic_type = token
             normalized_name["Basic Type"] = token
-
-            # Handle edge cases for basic type (mislabeled)
-            if basic_type == "spice":
-                normalized_name["Food Product Group"] = "Condiments & Snacks"
-                normalized_name["Food Product Category"] = "Condiments & Snacks"
-                normalized_name["Primary Product Category"] = "Condiments & Snacks"
-
             continue
         # Handle edge cases for basic type
         if basic_type == "snack" and token in [
@@ -325,6 +318,8 @@ if __name__ == "__main__":
         axis=1,
     )
 
+    # TODO: All of this should be aggregated in a function that is applied as postprocessing to the dataframe
+
     # TODO: Handle sub-type 3 when we add that » if more than one sub-type is fruit (or whatever) then replace the string
     # TODO: Maybe want to abstract and functionalize this setup
     # TODO: This should be done with a list for subtypes
@@ -378,6 +373,22 @@ if __name__ == "__main__":
     )
     df_split.loc[multiple_fruits, "Sub Type 1"] = "variety"
     df_split.loc[multiple_fruits, "Sub Type 2"] = None
+
+    # Handle edge cases for mislabeled data
+    mask_spice = (df_split["Basic Type"] == "spice") & (
+        df_split["Food Product Group"] != "Condiments & Snacks"
+    )
+    df_split.loc[
+        mask_spice,
+        ["Food Product Group", "Food Product Category", "Primary Product Category"],
+    ] = "Condiments & Snacks"
+
+    # Update 'Basic Type' to 'watercress' and 'Sub-Type 1' to None for entries where 'Sub-Type 1' is 'watercress'
+    mask_watercress = (df_split["Sub-Type 1"] == "watercress") & (
+        df_split["Basic Type"] == "herb"
+    )
+    df.loc[mask_watercress, "Basic Type"] = "watercress"
+    df_split.loc[mask_watercress, "Sub-Type 1"] = None
 
     # Save unallocated tags for manual review
     misc = df_split[df_split["Misc"].apply(lambda x: x != [])][
