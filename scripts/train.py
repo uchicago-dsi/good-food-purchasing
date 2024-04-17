@@ -29,6 +29,8 @@ from transformers import (
 from transformers.modeling_outputs import SequenceClassifierOutput
 from datasets import Dataset
 
+import wandb
+
 from cgfp.inference.inference import inference
 from cgfp.training.models import MultiTaskConfig, MultiTaskModel
 
@@ -143,8 +145,7 @@ if __name__ == "__main__":
     logging.info(f"Predicting based on input field : {TEXT_FIELD}")
     logging.info(f"Predicting categorical fields : {LABELS}")
 
-    ### DATA PREP ###
-    parser = argparse.ArgumentParser(description="Process the data files for analysis.")
+    parser = argparse.ArgumentParser()
     parser.add_argument('--train_data_path', default="/net/projects/cgfp/data/clean/clean_CONFIDENTIAL_CGFP_bulk_data_073123.csv", type=str, help="Path to the training data CSV file.")
     parser.add_argument('--eval_data_path', default="/net/projects/cgfp/data/clean/combined_eval_set.csv", type=str, help="Path to the evaluation data CSV file.")
     parser.add_argument('--smoke_test', action='store_true', help="Run in smoke test mode to check basic functionality.")
@@ -157,6 +158,10 @@ if __name__ == "__main__":
     DROP_MEALS = not args.keep_meals
     logging.info(f"DROP_MEALS: {DROP_MEALS}")
 
+    # TODO: Add weights and biases setup here
+    wandb.init(project='cgfp')
+
+    ### DATA PREP ###
     logging.info(f"Reading data from path : {args.train_data_path}")
     df_train = read_data(args.train_data_path, drop_meals=DROP_MEALS)
     df_eval = read_data(args.eval_data_path, drop_meals=DROP_MEALS)
@@ -330,6 +335,7 @@ if __name__ == "__main__":
         warmup_steps=100,
         logging_dir="./training-logs",
         max_grad_norm=1.0,
+        report_to="wandb"
     )
 
     best_model_metric = "basic_type_accuracy"

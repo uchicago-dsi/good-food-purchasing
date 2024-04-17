@@ -15,3 +15,4 @@ dependencies:
     - transformers==4.28.0
     - datasets
     - openpyxl
+    - wandb==0.16.6
