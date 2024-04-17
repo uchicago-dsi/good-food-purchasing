@@ -1,4 +1,4 @@
-import sys
+import os
 import logging
 import json
 from datetime import datetime
@@ -38,8 +38,7 @@ logging.basicConfig(level=logging.INFO)
 
 ### SETUP ###
 
-MODEL_NAME = "distilbert-base-uncased"
-TEXT_FIELD = "Product Type"
+
 # Note: Be careful with capitalization here
 LABELS = [
     "Food Product Group",
@@ -65,24 +64,6 @@ LABELS = [
 # These indeces are used to set up inference filtering
 FPG_IDX = LABELS.index("Food Product Group")
 BASIC_TYPE_IDX = LABELS.index("Basic Type")
-
-# TODO: Move this stuff so we can handle training settings in
-# TODO: add args to MODEL_PATH and logging path
-# TODO: make model path name more descriptive
-MODEL_PATH = (
-    f"/net/projects/cgfp/model-files/{datetime.now().strftime('%Y-%m-%d_%H-%M')}"
-)
-
-SMOKE_TEST = False
-SAVE_BEST = True
-
-# TODO: Make these settings clearer
-FREEZE_LAYERS = True
-FREEZE_MLPS = False
-DROP_MEALS = True
-
-if SMOKE_TEST:
-    MODEL_PATH += "-smoke-test"
 
 
 def read_data(data_path, drop_meals=False):
@@ -136,6 +117,54 @@ def compute_metrics(pred):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    # Setup args
+    parser.add_argument('--train_data_path', default="/net/projects/cgfp/data/clean/clean_CONFIDENTIAL_CGFP_bulk_data_073123.csv", type=str, help="Path to the training data CSV file.")
+    parser.add_argument('--eval_data_path', default="/net/projects/cgfp/data/clean/combined_eval_set.csv", type=str, help="Path to the evaluation data CSV file.")
+    # Config args
+    parser.add_argument('--smoke_test', action='store_true', help="Run in smoke test mode to check basic functionality.")
+    parser.add_argument('--keep_meals', action='store_true', help="Keep Meals items in training and eval datasets")
+    parser.add_argument('--dont_save_best', action="store_false", help="Don't save the best model from the training run (saves the last model, I believe)")
+    parser.add_argument('--train_attention', action="store_true", help="Trains all attention heads in the model (freezes MLPs)")
+    parser.add_argument('--freeze_model', action='store_true', help="Freeze the model and train only the classification heads")
+    # Hyperparameter args
+    parser.add_argument('--lr', default=.001, help="Learning rate for the Huggingface Trainer")
+    parser.add_argument('--epochs', default=40, help="Training epochs for the Huggingface Trainer")
+    parser.add_argument('--train_batch_size', default=32, help="Training batch size for the Huggingface Trainer")
+    parser.add_argument('--eval_batch_size', default=64, help="Evaluation batch size for the Huggingface Trainer")
+    
+    args = parser.parse_args()
+
+    # Setup
+    MODEL_NAME = "distilbert-base-uncased"
+    TEXT_FIELD = "Product Type"
+
+
+    # Config
+    SMOKE_TEST = args.smoke_test
+    SAVE_BEST = not args.dont_save_best
+    DROP_MEALS = not args.keep_meals
+    logging.info(f"DROP_MEALS: {DROP_MEALS}")
+    FREEZE_MODEL = args.freeze_model
+    FREEZE_MLPS = args.train_attention
+    
+    # Hyperparameters
+    lr = args.lr
+    epochs = 5 if SMOKE_TEST else args.epochs
+    train_batch_size = args.train_batch_size # try 8,16,32
+    eval_batch_size = args.eval_batch_size
+
+    # Logging
+    run_name = f"{MODEL_NAME}_{datetime.now().strftime('%Y%m%d_%H%M')}"
+    if SMOKE_TEST:
+        run_name += "-smoke-test"
+        os.environ["WANDB_DISABLED"] = "true"
+    MODEL_PATH = (
+        f"/net/projects/cgfp/model-files/{run_name}"
+    )
+    if not SMOKE_TEST:
+        wandb.init(project='cgfp', name=run_name)
+
     ### SETUP ###
     logging.info(f"MODEL_PATH : {MODEL_PATH}")
     logging.info("Starting")
@@ -144,24 +173,6 @@ if __name__ == "__main__":
     logging.info(f"Using base model : {MODEL_NAME}")
     logging.info(f"Predicting based on input field : {TEXT_FIELD}")
     logging.info(f"Predicting categorical fields : {LABELS}")
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--train_data_path', default="/net/projects/cgfp/data/clean/clean_CONFIDENTIAL_CGFP_bulk_data_073123.csv", type=str, help="Path to the training data CSV file.")
-    parser.add_argument('--eval_data_path', default="/net/projects/cgfp/data/clean/combined_eval_set.csv", type=str, help="Path to the evaluation data CSV file.")
-    parser.add_argument('--smoke_test', action='store_true', help="Run in smoke test mode to check basic functionality.")
-    parser.add_argument('--keep_meals', action='store_false', help="Keep Meals items in training and eval datasets")
-    # TODO: Add other training config options to argparser
-    
-    args = parser.parse_args()
-
-    SMOKE_TEST = args.smoke_test
-    DROP_MEALS = not args.keep_meals
-    logging.info(f"DROP_MEALS: {DROP_MEALS}")
-
-    # TODO: Add weights and biases setup here
-    run_name = f"{MODEL_NAME}_{datetime.now().strftime('%Y%m%d_%H%M')}"
-    if not SMOKE_TEST:
-        wandb.init(project='cgfp', name=run_name)
 
     ### DATA PREP ###
     logging.info(f"Reading data from path : {args.train_data_path}")
@@ -255,7 +266,7 @@ if __name__ == "__main__":
 
     # TODO: add an arg for freezing layers
     # Freeze all layers
-    if FREEZE_LAYERS:
+    if FREEZE_MODEL:
         for param in model.parameters():
             param.requires_grad = False
 
@@ -280,11 +291,7 @@ if __name__ == "__main__":
             print(f"{name} is {'frozen' if not param.requires_grad else 'unfrozen'}")
 
 
-    # TODO: set this up to come from args
-    lr = 0.001
-    epochs = 5 if SMOKE_TEST else 40
-    train_batch_size = 32 # TODO: Probably should experiment with this
-    eval_batch_size = 64
+
 
     # TODO: Actually implement FocalLoss
     # class FocalLoss(torch.nn.Module):
@@ -337,7 +344,7 @@ if __name__ == "__main__":
         warmup_steps=100,
         logging_dir="./training-logs",
         max_grad_norm=1.0,
-        report_to="wandb"
+        report_to="wandb" if not SMOKE_TEST else None
     )
 
     best_model_metric = "basic_type_accuracy"
