@@ -22,7 +22,7 @@ def prediction_to_string(model, scores, idx):
     return decoder[str(max_idx.item())]
 
 
-def inference(model, tokenizer, text, device, assertion=True, confidence_score=True):
+def inference(model, tokenizer, text, device, assertion=True, confidence_score=True, combine_name=False):
     inputs = tokenizer(text, padding=True, truncation=True, return_tensors="pt")
 
     inputs = inputs.to(device)
@@ -81,6 +81,14 @@ def inference(model, tokenizer, text, device, assertion=True, confidence_score=T
             # TODO: what do we want to actually happen here?
             # Can we log or print base on where we are?
             # logging.info(f"Exception: {e}")
+
+    if combine_name:
+        normalized_name = ""
+        for col, pred in legible_preds.items():
+            if "_score" not in col and "Food" not in col and pred != "None":
+                normalized_name += pred + ", "
+        normalized_name = normalized_name.strip().rstrip(',')
+        return normalized_name
     return legible_preds
 
 

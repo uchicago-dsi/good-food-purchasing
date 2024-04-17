@@ -159,7 +159,9 @@ if __name__ == "__main__":
     logging.info(f"DROP_MEALS: {DROP_MEALS}")
 
     # TODO: Add weights and biases setup here
-    wandb.init(project='cgfp')
+    run_name = f"{MODEL_NAME}_{datetime.now().strftime('%Y%m%d_%H%M')}"
+    if not SMOKE_TEST:
+        wandb.init(project='cgfp', name=run_name)
 
     ### DATA PREP ###
     logging.info(f"Reading data from path : {args.train_data_path}")
@@ -374,3 +376,4 @@ if __name__ == "__main__":
     prompt = "frozen peas and carrots"
     legible_preds = inference(model, tokenizer, prompt, device)
     logging.info(f"Example output for 'frozen peas and carrots': {legible_preds}")
+    logging.info(inference(model, tokenizer, prompt, device, combine_name=True))
