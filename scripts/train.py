@@ -34,34 +34,12 @@ import wandb
 
 from cgfp.inference.inference import inference, inference_handler
 from cgfp.training.models import MultiTaskConfig, MultiTaskModel
+from cgfp.config_training import LABELS
 
 logging.basicConfig(level=logging.INFO)
 
 ### SETUP ###
 
-
-# Note: Be careful with capitalization here
-LABELS = [
-    "Food Product Group",
-    "Food Product Category",
-    "Primary Food Product Category",
-    "Basic Type",
-    "Sub-Type 1",
-    "Sub-Type 2",
-    "Flavor/Cut",
-    "Shape",
-    "Skin",
-    "Seed/Bone",
-    "Processing",
-    "Cooked/Cleaned",
-    "WG/WGR",
-    "Dietary Concern",
-    "Additives",
-    "Dietary Accommodation",
-    "Frozen",
-    "Packaging",
-    "Commodity",
-]
 # These indeces are used to set up inference filtering
 FPG_IDX = LABELS.index("Food Product Group")
 BASIC_TYPE_IDX = LABELS.index("Basic Type")
@@ -386,7 +364,11 @@ if __name__ == "__main__":
     logging.info(f"Example output for 'frozen peas and carrots': {legible_preds}")
     logging.info(inference(model, tokenizer, prompt, device, combine_name=True))
 
+    # TODO: Fix this for smoke_test 
+    # » the logic of changing the output file is actually kinda tricky, need to go through inference setup
     FILENAME = "TestData_11.22.23.xlsx"
+    # if SMOKE_TEST:
+    #     FILENAME = "smoke_test_" + FILENAME
     INPUT_COLUMN = "Product Type"
     DATA_DIR = "/net/projects/cgfp/data/raw/"
 

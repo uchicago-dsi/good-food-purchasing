@@ -1,15 +1,15 @@
-import torch
 import pandas as pd
 import os
 import logging
 import numpy as np
 import argparse
 
-from cgfp.config_tags import GROUP_CATEGORY_VALIDATION
-from cgfp.training.models import MultiTaskModel
-
+import torch
 from transformers import AutoTokenizer
 
+from cgfp.config_training import lower2label
+from cgfp.config_tags import GROUP_CATEGORY_VALIDATION
+from cgfp.training.models import MultiTaskModel
 
 logger = logging.getLogger("inference_logger")
 logger.setLevel(logging.INFO)
@@ -125,6 +125,7 @@ def inference_handler(
     tokenizer,
     input_path,
     input_column,
+    output_filename=None,
     data_dir="/content",
     device=None,
     sheet_name=0,
@@ -143,6 +144,10 @@ def inference_handler(
     except FileNotFoundError as e:
         print("FileNotFound: {e}\n. Please double check the filename: {input_path}")
         raise
+
+    # Force columns to have capitalization consistent with expected output
+    df.columns = [col.lower() for col in df.columns]
+    df = df.rename(columns=lower2label)
 
     if rows_to_classify:
         df = df.head(rows_to_classify)
@@ -199,7 +204,10 @@ def inference_handler(
         else results_full
     )
 
-    save_output(df_formatted, input_path, data_dir)
+    if output_filename is None:
+        output_filename = input_path
+
+    save_output(df_formatted, output_filename, data_dir)
     return df_formatted
 
 
