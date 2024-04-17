@@ -200,7 +200,7 @@ def inference_handler(
     )
 
     save_output(df_formatted, input_path, data_dir)
-    return
+    return df_formatted
 
 
 if __name__ == "__main__":

@@ -8,6 +8,7 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import accuracy_score, f1_score
 import polars as pl
 import numpy as np
+import pandas as pd
 
 import torch
 import torch.nn as nn
@@ -31,7 +32,7 @@ from datasets import Dataset
 
 import wandb
 
-from cgfp.inference.inference import inference
+from cgfp.inference.inference import inference, inference_handler
 from cgfp.training.models import MultiTaskConfig, MultiTaskModel
 
 logging.basicConfig(level=logging.INFO)
@@ -384,3 +385,26 @@ if __name__ == "__main__":
     legible_preds = inference(model, tokenizer, prompt, device)
     logging.info(f"Example output for 'frozen peas and carrots': {legible_preds}")
     logging.info(inference(model, tokenizer, prompt, device, combine_name=True))
+
+    FILENAME = "TestData_11.22.23.xlsx"
+    INPUT_COLUMN = "Product Type"
+    DATA_DIR = "/net/projects/cgfp/data/raw/"
+
+    INPUT_PATH = DATA_DIR + FILENAME
+
+    output_sheet = inference_handler(
+        model,
+        tokenizer,
+        input_path=INPUT_PATH,
+        data_dir=DATA_DIR,
+        device=device,
+        sheet_name=0,
+        input_column="Product Type",
+        highlight=False,
+        confidence_score=False,
+        raw_results=False,
+        assertion=False,
+    )
+    pd.set_option('display.max_columns', None)
+    logging.info(output_sheet.head(2))
+    logging.info(f"Columns: {output_sheet.columns.tolist()}")
