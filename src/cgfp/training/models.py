@@ -62,6 +62,7 @@ class MultiTaskConfig(DistilBertConfig):
         fpg_idx=0,
         basic_type_idx=2,
         inference_masks=None,
+        loss="focal",
         **kwargs
     ):
         super().__init__(**kwargs)
@@ -72,6 +73,7 @@ class MultiTaskConfig(DistilBertConfig):
         self.fpg_idx = fpg_idx
         self.basic_type_idx=basic_type_idx
         self.inference_masks=inference_masks
+        self.loss=loss
 
 
 class MultiTaskModel(PreTrainedModel):
@@ -87,9 +89,15 @@ class MultiTaskModel(PreTrainedModel):
         self.fpg_idx = config.fpg_idx  # index for the food product group task
         self.basic_type_idx = config.basic_type_idx
         self.inference_masks = {key: torch.tensor(value) for key, value in json.loads(config.inference_masks).items()}
+        self.loss = config.loss
+        self.losses = []
 
+        if self.loss == "focal":
+            for classes in self.num_categories_per_task:
+                self.losses.append(FocalLoss(num_classes=classes))
+        else:
+            self.losses.append(nn.CrossEntropy())
 
-        # TODO:
         if self.classification == "mlp":
             # TODO: wait...the config.dim should be downsampled here probably...
             self.classification_heads = nn.ModuleList(
@@ -140,22 +148,12 @@ class MultiTaskModel(PreTrainedModel):
 
         loss = None
         if labels is not None:
-            # loss_fct = nn.CrossEntropyLoss()
             losses = []
-            # for logit, label in zip(
-            #     logits, labels.squeeze().transpose(0, 1)
-            # ):  # trust me
-            #     loss_fct = FocalLoss(num_classes=len(logit))
-            #     losses.append(loss_fct(logit, label.view(-1)))
             for i, output in enumerate(zip(
                 logits, labels.squeeze().transpose(0, 1)
             )):  # trust me
                 logit, label = output
-                if i == 0:
-                    loss_fct = FocalLoss(num_classes=len(logit))
-                else:
-                    loss_fct = nn.CrossEntropyLoss()
-                losses.append(loss_fct(logit, label.view(-1)))
+                losses.append(self.losses[i](logit, label.view(-1)))
             loss = sum(losses)
 
         output = (logits,) + distilbert_output[
