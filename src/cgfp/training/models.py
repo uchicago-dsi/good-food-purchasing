@@ -2,6 +2,7 @@ import json
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 from collections import OrderedDict
 
@@ -16,26 +17,39 @@ from transformers import (
 )
 from transformers.modeling_outputs import SequenceClassifierOutput
 
-# TODO: Actually implement FocalLoss
-class FocalLoss(torch.nn.Module):
+# TODO: Clean this up
+class FocalLoss(nn.Module):
+    # TODO: add documentation for the alpha and gamma parameters
     def __init__(self, alpha=None, gamma=2.0, num_classes=None):
         super(FocalLoss, self).__init__()
-        assert (alpha is None and num_classes is not None) or (alpha is not None and num_classes is None), "Specify alpha or num_classes"
-        if alpha is None:
-            # Automatic calculation based on class frequency
-            self.alpha = torch.ones(num_classes) / num_classes  # This could be a more sophisticated function of class frequency
-        else:
-            # Predefined alpha values
-            self.alpha = torch.tensor(alpha)
         self.gamma = gamma
+        # TODO: set alpha based on class frequency » we should maybe calculate this during data processing?
+        if alpha is None:
+            self.alpha = torch.ones(num_classes) / num_classes
+        else:
+            self.alpha = torch.tensor(alpha, dtype=torch.float)
+        if self.alpha is not None:
+            if self.alpha.size(0) != num_classes:
+                raise ValueError("Alpha vector size must match number of classes.")
+        self.alpha = self.alpha.cuda() if self.alpha is not None else None
 
     def forward(self, inputs, targets):
-        BCE_loss = F.binary_cross_entropy_with_logits(inputs, targets, reduction='none')
-        targets = targets.long()
-        at = self.alpha.gather(0, targets.data.view(-1))
-        pt = torch.exp(-BCE_loss)
-        F_loss = at * (1-pt)**self.gamma * BCE_loss
-        return F_loss.mean()
+        # Compute the cross entropy loss
+        ce_loss = F.cross_entropy(inputs, targets, reduction='none')
+
+        # Get the probabilities for the classes that are actually true
+        pt = torch.exp(-ce_loss)
+        
+        # Calculate alpha for each example
+        if self.alpha is not None:
+            alpha = self.alpha.gather(0, targets.data)
+        else:
+            alpha = 1
+
+        # Calculate the Focal Loss
+        focal_loss = alpha * ((1 - pt) ** self.gamma) * ce_loss
+
+        return focal_loss.mean()
 
 
 class MultiTaskConfig(DistilBertConfig):
@@ -126,11 +140,21 @@ class MultiTaskModel(PreTrainedModel):
 
         loss = None
         if labels is not None:
-            loss_fct = nn.CrossEntropyLoss()
+            # loss_fct = nn.CrossEntropyLoss()
             losses = []
-            for logit, label in zip(
+            # for logit, label in zip(
+            #     logits, labels.squeeze().transpose(0, 1)
+            # ):  # trust me
+            #     loss_fct = FocalLoss(num_classes=len(logit))
+            #     losses.append(loss_fct(logit, label.view(-1)))
+            for i, output in enumerate(zip(
                 logits, labels.squeeze().transpose(0, 1)
-            ):  # trust me
+            )):  # trust me
+                logit, label = output
+                if i == 0:
+                    loss_fct = FocalLoss(num_classes=len(logit))
+                else:
+                    loss_fct = nn.CrossEntropyLoss()
                 losses.append(loss_fct(logit, label.view(-1)))
             loss = sum(losses)
 
