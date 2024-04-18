@@ -169,10 +169,22 @@ if __name__ == "__main__":
     df_combined = pl.concat([df_train, df_eval]) # combine training and eval so we have all valid outputs for evaluation
 
     encoders = {}
+    counts = {}
     for column in LABELS:
+        # Create encoders (including all labels from training and eval sets)
+        # Note: sort this so that the order is consistent
+        unique_categories = df_combined.select(column).unique().sort(column).collect().to_numpy().ravel()
         encoder = LabelEncoder()
-        encoder.fit_transform(df_combined.select(column).collect().to_numpy().ravel())
+        encoder.fit(unique_categories)
         encoders[column] = encoder
+
+        # Get counts for each category in the training set for focal loss
+        counts_df = df_train.group_by(column).agg(pl.len().alias('count')).sort(column)
+
+        # Fill 0s for categories that aren't in the training set
+        full_counts_df = pl.DataFrame({column: unique_categories})
+        full_counts_df = full_counts_df.join(counts_df.collect(), on=column, how='left').fill_nan(0)
+        counts[column] = full_counts_df['count'].to_list()
 
     # Create decoders to save to model config
     # Note: Huggingface is picky...so a list of tuples seems like the best bet
@@ -184,6 +196,9 @@ if __name__ == "__main__":
         }
         decoders.append((col, decoding_dict))
         logging.info(f"{col}: {len(encoder.classes_)} classes")
+
+    # TODO: Figure out how to actually calculate alphas from this...this should be done in the model
+    # Get category counts for focal loss
 
     # Save valid basic types for each food product group
     # Note: polars syntax is different than pandas
