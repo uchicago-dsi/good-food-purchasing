@@ -1,14 +1,15 @@
-import torch
 import pandas as pd
 import os
 import logging
 import numpy as np
+import argparse
 
-from cgfp.config_tags import GROUP_CATEGORY_VALIDATION
-from cgfp.training.models import MultiTaskModel
-
+import torch
 from transformers import AutoTokenizer
 
+from cgfp.config_training import lower2label
+from cgfp.config_tags import GROUP_CATEGORY_VALIDATION
+from cgfp.training.models import MultiTaskModel
 
 logger = logging.getLogger("inference_logger")
 logger.setLevel(logging.INFO)
@@ -21,7 +22,7 @@ def prediction_to_string(model, scores, idx):
     return decoder[str(max_idx.item())]
 
 
-def inference(model, tokenizer, text, device, assertion=True, confidence_score=True):
+def inference(model, tokenizer, text, device, assertion=True, confidence_score=True, combine_name=False):
     inputs = tokenizer(text, padding=True, truncation=True, return_tensors="pt")
 
     inputs = inputs.to(device)
@@ -37,6 +38,7 @@ def inference(model, tokenizer, text, device, assertion=True, confidence_score=T
     # TODO: This is fragile. Maybe change config to have a mapping of each column to index
     fpc = prediction_to_string(model, softmaxed_scores, model.fpg_idx + 1)
 
+    # TODO: This seems to not be working: "spice", "herb"
     inference_mask = model.inference_masks[fpg].to(device)
 
     # actually mask the basic type scores
@@ -54,6 +56,9 @@ def inference(model, tokenizer, text, device, assertion=True, confidence_score=T
     # are in those sets
 
     # assertion to make sure fpg & fpg match
+    # TODO: Maybe good assertion behavior would be something like:
+    # » If food product group + food product category + basic type don't match, ask GPT
+    # » If one of these pairs doesn't match, just highlight
     # TODO: Add argument here to turn this behavior on and off
     assertion_failed = False
     if fpc not in GROUP_CATEGORY_VALIDATION[fpg] and assertion:
@@ -76,6 +81,14 @@ def inference(model, tokenizer, text, device, assertion=True, confidence_score=T
             # TODO: what do we want to actually happen here?
             # Can we log or print base on where we are?
             # logging.info(f"Exception: {e}")
+
+    if combine_name:
+        normalized_name = ""
+        for col, pred in legible_preds.items():
+            if "_score" not in col and "Food" not in col and pred != "None":
+                normalized_name += pred + ", "
+        normalized_name = normalized_name.strip().rstrip(',')
+        return normalized_name
     return legible_preds
 
 
@@ -112,6 +125,7 @@ def inference_handler(
     tokenizer,
     input_path,
     input_column,
+    output_filename=None,
     data_dir="/content",
     device=None,
     sheet_name=0,
@@ -130,6 +144,10 @@ def inference_handler(
     except FileNotFoundError as e:
         print("FileNotFound: {e}\n. Please double check the filename: {input_path}")
         raise
+
+    # Force columns to have capitalization consistent with expected output
+    df.columns = [col.lower() for col in df.columns]
+    df = df.rename(columns=lower2label)
 
     if rows_to_classify:
         df = df.head(rows_to_classify)
@@ -151,6 +169,10 @@ def inference_handler(
     # Add all columns to results to match name normalization format
     # Assumes that the input dataframe is in the expected name normalization format
     # TODO: Add a check for that
+    # TODO: Seems like sub-types get dropped here?
+    # TODO: Ohhhhhh the issue is that the input columns might not match the saved columns
+    # force lowercasing the input columns and map them to the expected columns
+    # Should make these all lowercase and rename them when we finally save it
     results_full = pd.DataFrame()
     for col in df.columns:
         if col in results:
@@ -182,13 +204,21 @@ def inference_handler(
         else results_full
     )
 
-    save_output(df_formatted, input_path, data_dir)
-    return
+    if output_filename is None:
+        output_filename = input_path
+
+    save_output(df_formatted, output_filename, data_dir)
+    return df_formatted
 
 
 if __name__ == "__main__":
-    HUGGINGFACE = "cgfp-classifier-dev"
-    model = MultiTaskModel.from_pretrained(f"uchicago-dsi/{HUGGINGFACE}")
+    parser = argparse.ArgumentParser(description="Load model checkpoint.")
+    parser.add_argument("--checkpoint", type=str, help="Path to the model checkpoint directory or Huggingface model name.")
+    
+    args = parser.parse_args()
+    checkpoint = args.checkpoint if args.checkpoint else "uchicago-dsi/cgfp-classifier-dev"
+
+    model = MultiTaskModel.from_pretrained(checkpoint)
     tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
@@ -196,12 +226,12 @@ if __name__ == "__main__":
     HIGHLIGHT = False
     CONFIDENCE_SCORE = False
     ROWS_TO_CLASSIFY = None
-    RAW_RESULTS = True  # saves the raw model results rather than the formatted normalized name results
+    RAW_RESULTS = False  # saves the raw model results rather than the formatted normalized name results
     ASSERTION = True
 
     FILENAME = "TestData_11.22.23.xlsx"
     INPUT_COLUMN = "Product Type"
-    DATA_DIR = "/net/projects/cgfp/data/"
+    DATA_DIR = "/net/projects/cgfp/data/raw/"
 
     INPUT_PATH = DATA_DIR + FILENAME
 

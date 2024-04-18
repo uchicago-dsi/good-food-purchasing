@@ -1,7 +1,13 @@
+# Custom
+*.code-workspace
+*.slurm
+
+# Project Folders
 logs/
 data/
 tmp/
 results/
+wandb/
 
 *.swp
 .nfs*
