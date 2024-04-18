@@ -111,6 +111,7 @@ if __name__ == "__main__":
     parser.add_argument('--dont_save_best', action="store_false", help="Don't save the best model from the training run (saves the last model, I believe)")
     parser.add_argument('--train_attention', action="store_true", help="Trains all attention heads in the model (keeps MLPs frozen). (Default behavior is training only the classification heads)")
     parser.add_argument('--train_whole_model', action='store_true', help="Train the whole model. (Default behavior is training only the classification heads.)")
+    parser.add_argument('--classification', default="mlp", type=str, help="Setup the classification heads. Choices: mlp, linear. Default is mlp")
     # Hyperparameter args
     parser.add_argument('--lr', default=.001, type=float, help="Learning rate for the Huggingface Trainer")
     parser.add_argument('--epochs', default=30, type=int, help="Training epochs for the Huggingface Trainer")
@@ -132,6 +133,7 @@ if __name__ == "__main__":
     FREEZE_MLPS = args.train_attention
     logging.info(f"FREEZE_MODEL: {FREEZE_MODEL}")
     logging.info(f"FREEZE_MLPS: {FREEZE_MLPS}")
+    classification = args.classification
     
     # Hyperparameters
     lr = args.lr
@@ -231,8 +233,7 @@ if __name__ == "__main__":
 
     logging.info("Instantiating model")
 
-    # TODO: set this up so that classification can be passed via args
-    classification = "mlp"
+    # TODO: get class frequencies here
     distilbert_model = DistilBertForSequenceClassification.from_pretrained(
         "distilbert-base-uncased"
     )
