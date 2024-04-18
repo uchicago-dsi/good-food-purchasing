@@ -103,9 +103,10 @@ if __name__ == "__main__":
     # Config args
     parser.add_argument('--smoke_test', action='store_true', help="Run in smoke test mode to check basic functionality.")
     parser.add_argument('--keep_meals', action='store_true', help="Keep Meals items in training and eval datasets")
+    # TODO: Is default behavior saving final model?
     parser.add_argument('--dont_save_best', action="store_false", help="Don't save the best model from the training run (saves the last model, I believe)")
-    parser.add_argument('--train_attention', action="store_true", help="Trains all attention heads in the model (freezes MLPs)")
-    parser.add_argument('--freeze_model', action='store_true', help="Freeze the model and train only the classification heads")
+    parser.add_argument('--train_attention', action="store_true", help="Trains all attention heads in the model (keeps MLPs frozen). (Default behavior is training only the classification heads)")
+    parser.add_argument('--train_whole_model', action='store_true', help="Train the whole model. (Default behavior is training only the classification heads.)")
     # Hyperparameter args
     parser.add_argument('--lr', default=.001, help="Learning rate for the Huggingface Trainer")
     parser.add_argument('--epochs', default=40, help="Training epochs for the Huggingface Trainer")
@@ -124,10 +125,12 @@ if __name__ == "__main__":
     SAVE_BEST = not args.dont_save_best
     DROP_MEALS = not args.keep_meals
     logging.info(f"DROP_MEALS: {DROP_MEALS}")
-    FREEZE_MODEL = args.freeze_model
+    FREEZE_MODEL = not args.train_whole_model
     FREEZE_MLPS = args.train_attention
+    logging.info(f"FREEZE_MODEL: {FREEZE_MODEL}")
+    logging.info(f"FREEZE_MLPS: {FREEZE_MLPS}")
     
-    # Hyperparameters
+    # Hyperparametersf
     lr = args.lr
     epochs = 5 if SMOKE_TEST else args.epochs
     train_batch_size = args.train_batch_size # try 8,16,32
@@ -246,31 +249,33 @@ if __name__ == "__main__":
     # TODO: add an arg for freezing layers
     # Freeze all layers
     if FREEZE_MODEL:
+        logging.info("Freezing model...")
         for param in model.parameters():
             param.requires_grad = False
 
+        logging.info("Unfreezing classification heads...")
         # Unfreeze classification heads
         for param in model.classification_heads.parameters():
             param.requires_grad = True
 
     if FREEZE_MLPS:
+        logging.info("Freezing model...")
         for param in model.parameters():
             param.requires_grad = False
 
+        logging.info("Unfreezing attention and layernorn...")
         # Unfreeze attention heads and layernorm
         for name, param in model.named_parameters():
             if "attention" in name or "output" in name or "layer_norm" in name:
                 param.requires_grad = True
 
+        logging.info("Unfreezing classification heads...")
         # Unfreeze classification heads
         for param in model.classification_heads.parameters():
             param.requires_grad = True
 
         for name, param in model.named_parameters():
             print(f"{name} is {'frozen' if not param.requires_grad else 'unfrozen'}")
-
-
-
 
     # TODO: Actually implement FocalLoss
     # class FocalLoss(torch.nn.Module):
