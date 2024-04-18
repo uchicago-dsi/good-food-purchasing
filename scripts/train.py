@@ -51,13 +51,17 @@ def read_data(data_path, drop_meals=False):
     df_cleaned = df.select(TEXT_FIELD, *LABELS)
     # Make sure every row is correctly encoded as string
     df_cleaned = df_cleaned.with_columns(pl.col(TEXT_FIELD).cast(pl.Utf8))
-
     if drop_meals:
         df_cleaned = df_cleaned.filter(pl.col("Food Product Group") != "Meals")
-    df_cleaned = df_cleaned.filter(pl.col(TEXT_FIELD).is_not_null())
+    # TODO: make this come from function args
+    # TODO: should we use FPC to fix nulls for PFPC? This is a pipeline question
+    for col in [TEXT_FIELD, "Food Product Group", "Food Product Category", "Primary Food Product Category"]:
+        prev_height = df_cleaned.collect().shape[0]
+        df_cleaned = df_cleaned.filter(pl.col(col).is_not_null())
+        new_height = df_cleaned.collect().shape[0]
+        print(f"Excluded {prev_height - new_height} rows due to null values in '{col}'.")
     df_cleaned = df_cleaned.fill_null("None")
     return df_cleaned
-
 
 ### DATA PREP ###
 
@@ -108,17 +112,16 @@ if __name__ == "__main__":
     parser.add_argument('--train_attention', action="store_true", help="Trains all attention heads in the model (keeps MLPs frozen). (Default behavior is training only the classification heads)")
     parser.add_argument('--train_whole_model', action='store_true', help="Train the whole model. (Default behavior is training only the classification heads.)")
     # Hyperparameter args
-    parser.add_argument('--lr', default=.001, help="Learning rate for the Huggingface Trainer")
-    parser.add_argument('--epochs', default=40, help="Training epochs for the Huggingface Trainer")
-    parser.add_argument('--train_batch_size', default=32, help="Training batch size for the Huggingface Trainer")
-    parser.add_argument('--eval_batch_size', default=64, help="Evaluation batch size for the Huggingface Trainer")
+    parser.add_argument('--lr', default=.001, type=float, help="Learning rate for the Huggingface Trainer")
+    parser.add_argument('--epochs', default=30, type=int, help="Training epochs for the Huggingface Trainer")
+    parser.add_argument('--train_batch_size', default=32, type=int, help="Training batch size for the Huggingface Trainer")
+    parser.add_argument('--eval_batch_size', default=64, type=int, help="Evaluation batch size for the Huggingface Trainer")
     
     args = parser.parse_args()
 
     # Setup
     MODEL_NAME = "distilbert-base-uncased"
     TEXT_FIELD = "Product Type"
-
 
     # Config
     SMOKE_TEST = args.smoke_test
@@ -130,7 +133,7 @@ if __name__ == "__main__":
     logging.info(f"FREEZE_MODEL: {FREEZE_MODEL}")
     logging.info(f"FREEZE_MLPS: {FREEZE_MLPS}")
     
-    # Hyperparametersf
+    # Hyperparameters
     lr = args.lr
     epochs = 5 if SMOKE_TEST else args.epochs
     train_batch_size = args.train_batch_size # try 8,16,32
@@ -157,8 +160,9 @@ if __name__ == "__main__":
     logging.info(f"Predicting categorical fields : {LABELS}")
 
     ### DATA PREP ###
-    logging.info(f"Reading data from path : {args.train_data_path}")
+    logging.info(f"Reading training data from path : {args.train_data_path}")
     df_train = read_data(args.train_data_path, drop_meals=DROP_MEALS)
+    logging.info(f"Reading eval data from path : {args.train_data_path}")
     df_eval = read_data(args.eval_data_path, drop_meals=DROP_MEALS)
     df_combined = pl.concat([df_train, df_eval]) # combine training and eval so we have all valid outputs for evaluation
 
@@ -169,7 +173,7 @@ if __name__ == "__main__":
         encoders[column] = encoder
 
     # Create decoders to save to model config
-    # Huggingface is picky...so a list of tuples seems like the best bet
+    # Note: Huggingface is picky...so a list of tuples seems like the best bet
     # for saving to the config.json in a way that doesn't break when loaded
     decoders = []
     for col, encoder in encoders.items():

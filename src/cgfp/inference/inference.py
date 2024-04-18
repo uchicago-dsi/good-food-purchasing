@@ -169,10 +169,6 @@ def inference_handler(
     # Add all columns to results to match name normalization format
     # Assumes that the input dataframe is in the expected name normalization format
     # TODO: Add a check for that
-    # TODO: Seems like sub-types get dropped here?
-    # TODO: Ohhhhhh the issue is that the input columns might not match the saved columns
-    # force lowercasing the input columns and map them to the expected columns
-    # Should make these all lowercase and rename them when we finally save it
     results_full = pd.DataFrame()
     for col in df.columns:
         if col in results:

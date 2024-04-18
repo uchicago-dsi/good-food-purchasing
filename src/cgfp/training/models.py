@@ -126,3 +126,15 @@ class MultiTaskModel(PreTrainedModel):
             hidden_states=distilbert_output.hidden_states,
             attentions=distilbert_output.attentions,
         )
+
+
+# TODO: Maybe need to subclass the Trainer to modify the loss and backprop process?# Only backpropagate the loss from the first head to the shared layers
+# loss1.backward(retain_graph=True)  # retain_graph is needed if multiple losses affect the same parameters
+
+# # Detach the shared layer outputs to prevent gradients from loss2 affecting shared layers
+# shared_output = model.shared(input).detach().requires_grad_()
+# output2 = model.head2(shared_output)
+
+# # Recalculate loss2 with detached shared output
+# loss2 = criterion(output2, target2)
+# loss2.backward()  # This will only update head2
