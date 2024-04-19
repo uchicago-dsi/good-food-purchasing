@@ -59,6 +59,7 @@ class MultiTaskConfig(DistilBertConfig):
         num_categories_per_task=None,
         decoders=None,
         columns=None,
+        counts=None,
         fpg_idx=0,
         basic_type_idx=2,
         inference_masks=None,
@@ -74,6 +75,7 @@ class MultiTaskConfig(DistilBertConfig):
         self.basic_type_idx=basic_type_idx
         self.inference_masks=inference_masks
         self.loss=loss
+        self.counts=counts
 
 
 class MultiTaskModel(PreTrainedModel):
@@ -90,13 +92,19 @@ class MultiTaskModel(PreTrainedModel):
         self.basic_type_idx = config.basic_type_idx
         self.inference_masks = {key: torch.tensor(value) for key, value in json.loads(config.inference_masks).items()}
         self.loss = config.loss
+        self.counts = json.loads(config.counts)
         self.losses = []
 
         if self.loss == "focal":
-            for classes in self.num_categories_per_task:
-                self.losses.append(FocalLoss(num_classes=classes))
+            for task, counts in self.counts.items():
+                counts = torch.tensor(counts, dtype=torch.float)
+                total = counts.sum()
+                alpha = (1 / counts) * (total / len(counts)) # Use the inverse frequency
+                alpha /= alpha.sum()  # Normalize to sum to 1
+                self.losses.append(FocalLoss(num_classes=len(counts), alpha=alpha))
         else:
-            self.losses.append(nn.CrossEntropy())
+            for task, counts in self.counts.items():
+                self.losses.append(nn.CrossEntropy())
 
         if self.classification == "mlp":
             # TODO: wait...the config.dim should be downsampled here probably...

@@ -183,7 +183,7 @@ if __name__ == "__main__":
 
         # Fill 0s for categories that aren't in the training set
         full_counts_df = pl.DataFrame({column: unique_categories})
-        full_counts_df = full_counts_df.join(counts_df.collect(), on=column, how='left').fill_nan(0)
+        full_counts_df = full_counts_df.join(counts_df.collect(), on=column, how='left').fill_null(0)
         counts[column] = full_counts_df['count'].to_list()
 
     # Create decoders to save to model config
@@ -247,11 +247,11 @@ if __name__ == "__main__":
     ### TRAINING ###
 
     logging.info("Instantiating model")
-
-    # TODO: get class frequencies here
     distilbert_model = DistilBertForSequenceClassification.from_pretrained(
         "distilbert-base-uncased"
     )
+
+    # TODO: Kill this now that we have the counts
     num_categories_per_task = [len(v.classes_) for k, v in encoders.items()]
     config = MultiTaskConfig(
         num_categories_per_task=num_categories_per_task,
@@ -261,6 +261,7 @@ if __name__ == "__main__":
         fpg_idx=FPG_IDX,
         basic_type_idx=BASIC_TYPE_IDX,
         inference_masks=json.dumps(inference_masks),
+        counts=json.dumps(counts),
         **distilbert_model.config.to_dict(),
     )
     model = MultiTaskModel(config)
