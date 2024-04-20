@@ -38,28 +38,22 @@ from cgfp.config_training import LABELS
 
 logging.basicConfig(level=logging.INFO)
 
-### SETUP ###
-
-# These indeces are used to set up inference filtering
-FPG_IDX = LABELS.index("Food Product Group")
-BASIC_TYPE_IDX = LABELS.index("Basic Type")
-
-
-def read_data(data_path, drop_meals=False):
+def read_data(input_col, labels, data_path, drop_meals=False):
     # Note: polars syntax is different than pandas syntax
     df = pl.read_csv(data_path, infer_schema_length=1, null_values=["NULL"]).lazy()
-    df_cleaned = df.select(TEXT_FIELD, *LABELS)
-    # Make sure every row is correctly encoded as string
-    df_cleaned = df_cleaned.with_columns(pl.col(TEXT_FIELD).cast(pl.Utf8))
+    for col in [input_col, "Food Product Group", "Food Product Category", "Primary Food Product Category"]:
+        prev_height = df.collect().shape[0]
+        df = df.filter(pl.col(col).is_not_null())
+        new_height = df.collect().shape[0]
+        print(f"Excluded {prev_height - new_height} rows due to null values in '{col}'.")
     if drop_meals:
-        df_cleaned = df_cleaned.filter(pl.col("Food Product Group") != "Meals")
+        df = df.filter(pl.col("Food Product Group") != "Meals")
+    df_cleaned = df.select(input_col, *labels)
+    # TODO: This maybe needs to be done to each column? 
+    # Make sure every row is correctly encoded as string
+    df_cleaned = df_cleaned.with_columns(pl.col(input_col).cast(pl.Utf8))
     # TODO: make this come from function args
     # TODO: should we use FPC to fix nulls for PFPC? This is a pipeline question
-    for col in [TEXT_FIELD, "Food Product Group", "Food Product Category", "Primary Food Product Category"]:
-        prev_height = df_cleaned.collect().shape[0]
-        df_cleaned = df_cleaned.filter(pl.col(col).is_not_null())
-        new_height = df_cleaned.collect().shape[0]
-        print(f"Excluded {prev_height - new_height} rows due to null values in '{col}'.")
     df_cleaned = df_cleaned.fill_null("None")
     return df_cleaned
 
@@ -107,11 +101,13 @@ if __name__ == "__main__":
     # Config args
     parser.add_argument('--smoke_test', action='store_true', help="Run in smoke test mode to check basic functionality.")
     parser.add_argument('--keep_meals', action='store_true', help="Keep Meals items in training and eval datasets")
+    parser.add_argument('--two_cols', action='store_true', help="Train only on food product group and basic type (for debugging)")
     # TODO: Is default behavior saving final model?
     parser.add_argument('--dont_save_best', action="store_false", help="Don't save the best model from the training run (saves the last model, I believe)")
     parser.add_argument('--train_attention', action="store_true", help="Trains all attention heads in the model (keeps MLPs frozen). (Default behavior is training only the classification heads)")
     parser.add_argument('--train_whole_model', action='store_true', help="Train the whole model. (Default behavior is training only the classification heads.)")
     parser.add_argument('--classification', default="mlp", type=str, help="Setup the classification heads. Choices: mlp, linear. Default is mlp")
+    parser.add_argument('--loss', default="cross_entropy", type=str, help="Setup the loss function. Choices: cross_entropy, focal. Default is cross_entropy")
     # Hyperparameter args
     parser.add_argument('--lr', default=.001, type=float, help="Learning rate for the Huggingface Trainer")
     parser.add_argument('--epochs', default=30, type=int, help="Training epochs for the Huggingface Trainer")
@@ -134,6 +130,7 @@ if __name__ == "__main__":
     logging.info(f"FREEZE_MODEL: {FREEZE_MODEL}")
     logging.info(f"FREEZE_MLPS: {FREEZE_MLPS}")
     classification = args.classification
+    loss = args.loss
     
     # Hyperparameters
     lr = args.lr
@@ -162,10 +159,17 @@ if __name__ == "__main__":
     logging.info(f"Predicting categorical fields : {LABELS}")
 
     ### DATA PREP ###
+    if args.two_cols:
+        LABELS = ["Food Product Group", "Basic Type"]
+        logging.info("Training only on Food Product Group & Basic Type")
+    # These indeces are used to set up inference filtering
+    FPG_IDX = LABELS.index("Food Product Group")
+    BASIC_TYPE_IDX = LABELS.index("Basic Type")
     logging.info(f"Reading training data from path : {args.train_data_path}")
-    df_train = read_data(args.train_data_path, drop_meals=DROP_MEALS)
+    df_train = read_data(TEXT_FIELD, LABELS, args.train_data_path, drop_meals=DROP_MEALS)
     logging.info(f"Reading eval data from path : {args.train_data_path}")
-    df_eval = read_data(args.eval_data_path, drop_meals=DROP_MEALS)
+    df_eval = read_data(TEXT_FIELD, LABELS, args.eval_data_path, drop_meals=DROP_MEALS)
+
     df_combined = pl.concat([df_train, df_eval]) # combine training and eval so we have all valid outputs for evaluation
 
     encoders = {}
@@ -196,9 +200,6 @@ if __name__ == "__main__":
         }
         decoders.append((col, decoding_dict))
         logging.info(f"{col}: {len(encoder.classes_)} classes")
-
-    # TODO: Figure out how to actually calculate alphas from this...this should be done in the model
-    # Get category counts for focal loss
 
     # Save valid basic types for each food product group
     # Note: polars syntax is different than pandas
@@ -262,6 +263,7 @@ if __name__ == "__main__":
         basic_type_idx=BASIC_TYPE_IDX,
         inference_masks=json.dumps(inference_masks),
         counts=json.dumps(counts),
+        loss=loss,
         **distilbert_model.config.to_dict(),
     )
     model = MultiTaskModel(config)

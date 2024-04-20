@@ -100,11 +100,11 @@ class MultiTaskModel(PreTrainedModel):
                 counts = torch.tensor(counts, dtype=torch.float)
                 total = counts.sum()
                 alpha = (1 / counts) * (total / len(counts)) # Use the inverse frequency
-                alpha /= alpha.sum()  # Normalize to sum to 1
+                # alpha /= alpha.sum()  # Normalize to sum to 1
                 self.losses.append(FocalLoss(num_classes=len(counts), alpha=alpha))
         else:
             for task, counts in self.counts.items():
-                self.losses.append(nn.CrossEntropy())
+                self.losses.append(nn.CrossEntropyLoss())
 
         if self.classification == "mlp":
             # TODO: wait...the config.dim should be downsampled here probably...
@@ -173,6 +173,7 @@ class MultiTaskModel(PreTrainedModel):
 
         return SequenceClassifierOutput(
             loss=loss,
+            losses=loss, # the per task loss — needed for selective updates
             logits=logits,
             hidden_states=distilbert_output.hidden_states,
             attentions=distilbert_output.attentions,

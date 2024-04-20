@@ -36,9 +36,10 @@ def inference(model, tokenizer, text, device, assertion=True, confidence_score=T
     # get predicted food product group & predicted food product category
     fpg = prediction_to_string(model, softmaxed_scores, model.fpg_idx)
     # TODO: This is fragile. Maybe change config to have a mapping of each column to index
+    # TODO: This whole thing breaks if you have different columns that you're using...fix at some point
     fpc = prediction_to_string(model, softmaxed_scores, model.fpg_idx + 1)
 
-    # TODO: This seems to not be working: "spice", "herb"
+
     inference_mask = model.inference_masks[fpg].to(device)
 
     # actually mask the basic type scores
