@@ -106,8 +106,9 @@ class MultiTaskModel(PreTrainedModel):
             for task, counts in self.counts.items():
                 self.losses.append(nn.CrossEntropyLoss())
 
+        # TODO: Name the classification heads based on the task
         if self.classification == "mlp":
-            # TODO: wait...the config.dim should be downsampled here probably...
+            # TODO: This is where we need to 
             self.classification_heads = nn.ModuleList(
                 [
                     nn.Sequential(
@@ -139,7 +140,7 @@ class MultiTaskModel(PreTrainedModel):
         labels=None,
         output_attentions=None,
         output_hidden_states=None,
-        return_dict=None,
+        return_dict=False,
     ):
         distilbert_output = self.distilbert(
             input_ids=input_ids,
@@ -155,8 +156,8 @@ class MultiTaskModel(PreTrainedModel):
         logits = [classifier(pooled_output) for classifier in self.classification_heads]
 
         loss = None
+        losses = []
         if labels is not None:
-            losses = []
             for i, output in enumerate(zip(
                 logits, labels.squeeze().transpose(0, 1)
             )):  # trust me
@@ -173,20 +174,7 @@ class MultiTaskModel(PreTrainedModel):
 
         return SequenceClassifierOutput(
             loss=loss,
-            losses=loss, # the per task loss — needed for selective updates
             logits=logits,
             hidden_states=distilbert_output.hidden_states,
             attentions=distilbert_output.attentions,
         )
-
-
-# TODO: Maybe need to subclass the Trainer to modify the loss and backprop process?# Only backpropagate the loss from the first head to the shared layers
-# loss1.backward(retain_graph=True)  # retain_graph is needed if multiple losses affect the same parameters
-
-# # Detach the shared layer outputs to prevent gradients from loss2 affecting shared layers
-# shared_output = model.shared(input).detach().requires_grad_()
-# output2 = model.head2(shared_output)
-
-# # Recalculate loss2 with detached shared output
-# loss2 = criterion(output2, target2)
-# loss2.backward()  # This will only update head2

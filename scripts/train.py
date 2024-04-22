@@ -10,6 +10,8 @@ import polars as pl
 import numpy as np
 import pandas as pd
 
+from typing import Dict, Union, Any
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -252,7 +254,7 @@ if __name__ == "__main__":
         "distilbert-base-uncased"
     )
 
-    # TODO: Kill this now that we have the counts
+    # TODO: Kill this now that we have the counts. Use counts object instead in models.py
     num_categories_per_task = [len(v.classes_) for k, v in encoders.items()]
     config = MultiTaskConfig(
         num_categories_per_task=num_categories_per_task,
@@ -319,7 +321,7 @@ if __name__ == "__main__":
                 logging.info(f"The best model was saved from epoch: {self.best_epoch}")
                 logging.info(f"The best result was {self.best_model_metric}: {self.best_metric}")
 
-    # TODO: Training logs argument doesn't seem to work. Logs are in the normal logging folder?
+    # TODO: Add a callback for logging
     training_args = TrainingArguments(
         output_dir="/net/projects/cgfp/checkpoints",
         evaluation_strategy="epoch",
@@ -328,7 +330,6 @@ if __name__ == "__main__":
         per_device_train_batch_size=train_batch_size,
         per_device_eval_batch_size=eval_batch_size,
         warmup_steps=100,
-        logging_dir="./training-logs",
         max_grad_norm=1.0,
         report_to="wandb" if not SMOKE_TEST else None
     )
@@ -339,11 +340,155 @@ if __name__ == "__main__":
         training_args.metric_for_best_model = best_model_metric # TODO: Or accuracy? Maybe should be basic type accuracy?
         training_args.greater_is_better = True
 
-    # TODO: set this up to come from args
+    # TODO: Add adam config (and scheduler?) to args
     adamW = AdamW(model.parameters(), lr=lr, betas=(0.9, 0.95), eps=1e-5, weight_decay=0.1)
     scheduler = CosineAnnealingWarmRestarts(adamW, T_0=2000, T_mult=1, eta_min=lr*0.1)
 
-    trainer = Trainer(
+    class MultiTaskTrainer(Trainer):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+
+
+        def training_step(self, model: nn.Module, inputs: Dict[str, Union[torch.Tensor, Any]]) -> torch.Tensor:
+            """
+            Perform a training step on a batch of inputs.
+
+            Subclass and override to inject custom behavior.
+
+            Args:
+                model (`nn.Module`):
+                    The model to train.
+                inputs (`Dict[str, Union[torch.Tensor, Any]]`):
+                    The inputs and targets of the model.
+
+                    The dictionary will be unpacked before being fed to the model. Most models expect the targets under the
+                    argument `labels`. Check your model's documentation for all accepted arguments.
+
+            Return:
+                `torch.Tensor`: The tensor with training loss on this batch.
+            """
+            model.train()
+            inputs = self._prepare_inputs(inputs)
+
+            # if is_sagemaker_mp_enabled():
+            #     loss_mb = smp_forward_backward(model, inputs, self.args.gradient_accumulation_steps)
+            #     return loss_mb.reduce_mean().detach().to(self.args.device)
+
+            with self.compute_loss_context_manager():
+                loss = self.compute_loss(model, inputs)
+
+            if self.args.n_gpu > 1:
+                loss = loss.mean()  # mean() to average on multi-gpu parallel training
+
+            if self.args.gradient_accumulation_steps > 1 and not self.deepspeed:
+                # deepspeed handles loss scaling by gradient_accumulation_steps in its `backward`
+                loss = loss / self.args.gradient_accumulation_steps
+
+            # # Backprop for the whole model only on food product group, food product category, and basic type
+            # TODO: Maybe add sub-type?
+
+            # Freeze all classification heads
+            for param in model.classification_heads.parameters():
+                    param.requires_grad = False
+
+            # TODO: This is fragile so fix it later
+            unfreeze_indeces = [0,1,3]
+            for idx, head in enumerate(model.classification_heads):
+                if idx in unfreeze_indeces:
+                    for param in head.parameters():
+                        param.requires_grad = True
+
+            if self.do_grad_scaling:
+                self.scaler.scale(loss).backward()
+            elif self.use_apex:
+                from apex import amp
+                with amp.scale_loss(loss, self.optimizer) as scaled_loss:
+                    scaled_loss.backward()
+            elif self.deepspeed:
+                # loss gets scaled under gradient_accumulation_steps in deepspeed
+                loss = self.deepspeed.backward(loss)
+            else:
+                loss.backward(retain_graph=True)
+
+            # Backprop for the other classification heads
+
+            # Freeze all layers
+            for param in model.parameters():
+                param.requires_grad = False
+
+            # Unfreeze untrained classification heads
+            for idx, head in enumerate(model.classification_heads):
+                if idx not in unfreeze_indeces:
+                    for param in head.parameters():
+                        param.requires_grad = True
+
+            if self.do_grad_scaling:
+                self.scaler.scale(loss).backward()
+            elif self.use_apex:
+                from apex import amp
+                with amp.scale_loss(loss, self.optimizer) as scaled_loss:
+                    scaled_loss.backward()
+            elif self.deepspeed:
+                # loss gets scaled under gradient_accumulation_steps in deepspeed
+                loss = self.deepspeed.backward(loss)
+            else:
+                loss.backward()
+
+            return loss.detach()
+            # model.train()
+            # inputs = self._prepare_inputs(inputs)
+
+            # with self.compute_loss_context_manager():
+            #     loss = self.compute_loss(model, inputs)
+
+            # if self.args.n_gpu > 1:
+            #     loss = loss.mean()  # mean() to average on multi-gpu parallel training
+
+            # # Backprop for the whole model only on food product group, food product category, and basic type
+            # # TODO: Maybe add sub-type?
+
+            # # Freeze all classification heads
+            # for param in model.classification_heads.parameters():
+            #         param.requires_grad = False
+
+            # # TODO: This is fragile so fix it later
+            # unfreeze_indeces = [0,1,3]
+            # for idx, head in enumerate(model.classification_heads):
+            #     if idx in unfreeze_indeces:
+            #         for param in head.parameters():
+            #             param.requires_grad = True
+
+            # from transformers.utils import is_apex_available
+            # if is_apex_available():
+            #     from apex import amp
+            # if self.use_apex:
+            #     with amp.scale_loss(loss, self.optimizer) as scaled_loss:
+            #         scaled_loss.backward()
+            # else:
+            #     self.accelerator.backward(loss)
+            # model.zero_grad()
+
+            # # Backprop for the other classification heads
+
+            # # Freeze all layers
+            # for param in model.parameters():
+            #     param.requires_grad = False
+
+            # # Unfreeze untrained classification heads
+            # for idx, head in enumerate(model.classification_heads):
+            #     if idx not in unfreeze_indeces:
+            #         for param in head.parameters():
+            #             param.requires_grad = True
+
+            # if self.use_apex:
+            #     with amp.scale_loss(loss, self.optimizer) as scaled_loss:
+            #         scaled_loss.backward()
+            # else:
+            #     self.accelerator.backward(loss)
+
+            # return loss.detach() / self.args.gradient_accumulation_steps
+
+    trainer = MultiTaskTrainer(
         model=model,
         args=training_args,
         compute_metrics=compute_metrics,
