@@ -38,8 +38,6 @@ from cgfp.inference.inference import inference, inference_handler
 from cgfp.training.models import MultiTaskConfig, MultiTaskModel
 from cgfp.config_training import LABELS
 
-logging.basicConfig(level=logging.INFO)
-
 def read_data(input_col, labels, data_path, drop_meals=False):
     # Note: polars syntax is different than pandas syntax
     df = pl.read_csv(data_path, infer_schema_length=1, null_values=["NULL"]).lazy()
@@ -47,7 +45,7 @@ def read_data(input_col, labels, data_path, drop_meals=False):
         prev_height = df.collect().shape[0]
         df = df.filter(pl.col(col).is_not_null())
         new_height = df.collect().shape[0]
-        print(f"Excluded {prev_height - new_height} rows due to null values in '{col}'.")
+        logging.info(f"Excluded {prev_height - new_height} rows due to null values in '{col}'.")
     if drop_meals:
         df = df.filter(pl.col("Food Product Group") != "Meals")
     df_cleaned = df.select(input_col, *labels)
@@ -58,6 +56,12 @@ def read_data(input_col, labels, data_path, drop_meals=False):
     # TODO: should we use FPC to fix nulls for PFPC? This is a pipeline question
     df_cleaned = df_cleaned.fill_null("None")
     return df_cleaned
+
+def test_inference(model, tokenizer, prompt, device="cuda:0"):
+    preds_dict = inference(model, tokenizer, prompt, device)
+    normalized_name = inference(model, tokenizer, prompt, device, combine_name=True)
+    logging.info(f"Example output for 'frozen peas and carrots': {normalized_name}")
+    logging.info(preds_dict)
 
 ### DATA PREP ###
 
@@ -107,12 +111,14 @@ if __name__ == "__main__":
     # TODO: Is default behavior saving final model?
     parser.add_argument('--dont_save_best', action="store_false", help="Don't save the best model from the training run (saves the last model, I believe)")
     parser.add_argument('--train_attention', action="store_true", help="Trains all attention heads in the model (keeps MLPs frozen). (Default behavior is training only the classification heads)")
-    parser.add_argument('--train_whole_model', action='store_true', help="Train the whole model. (Default behavior is training only the classification heads.)")
+    # TODO: Sort out the logic for these two args
+    # parser.add_argument('--train_whole_model', action='store_true', help="Train the whole model. (Default behavior is training only the classification heads.)")
+    parser.add_argument('--freeze_model', action='store_true', help="Freeze model other than classification heads. (Default behavior is training the whole model.)")
     parser.add_argument('--classification', default="mlp", type=str, help="Setup the classification heads. Choices: mlp, linear. Default is mlp")
     parser.add_argument('--loss', default="cross_entropy", type=str, help="Setup the loss function. Choices: cross_entropy, focal. Default is cross_entropy")
     # Hyperparameter args
     parser.add_argument('--lr', default=.001, type=float, help="Learning rate for the Huggingface Trainer")
-    parser.add_argument('--epochs', default=30, type=int, help="Training epochs for the Huggingface Trainer")
+    parser.add_argument('--epochs', default=40, type=int, help="Training epochs for the Huggingface Trainer")
     parser.add_argument('--train_batch_size', default=32, type=int, help="Training batch size for the Huggingface Trainer")
     parser.add_argument('--eval_batch_size', default=64, type=int, help="Evaluation batch size for the Huggingface Trainer")
     
@@ -121,16 +127,42 @@ if __name__ == "__main__":
     # Setup
     MODEL_NAME = "distilbert-base-uncased"
     TEXT_FIELD = "Product Type"
-
-    # Config
     SMOKE_TEST = args.smoke_test
     SAVE_BEST = not args.dont_save_best
     DROP_MEALS = not args.keep_meals
-    logging.info(f"DROP_MEALS: {DROP_MEALS}")
-    FREEZE_MODEL = not args.train_whole_model
+    # FREEZE_MODEL = not args.train_whole_model
+    FREEZE_MODEL = args.freeze_model
     FREEZE_MLPS = args.train_attention
+
+    # Logging
+    run_name = f"{MODEL_NAME}_{datetime.now().strftime('%Y%m%d_%H%M')}"
+
+    if SMOKE_TEST:
+        run_name += "-smoke-test"
+        os.environ["WANDB_DISABLED"] = "true"
+    MODEL_PATH = (
+        f"/net/projects/cgfp/model-files/{run_name}"
+    )
+
+    LOGGING_FOLDER = "logs/"
+    LOG_FILE = f"{LOGGING_FOLDER}{run_name}.log"
+    logging.basicConfig(level=logging.INFO)
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s')
+    file_handler = logging.FileHandler(LOG_FILE)
+    file_handler.setFormatter(formatter)
+    logging.getLogger().addHandler(file_handler)
+
+    transformers_logger = logging.getLogger('transformers')
+    transformers_logger.addHandler(file_handler)
+
+    logging.info(f"DROP_MEALS: {DROP_MEALS}")
     logging.info(f"FREEZE_MODEL: {FREEZE_MODEL}")
     logging.info(f"FREEZE_MLPS: {FREEZE_MLPS}")
+
+    if not SMOKE_TEST:
+        wandb.init(project='cgfp', name=run_name)
+
+    # Config
     classification = args.classification
     loss = args.loss
     
@@ -139,17 +171,6 @@ if __name__ == "__main__":
     epochs = 5 if SMOKE_TEST else args.epochs
     train_batch_size = args.train_batch_size # try 8,16,32
     eval_batch_size = args.eval_batch_size
-
-    # Logging
-    run_name = f"{MODEL_NAME}_{datetime.now().strftime('%Y%m%d_%H%M')}"
-    if SMOKE_TEST:
-        run_name += "-smoke-test"
-        os.environ["WANDB_DISABLED"] = "true"
-    MODEL_PATH = (
-        f"/net/projects/cgfp/model-files/{run_name}"
-    )
-    if not SMOKE_TEST:
-        wandb.init(project='cgfp', name=run_name)
 
     ### SETUP ###
     logging.info(f"MODEL_PATH : {MODEL_PATH}")
@@ -187,6 +208,10 @@ if __name__ == "__main__":
         # Get counts for each category in the training set for focal loss
         counts_df = df_train.group_by(column).agg(pl.len().alias('count')).sort(column)
 
+        logging.info(f"Categories for {column}")
+        with pl.Config(tbl_rows=-1):
+            logging.info(counts_df.collect())
+
         # Fill 0s for categories that aren't in the training set
         full_counts_df = pl.DataFrame({column: unique_categories})
         full_counts_df = full_counts_df.join(counts_df.collect(), on=column, how='left').fill_null(0)
@@ -201,7 +226,7 @@ if __name__ == "__main__":
             f"{index}": label for index, label in enumerate(encoder.classes_)
         }
         decoders.append((col, decoding_dict))
-        logging.info(f"{col}: {len(encoder.classes_)} classes")
+        # logging.info(f"{col}: {len(encoder.classes_)} classes")
 
     # Save valid basic types for each food product group
     # Note: polars syntax is different than pandas
@@ -236,14 +261,11 @@ if __name__ == "__main__":
     # Should probably put most (or all) of this in a function and handle the config stuff after the dataset is setup
     train_dataset = train_dataset.map(tokenize)
     eval_dataset = eval_dataset.map(tokenize)
-    logging.info("Example data:")
-    for i in range(5):
-        logging.info(train_dataset[i])
 
     train_dataset.set_format("torch", columns=["input_ids", "attention_mask", "labels"])
     eval_dataset.set_format("torch", columns=["input_ids", "attention_mask", "labels"])
 
-    logging.info("Dataset is prepared")
+    logging.info("Datasets are prepared")
     logging.info(f"Structure of the dataset : {train_dataset}")
     logging.info(f"Sample record from the dataset : {train_dataset[0]}")
 
@@ -309,7 +331,11 @@ if __name__ == "__main__":
             self.best_epoch = None
 
         def on_evaluate(self, args, state, control, metrics=None, **kwargs):
-            # "eval_" is prepended to the keys in metrics
+            logging.info(f"Evaluating at epoch: {state.epoch}")
+            logging.info(f"Metrics: {metrics}")
+            prompt = "frozen peas and carrots"
+            test_inference(model, tokenizer, prompt, device)
+            # Note: "eval_" is prepended to the keys in metrics
             current_metric = metrics["eval_" + self.best_model_metric]
             if current_metric > self.best_metric:
                 self.best_metric = current_metric
@@ -384,7 +410,7 @@ if __name__ == "__main__":
                 # deepspeed handles loss scaling by gradient_accumulation_steps in its `backward`
                 loss = loss / self.args.gradient_accumulation_steps
 
-            # # Backprop for the whole model only on food product group, food product category, and basic type
+            # Backprop for the whole model only on food product group, food product category, and basic type
             # TODO: Maybe add sub-type?
 
             # Freeze all classification heads
@@ -435,58 +461,6 @@ if __name__ == "__main__":
                 loss.backward()
 
             return loss.detach()
-            # model.train()
-            # inputs = self._prepare_inputs(inputs)
-
-            # with self.compute_loss_context_manager():
-            #     loss = self.compute_loss(model, inputs)
-
-            # if self.args.n_gpu > 1:
-            #     loss = loss.mean()  # mean() to average on multi-gpu parallel training
-
-            # # Backprop for the whole model only on food product group, food product category, and basic type
-            # # TODO: Maybe add sub-type?
-
-            # # Freeze all classification heads
-            # for param in model.classification_heads.parameters():
-            #         param.requires_grad = False
-
-            # # TODO: This is fragile so fix it later
-            # unfreeze_indeces = [0,1,3]
-            # for idx, head in enumerate(model.classification_heads):
-            #     if idx in unfreeze_indeces:
-            #         for param in head.parameters():
-            #             param.requires_grad = True
-
-            # from transformers.utils import is_apex_available
-            # if is_apex_available():
-            #     from apex import amp
-            # if self.use_apex:
-            #     with amp.scale_loss(loss, self.optimizer) as scaled_loss:
-            #         scaled_loss.backward()
-            # else:
-            #     self.accelerator.backward(loss)
-            # model.zero_grad()
-
-            # # Backprop for the other classification heads
-
-            # # Freeze all layers
-            # for param in model.parameters():
-            #     param.requires_grad = False
-
-            # # Unfreeze untrained classification heads
-            # for idx, head in enumerate(model.classification_heads):
-            #     if idx not in unfreeze_indeces:
-            #         for param in head.parameters():
-            #             param.requires_grad = True
-
-            # if self.use_apex:
-            #     with amp.scale_loss(loss, self.optimizer) as scaled_loss:
-            #         scaled_loss.backward()
-            # else:
-            #     self.accelerator.backward(loss)
-
-            # return loss.detach() / self.args.gradient_accumulation_steps
 
     trainer = MultiTaskTrainer(
         model=model,
@@ -512,9 +486,7 @@ if __name__ == "__main__":
     logging.info("Complete!")
 
     prompt = "frozen peas and carrots"
-    legible_preds = inference(model, tokenizer, prompt, device)
-    logging.info(f"Example output for 'frozen peas and carrots': {legible_preds}")
-    logging.info(inference(model, tokenizer, prompt, device, combine_name=True))
+    test_inference(model, tokenizer, prompt, device)
 
     # TODO: Fix this for smoke_test 
     # » the logic of changing the output file is actually kinda tricky, need to go through inference setup
@@ -539,6 +511,5 @@ if __name__ == "__main__":
         raw_results=False,
         assertion=False,
     )
-    pd.set_option('display.max_columns', None)
-    logging.info(output_sheet.head(2))
-    logging.info(f"Columns: {output_sheet.columns.tolist()}")
+    with pd.option_context('display.max_columns', None):
+        logging.info(output_sheet.head(1))
