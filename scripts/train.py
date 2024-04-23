@@ -104,6 +104,7 @@ if __name__ == "__main__":
     # Setup args
     parser.add_argument('--train_data_path', default="/net/projects/cgfp/data/clean/clean_CONFIDENTIAL_CGFP_bulk_data_073123.csv", type=str, help="Path to the training data CSV file.")
     parser.add_argument('--eval_data_path', default="/net/projects/cgfp/data/clean/combined_eval_set.csv", type=str, help="Path to the evaluation data CSV file.")
+    parser.add_argument('--save_counts', action='store_true', help="Save counts for each category in the training set to an Excel file.")
     # Config args
     parser.add_argument('--smoke_test', action='store_true', help="Run in smoke test mode to check basic functionality.")
     parser.add_argument('--keep_meals', action='store_true', help="Keep Meals items in training and eval datasets")
@@ -130,9 +131,11 @@ if __name__ == "__main__":
     SMOKE_TEST = args.smoke_test
     SAVE_BEST = not args.dont_save_best
     DROP_MEALS = not args.keep_meals
+    # TODO: Decide on this after setting up correct gradient handling
     # FREEZE_MODEL = not args.train_whole_model
     FREEZE_MODEL = args.freeze_model
     FREEZE_MLPS = args.train_attention
+    SAVE_COUNTS = args.save_counts
 
     # Logging
     run_name = f"{MODEL_NAME}_{datetime.now().strftime('%Y%m%d_%H%M')}"
@@ -197,6 +200,7 @@ if __name__ == "__main__":
 
     encoders = {}
     counts = {}
+    counts_sheets = {}
     for column in LABELS:
         # Create encoders (including all labels from training and eval sets)
         # Note: sort this so that the order is consistent
@@ -215,12 +219,16 @@ if __name__ == "__main__":
         # Fill 0s for categories that aren't in the training set
         full_counts_df = pl.DataFrame({column: unique_categories})
         full_counts_df = full_counts_df.join(counts_df.collect(), on=column, how='left').fill_null(0)
+        counts_sheets[column] = full_counts_df
         counts[column] = full_counts_df['count'].to_list()
     
-    # TODO: Save excel file here for counts
-    # with pl.Config(tbl_rows=-1):
-    #     logging.info("Category Counts")
-    #     logging.info(full_counts_df.collect())
+
+    if SAVE_COUNTS:
+        file_path = '/net/projects/cgfp/data/clean/category_counts.xlsx'
+        logging.info(f"Saving counts to Excel: {file_path}")
+        with pd.ExcelWriter(file_path) as writer:
+            for column, df in counts_sheets.items():
+                df.to_pandas().to_excel(writer, sheet_name=column.replace("/", "_"), index=False)
 
     # Create decoders to save to model config
     # Note: Huggingface is picky...so a list of tuples seems like the best bet
@@ -403,10 +411,6 @@ if __name__ == "__main__":
             model.train()
             inputs = self._prepare_inputs(inputs)
 
-            # if is_sagemaker_mp_enabled():
-            #     loss_mb = smp_forward_backward(model, inputs, self.args.gradient_accumulation_steps)
-            #     return loss_mb.reduce_mean().detach().to(self.args.device)
-
             with self.compute_loss_context_manager():
                 loss = self.compute_loss(model, inputs)
 
@@ -420,7 +424,6 @@ if __name__ == "__main__":
             # Backprop for the whole model only on food product group, food product category, and basic type
             # TODO: Maybe add sub-type?
 
-            # TODO: This isn't actually working
             unfreeze_heads = ["Food Product Group", "Food Product Category", "Basic Type"]
             for name, head in model.classification_heads.items():
                 if name not in unfreeze_heads:
@@ -436,7 +439,6 @@ if __name__ == "__main__":
             # model.classification_heads.Commodity[0].weight.grad
 
             # Backprop for the other classification heads
-
             # Freeze all layers
             if DEBUG_TRAINER:
                 logging.info(f"Freezing model...")
