@@ -22,7 +22,7 @@ def prediction_to_string(model, scores, idx):
     return decoder[str(max_idx.item())]
 
 
-def inference(model, tokenizer, text, device, assertion=True, confidence_score=True, combine_name=False):
+def inference(model, tokenizer, text, device, assertion=False, confidence_score=True, combine_name=False):
     inputs = tokenizer(text, padding=True, truncation=True, return_tensors="pt")
 
     inputs = inputs.to(device)
@@ -135,7 +135,7 @@ def inference_handler(
     threshold=0.85,
     rows_to_classify=None,
     raw_results=False,
-    assertion=True,
+    assertion=False,
 ):
     if device is None:
         device = "cuda:0" if torch.cuda.is_available() else "cpu"

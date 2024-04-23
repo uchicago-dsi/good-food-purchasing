@@ -118,7 +118,7 @@ if __name__ == "__main__":
     parser.add_argument('--loss', default="cross_entropy", type=str, help="Setup the loss function. Choices: cross_entropy, focal. Default is cross_entropy")
     # Hyperparameter args
     parser.add_argument('--lr', default=.001, type=float, help="Learning rate for the Huggingface Trainer")
-    parser.add_argument('--epochs', default=40, type=int, help="Training epochs for the Huggingface Trainer")
+    parser.add_argument('--epochs', default=60, type=int, help="Training epochs for the Huggingface Trainer")
     parser.add_argument('--train_batch_size', default=32, type=int, help="Training batch size for the Huggingface Trainer")
     parser.add_argument('--eval_batch_size', default=64, type=int, help="Evaluation batch size for the Huggingface Trainer")
     
@@ -216,6 +216,11 @@ if __name__ == "__main__":
         full_counts_df = pl.DataFrame({column: unique_categories})
         full_counts_df = full_counts_df.join(counts_df.collect(), on=column, how='left').fill_null(0)
         counts[column] = full_counts_df['count'].to_list()
+    
+    # TODO: Save excel file here for counts
+    # with pl.Config(tbl_rows=-1):
+    #     logging.info("Category Counts")
+    #     logging.info(full_counts_df.collect())
 
     # Create decoders to save to model config
     # Note: Huggingface is picky...so a list of tuples seems like the best bet
@@ -295,34 +300,34 @@ if __name__ == "__main__":
 
     # TODO: add an arg for freezing layers
     # Freeze all layers
-    if FREEZE_MODEL:
-        logging.info("Freezing model...")
-        for param in model.parameters():
-            param.requires_grad = False
+    # if FREEZE_MODEL:
+    #     logging.info("Freezing model...")
+    #     for param in model.parameters():
+    #         param.requires_grad = False
 
-        logging.info("Unfreezing classification heads...")
-        # Unfreeze classification heads
-        for param in model.classification_heads.parameters():
-            param.requires_grad = True
+    #     logging.info("Unfreezing classification heads...")
+    #     # Unfreeze classification heads
+    #     for param in model.classification_heads.parameters():
+    #         param.requires_grad = True
 
-    if FREEZE_MLPS:
-        logging.info("Freezing model...")
-        for param in model.parameters():
-            param.requires_grad = False
+    # if FREEZE_MLPS:
+    #     logging.info("Freezing model...")
+    #     for param in model.parameters():
+    #         param.requires_grad = False
 
-        logging.info("Unfreezing attention and layernorn...")
-        # Unfreeze attention heads and layernorm
-        for name, param in model.named_parameters():
-            if "attention" in name or "output" in name or "layer_norm" in name:
-                param.requires_grad = True
+    #     logging.info("Unfreezing attention and layernorn...")
+    #     # Unfreeze attention heads and layernorm
+    #     for name, param in model.named_parameters():
+    #         if "attention" in name or "output" in name or "layer_norm" in name:
+    #             param.requires_grad = True
 
-        logging.info("Unfreezing classification heads...")
-        # Unfreeze classification heads
-        for param in model.classification_heads.parameters():
-            param.requires_grad = True
+    #     logging.info("Unfreezing classification heads...")
+    #     # Unfreeze classification heads
+    #     for param in model.classification_heads.parameters():
+    #         param.requires_grad = True
 
-        for name, param in model.named_parameters():
-            print(f"{name} is {'frozen' if not param.requires_grad else 'unfrozen'}")
+    #     for name, param in model.named_parameters():
+    #         print(f"{name} is {'frozen' if not param.requires_grad else 'unfrozen'}")
 
     class SaveBestModelCallback(TrainerCallback):
         def __init__(self, best_model_metric):
@@ -370,6 +375,8 @@ if __name__ == "__main__":
     adamW = AdamW(model.parameters(), lr=lr, betas=(0.9, 0.95), eps=1e-5, weight_decay=0.1)
     scheduler = CosineAnnealingWarmRestarts(adamW, T_0=2000, T_mult=1, eta_min=lr*0.1)
 
+    DEBUG_TRAINER = True
+
     class MultiTaskTrainer(Trainer):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
@@ -413,52 +420,42 @@ if __name__ == "__main__":
             # Backprop for the whole model only on food product group, food product category, and basic type
             # TODO: Maybe add sub-type?
 
-            # Freeze all classification heads
-            for param in model.classification_heads.parameters():
-                    param.requires_grad = False
-
-            # TODO: This is fragile so fix it later
-            unfreeze_indeces = [0,1,3]
-            for idx, head in enumerate(model.classification_heads):
-                if idx in unfreeze_indeces:
+            # TODO: This isn't actually working
+            unfreeze_heads = ["Food Product Group", "Food Product Category", "Basic Type"]
+            for name, head in model.classification_heads.items():
+                if name not in unfreeze_heads:
                     for param in head.parameters():
-                        param.requires_grad = True
+                        param.requires_grad = False
 
-            if self.do_grad_scaling:
-                self.scaler.scale(loss).backward()
-            elif self.use_apex:
-                from apex import amp
-                with amp.scale_loss(loss, self.optimizer) as scaled_loss:
-                    scaled_loss.backward()
-            elif self.deepspeed:
-                # loss gets scaled under gradient_accumulation_steps in deepspeed
-                loss = self.deepspeed.backward(loss)
-            else:
-                loss.backward(retain_graph=True)
+            # Note: deleted the non-standard loss handling options
+            loss.backward(retain_graph=True)
+
+            # For accessing gradients and debugging:
+            # model.distilbert.transformer.layer[0].attention.q_lin.weight.grad » first entry: -2.6668e-06
+            # model.classification_heads['Basic Type'][0].weight.grad » first entry: -3.0381e-03
+            # model.classification_heads.Commodity[0].weight.grad
 
             # Backprop for the other classification heads
 
             # Freeze all layers
+            if DEBUG_TRAINER:
+                logging.info(f"Freezing model...")
             for param in model.parameters():
                 param.requires_grad = False
 
             # Unfreeze untrained classification heads
-            for idx, head in enumerate(model.classification_heads):
-                if idx not in unfreeze_indeces:
+            for name, head in model.classification_heads.items():
+                if name not in unfreeze_heads:
+                    if DEBUG_TRAINER:
+                        logging.info(f"Unfreezing {name} head")
                     for param in head.parameters():
                         param.requires_grad = True
 
-            if self.do_grad_scaling:
-                self.scaler.scale(loss).backward()
-            elif self.use_apex:
-                from apex import amp
-                with amp.scale_loss(loss, self.optimizer) as scaled_loss:
-                    scaled_loss.backward()
-            elif self.deepspeed:
-                # loss gets scaled under gradient_accumulation_steps in deepspeed
-                loss = self.deepspeed.backward(loss)
-            else:
-                loss.backward()
+            loss.backward()
+
+            # Unfreeze everything or else optimizer won't update
+            for param in model.parameters():
+                param.requires_grad = True
 
             return loss.detach()
 
