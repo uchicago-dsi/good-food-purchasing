@@ -146,9 +146,14 @@ class MultiTaskModel(PreTrainedModel):
         hidden_state = distilbert_output[0]
         pooled_output = hidden_state[:, 0]
 
-        logits = [classifier(pooled_output) for classifier in self.classification_heads.values()]
-
-        # TODO: Pass the logits to separate classification heads here?
+        # TODO: write actual documentation of what's happening here if this works
+        logits = []
+        unfreeze_heads = ["Food Product Group", "Food Product Category", "Basic Type"]
+        for head, classifier in self.classification_heads.items():
+            if head not in unfreeze_heads:
+                logits.append(classifier(pooled_output.detach()))
+            else:
+                logits.append(classifier(pooled_output))
 
         loss = None
         losses = []
@@ -158,6 +163,8 @@ class MultiTaskModel(PreTrainedModel):
             )):  # trust me
                 logit, label = output
                 losses.append(self.losses[i](logit, label.view(-1)))
+            breakpoint()
+            # TODO: Scale loss here
             loss = sum(losses)
 
         output = (logits,) + distilbert_output[

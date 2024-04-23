@@ -389,42 +389,41 @@ if __name__ == "__main__":
             self.DEBUG_TRAINER = True
             self.training_step_count = 0
 
-        def compute_loss(self, model, inputs, return_outputs=False):
-            """
-            How the loss is computed by Trainer. By default, all models return the loss in the first element.
+        # def compute_loss(self, model, inputs, return_outputs=False):
+        #     """
+        #     How the loss is computed by Trainer. By default, all models return the loss in the first element.
 
-            Subclass and override for custom behavior.
-            """
-            if self.label_smoother is not None and "labels" in inputs:
-                labels = inputs.pop("labels")
-            else:
-                labels = None
-            # TODO: so...maybe I add a hook to call or something? So that if I want to do something custom I can do it in forward if that argument is passed?
-            outputs = model(**inputs)
-            # outputs is (loss, (logits, distilbert_output[1:]))
-            # So the distilbert hidden state is outputs[1][18]
-            breakpoint()
-            # output = (logits,) + distilbert_output[1:]  
-            # if not return_dict:
-            #     return (loss,) + output if loss is not None else output
+        #     Subclass and override for custom behavior.
+        #     """
+        #     if self.label_smoother is not None and "labels" in inputs:
+        #         labels = inputs.pop("labels")
+        #     else:
+        #         labels = None
+        #     # TODO: so...maybe I add a hook to call or something? So that if I want to do something custom I can do it in forward if that argument is passed?
+        #     outputs = model(**inputs)
+        #     # outputs is (loss, (logits, distilbert_output[1:]))
+        #     # So the distilbert hidden state is outputs[1][18]
+        #     # output = (logits,) + distilbert_output[1:]  
+        #     # if not return_dict:
+        #     #     return (loss,) + output if loss is not None else output
             
-            # Save past state if it exists
-            # TODO: this needs to be fixed and made cleaner later.
-            if self.args.past_index >= 0:
-                self._past = outputs[self.args.past_index]
+        #     # Save past state if it exists
+        #     # TODO: this needs to be fixed and made cleaner later.
+        #     if self.args.past_index >= 0:
+        #         self._past = outputs[self.args.past_index]
 
-            if labels is not None:
-                loss = self.label_smoother(outputs, labels)
-            else:
-                if isinstance(outputs, dict) and "loss" not in outputs:
-                    raise ValueError(
-                        "The model did not return a loss from the inputs, only the following keys: "
-                        f"{','.join(outputs.keys())}. For reference, the inputs it received are {','.join(inputs.keys())}."
-                    )
-                # We don't use .loss here since the model may return tuples instead of ModelOutput.
-                loss = outputs["loss"] if isinstance(outputs, dict) else outputs[0]
+        #     if labels is not None:
+        #         loss = self.label_smoother(outputs, labels)
+        #     else:
+        #         if isinstance(outputs, dict) and "loss" not in outputs:
+        #             raise ValueError(
+        #                 "The model did not return a loss from the inputs, only the following keys: "
+        #                 f"{','.join(outputs.keys())}. For reference, the inputs it received are {','.join(inputs.keys())}."
+        #             )
+        #         # We don't use .loss here since the model may return tuples instead of ModelOutput.
+        #         loss = outputs["loss"] if isinstance(outputs, dict) else outputs[0]
 
-            return (loss, outputs) if return_outputs else loss
+        #     return (loss, outputs) if return_outputs else loss
 
 
         def training_step(self, model: nn.Module, inputs: Dict[str, Union[torch.Tensor, Any]]) -> torch.Tensor:
@@ -464,26 +463,27 @@ if __name__ == "__main__":
             # Backprop for the whole model only on food product group, food product category, and basic type
             # TODO: Maybe add sub-type?
 
-            for param in model.parameters():
-                param.requires_grad = True
+            # for param in model.parameters():
+            #     param.requires_grad = True
 
-            unfreeze_heads = ["Food Product Group", "Food Product Category", "Basic Type"]
-            if self.DEBUG_TRAINER:
-                logging.info(f"Training Step: {self.training_step_count + 1}")
-                logging.info(f"First backward pass...")
-            for name, head in model.classification_heads.items():
-                if name not in unfreeze_heads:
-                    if self.training_step_count == 0:
-                        logging.info(f"Freezing {name} head")
-                    for param in head.parameters():
-                        param.requires_grad = False
+            # unfreeze_heads = ["Food Product Group", "Food Product Category", "Basic Type"]
+            # if self.DEBUG_TRAINER:
+            #     logging.info(f"Training Step: {self.training_step_count + 1}")
+            #     logging.info(f"First backward pass...")
+            # for name, head in model.classification_heads.items():
+            #     if name not in unfreeze_heads:
+            #         if self.training_step_count == 0:
+            #             logging.info(f"Freezing {name} head")
+            #         for param in head.parameters():
+            #             param.requires_grad = False
 
             # Note: deleted the non-standard loss handling options
             # TODO: Is it possible that the summed loss is causing the issue here?
-            loss.backward(retain_graph=True)
+            # loss.backward(retain_graph=True)
+            loss.backward()
 
             if self.DEBUG_TRAINER:
-                logging.info("First backward pass complete")
+                # logging.info("First backward pass complete")
                 attention_weights = model.distilbert.transformer.layer[0].attention.q_lin.weight
                 attention_weight_val = attention_weights[0][0]
                 attention_grad = attention_weights.grad
@@ -501,52 +501,61 @@ if __name__ == "__main__":
                 commodity_grad = commodity_weights.grad
                 commodity_first_pass_grad = commodity_grad[0][0] if commodity_grad is not None else 'None'
 
-            # Backprop for the other classification heads
-            # Freeze all layers
+            # # Backprop for the other classification heads
+            # # Freeze all layers
+            # if self.DEBUG_TRAINER:
+            #     logging.info(f"Second backward pass...")
+            #     logging.info(f"Freezing entire model...")
+            # for param in model.parameters():
+            #     param.requires_grad = False
+
+            # # Unfreeze untrained classification heads
+            # for name, head in model.classification_heads.items():
+            #     if name not in unfreeze_heads:
+            #         if self.training_step_count == 0:
+            #             logging.info(f"Unfreezing {name} head")
+            #         for param in head.parameters():
+            #             param.requires_grad = True
+
+            # loss.backward()
+
+            # # Unfreeze everything or else optimizer won't update
+            # for param in model.parameters():
+            #     param.requires_grad = True
+
             if self.DEBUG_TRAINER:
-                logging.info(f"Second backward pass...")
-                logging.info(f"Freezing entire model...")
-            for param in model.parameters():
-                param.requires_grad = False
+                # logging.info("Second backward pass complete")
 
-            # Unfreeze untrained classification heads
-            for name, head in model.classification_heads.items():
-                if name not in unfreeze_heads:
-                    if self.training_step_count == 0:
-                        logging.info(f"Unfreezing {name} head")
-                    for param in head.parameters():
-                        param.requires_grad = True
+                # attention_weights = model.distilbert.transformer.layer[0].attention.q_lin.weight
+                # attention_grad = attention_weights.grad
+                # attention_second_pass_grad = attention_grad[0][0]
+                # basic_type_weights = model.classification_heads['Basic Type'][0].weight
+                # basic_type_grad = basic_type_weights.grad
+                # basic_type_second_pass_grad = basic_type_grad[0][0]
+                # fpg_weights = model.classification_heads['Food Product Group'][0].weight
+                # fpg_grad = fpg_weights.grad
+                # fpg_second_pass_grad = fpg_grad[0][0]
+                # commodity_weights = model.classification_heads['Commodity'][0].weight
+                # commodity_grad = commodity_weights.grad
+                # commodity_second_pass_grad = commodity_grad[0][0] if commodity_grad is not None else 'None'
 
-            loss.backward()
-
-            # Unfreeze everything or else optimizer won't update
-            for param in model.parameters():
-                param.requires_grad = True
-
-            if self.DEBUG_TRAINER:
-                logging.info("Second backward pass complete")
-
-                attention_weights = model.distilbert.transformer.layer[0].attention.q_lin.weight
-                attention_grad = attention_weights.grad
-                attention_second_pass_grad = attention_grad[0][0]
-                basic_type_weights = model.classification_heads['Basic Type'][0].weight
-                basic_type_grad = basic_type_weights.grad
-                basic_type_second_pass_grad = basic_type_grad[0][0]
-                fpg_weights = model.classification_heads['Food Product Group'][0].weight
-                fpg_grad = fpg_weights.grad
-                fpg_second_pass_grad = fpg_grad[0][0]
-                commodity_weights = model.classification_heads['Commodity'][0].weight
-                commodity_grad = commodity_weights.grad
-                commodity_second_pass_grad = commodity_grad[0][0] if commodity_grad is not None else 'None'
+                # logging.info(f"attention_weight_val: {attention_weight_val}")
+                # logging.info(f"attention_grads: {attention_first_pass_grad, attention_second_pass_grad}")
+                # logging.info(f"basic_type_weight_val: {basic_type_weight_val}")
+                # logging.info(f"basic_type_grads: {basic_type_first_pass_grad, basic_type_second_pass_grad}")
+                # logging.info(f"fpg_weight_val: {fpg_weight_val}")
+                # logging.info(f"fpg_grads: {fpg_first_pass_grad, fpg_second_pass_grad}")
+                # logging.info(f"commodity_weight_val: {commodity_weight_val}")
+                # logging.info(f"commodity_grads: {commodity_first_pass_grad, commodity_second_pass_grad}")
 
                 logging.info(f"attention_weight_val: {attention_weight_val}")
-                logging.info(f"attention_grads: {attention_first_pass_grad, attention_second_pass_grad}")
+                logging.info(f"attention_grads: {attention_first_pass_grad}")
                 logging.info(f"basic_type_weight_val: {basic_type_weight_val}")
-                logging.info(f"basic_type_grads: {basic_type_first_pass_grad, basic_type_second_pass_grad}")
+                logging.info(f"basic_type_grads: {basic_type_first_pass_grad}")
                 logging.info(f"fpg_weight_val: {fpg_weight_val}")
-                logging.info(f"fpg_grads: {fpg_first_pass_grad, fpg_second_pass_grad}")
+                logging.info(f"fpg_grads: {fpg_first_pass_grad}")
                 logging.info(f"commodity_weight_val: {commodity_weight_val}")
-                logging.info(f"commodity_grads: {commodity_first_pass_grad, commodity_second_pass_grad}")
+                logging.info(f"commodity_grads: {commodity_first_pass_grad}")
 
             self.training_step_count += 1
             return loss.detach()
