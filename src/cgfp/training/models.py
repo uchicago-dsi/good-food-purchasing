@@ -148,6 +148,8 @@ class MultiTaskModel(PreTrainedModel):
 
         logits = [classifier(pooled_output) for classifier in self.classification_heads.values()]
 
+        # TODO: Pass the logits to separate classification heads here?
+
         loss = None
         losses = []
         if labels is not None:
