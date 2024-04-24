@@ -148,23 +148,34 @@ class MultiTaskModel(PreTrainedModel):
 
         # TODO: write actual documentation of what's happening here if this works
         logits = []
+        important_losses = []
         unfreeze_heads = ["Food Product Group", "Food Product Category", "Basic Type"]
-        for head, classifier in self.classification_heads.items():
+        for i, item in enumerate(self.classification_heads.items()):
+            head, classifier = item
             if head not in unfreeze_heads:
                 logits.append(classifier(pooled_output.detach()))
             else:
                 logits.append(classifier(pooled_output))
+                important_losses.append(i)
 
         loss = None
         losses = []
+        # TODO: Fragile...fix later
         if labels is not None:
             for i, output in enumerate(zip(
                 logits, labels.squeeze().transpose(0, 1)
             )):  # trust me
                 logit, label = output
                 losses.append(self.losses[i](logit, label.view(-1)))
-            breakpoint()
-            # TODO: Scale loss here
+            # important_loss = sum([losses[i] for i in important_losses])
+            # other_loss = sum([losses[i] for i in range(len(losses)) if i not in important_losses])
+            # if important_loss/(important_loss + other_loss) < 2/3:
+            #     loss_scale = 2 * other_loss / important_loss # scale so at least 2/3 of loss always comes from important loss
+            # else:
+            #     loss_scale = 1
+            # loss = loss_scale * important_loss + other_loss
+            # loss = sum(losses)
+            # loss = important_loss
             loss = sum(losses)
 
         output = (logits,) + distilbert_output[
