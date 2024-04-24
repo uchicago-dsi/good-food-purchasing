@@ -78,13 +78,14 @@ last-errs:
 
 ##### HUGGINGFACE #####
 
+# TODO: update this to take model as an argument
 # Usage: make update-dev-model MODEL_DIR=2024-02-05_10-56
 update-dev-model:
 	@echo "Moving model files from $(MODEL_DIR)..."
-	cp $(CGFP_DIR)model-files/$(MODEL_DIR)/pytorch_model.bin $(CGFP_DIR)huggingface/cgfp-classifier-dev/
-	cp $(CGFP_DIR)model-files/$(MODEL_DIR)/config.json $(CGFP_DIR)huggingface/cgfp-classifier-dev/
+	cp $(CGFP_DIR)model-files/$(MODEL_DIR)/pytorch_model.bin $(CGFP_DIR)huggingface/cgfp-distilbert/
+	cp $(CGFP_DIR)model-files/$(MODEL_DIR)/config.json $(CGFP_DIR)huggingface/cgfp-distilbert/
 	@echo "Committing changes..."
-	cd $(CGFP_DIR)huggingface/cgfp-classifier-dev/ && git add -u && git commit -m "update dev model" && git push
+	cd $(CGFP_DIR)huggingface/cgfp-distilbert/ && git add -u && git commit -m "update dev model" && git push
 
 # Usage: This upgrades the dev model to production
 update-prod-model:

@@ -167,15 +167,6 @@ class MultiTaskModel(PreTrainedModel):
             )):  # trust me
                 logit, label = output
                 losses.append(self.losses[i](logit, label.view(-1)))
-            # important_loss = sum([losses[i] for i in important_losses])
-            # other_loss = sum([losses[i] for i in range(len(losses)) if i not in important_losses])
-            # if important_loss/(important_loss + other_loss) < 2/3:
-            #     loss_scale = 2 * other_loss / important_loss # scale so at least 2/3 of loss always comes from important loss
-            # else:
-            #     loss_scale = 1
-            # loss = loss_scale * important_loss + other_loss
-            # loss = sum(losses)
-            # loss = important_loss
             loss = sum(losses)
 
         output = (logits,) + distilbert_output[

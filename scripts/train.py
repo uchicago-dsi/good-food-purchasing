@@ -18,15 +18,11 @@ import torch.nn.functional as F
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 
-import datasets
 from transformers import (
     DistilBertForSequenceClassification,
     DistilBertTokenizerFast,
     TrainingArguments,
     Trainer,
-    PreTrainedModel,
-    DistilBertConfig,
-    DistilBertModel,
     TrainerCallback
 )
 from transformers.modeling_outputs import SequenceClassifierOutput
@@ -58,10 +54,11 @@ def read_data(input_col, labels, data_path, drop_meals=False):
     return df_cleaned
 
 def test_inference(model, tokenizer, prompt, device="cuda:0"):
-    preds_dict = inference(model, tokenizer, prompt, device)
     normalized_name = inference(model, tokenizer, prompt, device, combine_name=True)
     logging.info(f"Example output for 'frozen peas and carrots': {normalized_name}")
-    logging.info(preds_dict)
+    preds_dict = inference(model, tokenizer, prompt, device)
+    pretty_preds = json.dumps(preds_dict, indent=4)
+    logging.info(pretty_preds)
 
 ### DATA PREP ###
 
@@ -224,6 +221,7 @@ if __name__ == "__main__":
     
 
     if SAVE_COUNTS:
+        # TODO: do better with this filepath
         file_path = '/net/projects/cgfp/data/clean/category_counts.xlsx'
         logging.info(f"Saving counts to Excel: {file_path}")
         with pd.ExcelWriter(file_path) as writer:
@@ -231,21 +229,19 @@ if __name__ == "__main__":
                 df.to_pandas().to_excel(writer, sheet_name=column.replace("/", "_"), index=False)
 
     # Create decoders to save to model config
-    # Note: Huggingface is picky...so a list of tuples seems like the best bet
-    # for saving to the config.json in a way that doesn't break when loaded
     decoders = []
     for col, encoder in encoders.items():
+        # Note: Huggingface is picky with config.json...a list of tuples works
         decoding_dict = {
             f"{index}": label for index, label in enumerate(encoder.classes_)
         }
         decoders.append((col, decoding_dict))
-        # logging.info(f"{col}: {len(encoder.classes_)} classes")
 
     # Save valid basic types for each food product group
-    # Note: polars syntax is different than pandas
     inference_masks = {}
     basic_types = df_combined.select("Basic Type").unique().collect()['Basic Type'].to_list()
     for fpg in df_combined.select('Food Product Group').unique().collect()['Food Product Group']:
+        # Note: polars syntax is different than pandas
         valid_basic_types = df_combined.filter(pl.col("Food Product Group") == fpg).select("Basic Type").unique().collect()['Basic Type'].to_list()
         basic_type_indeces = encoders['Basic Type'].transform(valid_basic_types)
         mask = np.zeros(len(basic_types))
@@ -306,37 +302,6 @@ if __name__ == "__main__":
     model = MultiTaskModel(config)
     logging.info("Model instantiated")
 
-    # TODO: add an arg for freezing layers
-    # Freeze all layers
-    # if FREEZE_MODEL:
-    #     logging.info("Freezing model...")
-    #     for param in model.parameters():
-    #         param.requires_grad = False
-
-    #     logging.info("Unfreezing classification heads...")
-    #     # Unfreeze classification heads
-    #     for param in model.classification_heads.parameters():
-    #         param.requires_grad = True
-
-    # if FREEZE_MLPS:
-    #     logging.info("Freezing model...")
-    #     for param in model.parameters():
-    #         param.requires_grad = False
-
-    #     logging.info("Unfreezing attention and layernorn...")
-    #     # Unfreeze attention heads and layernorm
-    #     for name, param in model.named_parameters():
-    #         if "attention" in name or "output" in name or "layer_norm" in name:
-    #             param.requires_grad = True
-
-    #     logging.info("Unfreezing classification heads...")
-    #     # Unfreeze classification heads
-    #     for param in model.classification_heads.parameters():
-    #         param.requires_grad = True
-
-    #     for name, param in model.named_parameters():
-    #         print(f"{name} is {'frozen' if not param.requires_grad else 'unfrozen'}")
-
     class SaveBestModelCallback(TrainerCallback):
         def __init__(self, best_model_metric):
             self.best_metric = -float('inf')
@@ -344,12 +309,14 @@ if __name__ == "__main__":
             self.best_epoch = None
 
         def on_evaluate(self, args, state, control, metrics=None, **kwargs):
-            logging.info(f"Evaluating at epoch: {state.epoch}")
-            logging.info(f"Metrics: {metrics}")
-            prompt = "frozen peas and carrots"
-            test_inference(model, tokenizer, prompt, device)
+            logging.info(f"### EPOCH: {int(state.epoch)} ###")
             # Note: "eval_" is prepended to the keys in metrics
             current_metric = metrics["eval_" + self.best_model_metric]
+            if state.epoch % 5 == 0 or current_metric > self.best_metric:
+                pretty_metrics = json.dumps(metrics, indent=4)
+                logging.info(pretty_metrics)
+                prompt = "frozen peas and carrots"
+                test_inference(model, tokenizer, prompt, device)
             if current_metric > self.best_metric:
                 self.best_metric = current_metric
                 self.best_epoch = state.epoch
@@ -359,28 +326,6 @@ if __name__ == "__main__":
             if self.best_epoch is not None:
                 logging.info(f"The best model was saved from epoch: {self.best_epoch}")
                 logging.info(f"The best result was {self.best_model_metric}: {self.best_metric}")
-
-    # class LoggingCallback(TrainerCallback):
-    #     def safe_grad_sum(self, parameter):
-    #         """Safely compute the sum of gradients for a given parameter."""
-    #         logging.info(f"Calculating grad for {parameter}")
-    #         return parameter.grad.sum() if parameter.grad is not None else 0
-
-    #     def on_step_end(self, args, state, control, model=None, **kwargs):
-    #         """Function that will be called at the end of each training step."""
-    #         epoch = state.epoch
-    #         # if model is not None and epoch % 5 == 0:
-    #         if model is not None:
-    #             logging.info(f"Gradients at Epoch {epoch}")
-    #             attention_first_grad = self.safe_grad_sum(model.distilbert.transformer.layer[0].attention.q_lin.weight)
-    #             attention_last_grad = self.safe_grad_sum(model.distilbert.transformer.layer[-1].attention.q_lin.weight)
-    #             basic_type_grad = self.safe_grad_sum(model.classification_heads['Basic Type'][0].weight)
-    #             fpg_grad = self.safe_grad_sum(model.classification_heads['Food Product Group'][0].weight)
-                
-    #             logging.info(f"Attention First Layer Gradient: {attention_first_grad}")
-    #             logging.info(f"Attention Last Layer Gradient: {attention_last_grad}")
-    #             logging.info(f"Basic Type Head Gradient: {basic_type_grad}")
-    #             logging.info(f"Food Product Type Head Gradient: {fpg_grad}")
 
     training_args = TrainingArguments(
         output_dir="/net/projects/cgfp/checkpoints",
@@ -400,186 +345,9 @@ if __name__ == "__main__":
         training_args.metric_for_best_model = best_model_metric # TODO: Or accuracy? Maybe should be basic type accuracy?
         training_args.greater_is_better = True
 
-    # TODO: Add adam config (and scheduler?) to args
+    # TODO: Add adam config (and scheduler?) to config file
     adamW = AdamW(model.parameters(), lr=lr, betas=(0.9, 0.95), eps=1e-5, weight_decay=0.1)
     scheduler = CosineAnnealingWarmRestarts(adamW, T_0=2000, T_mult=1, eta_min=lr*0.1)
-
-    # class MultiTaskTrainer(Trainer):
-    #     def __init__(self, *args, **kwargs):
-    #         super().__init__(*args, **kwargs)
-    #         self.DEBUG_TRAINER = True
-    #         self.training_step_count = 0
-
-    #     # def compute_loss(self, model, inputs, return_outputs=False):
-    #     #     """
-    #     #     How the loss is computed by Trainer. By default, all models return the loss in the first element.
-
-    #     #     Subclass and override for custom behavior.
-    #     #     """
-    #     #     if self.label_smoother is not None and "labels" in inputs:
-    #     #         labels = inputs.pop("labels")
-    #     #     else:
-    #     #         labels = None
-    #     #     # TODO: so...maybe I add a hook to call or something? So that if I want to do something custom I can do it in forward if that argument is passed?
-    #     #     outputs = model(**inputs)
-    #     #     # outputs is (loss, (logits, distilbert_output[1:]))
-    #     #     # So the distilbert hidden state is outputs[1][18]
-    #     #     # output = (logits,) + distilbert_output[1:]  
-    #     #     # if not return_dict:
-    #     #     #     return (loss,) + output if loss is not None else output
-            
-    #     #     # Save past state if it exists
-    #     #     # TODO: this needs to be fixed and made cleaner later.
-    #     #     if self.args.past_index >= 0:
-    #     #         self._past = outputs[self.args.past_index]
-
-    #     #     if labels is not None:
-    #     #         loss = self.label_smoother(outputs, labels)
-    #     #     else:
-    #     #         if isinstance(outputs, dict) and "loss" not in outputs:
-    #     #             raise ValueError(
-    #     #                 "The model did not return a loss from the inputs, only the following keys: "
-    #     #                 f"{','.join(outputs.keys())}. For reference, the inputs it received are {','.join(inputs.keys())}."
-    #     #             )
-    #     #         # We don't use .loss here since the model may return tuples instead of ModelOutput.
-    #     #         loss = outputs["loss"] if isinstance(outputs, dict) else outputs[0]
-
-    #     #     return (loss, outputs) if return_outputs else loss
-
-
-    #     def training_step(self, model: nn.Module, inputs: Dict[str, Union[torch.Tensor, Any]]) -> torch.Tensor:
-    #         """
-    #         Perform a training step on a batch of inputs.
-
-    #         Subclass and override to inject custom behavior.
-
-    #         Args:
-    #             model (`nn.Module`):
-    #                 The model to train.
-    #             inputs (`Dict[str, Union[torch.Tensor, Any]]`):
-    #                 The inputs and targets of the model.
-
-    #                 The dictionary will be unpacked before being fed to the model. Most models expect the targets under the
-    #                 argument `labels`. Check your model's documentation for all accepted arguments.
-
-    #         Return:
-    #             `torch.Tensor`: The tensor with training loss on this batch.
-    #         """
-    #         self.DEBUG_TRAINER = self.training_step_count % 20 == 0
-
-    #         model.train()
-    #         inputs = self._prepare_inputs(inputs)
-
-    #         with self.compute_loss_context_manager():
-    #             # TODO: subclass this (and the returned loss) if this is still fucking up
-    #             loss = self.compute_loss(model, inputs)
-
-    #         if self.args.n_gpu > 1:
-    #             loss = loss.mean()  # mean() to average on multi-gpu parallel training
-
-    #         if self.args.gradient_accumulation_steps > 1 and not self.deepspeed:
-    #             # deepspeed handles loss scaling by gradient_accumulation_steps in its `backward`
-    #             loss = loss / self.args.gradient_accumulation_steps
-
-    #         # Backprop for the whole model only on food product group, food product category, and basic type
-    #         # TODO: Maybe add sub-type?
-
-    #         # for param in model.parameters():
-    #         #     param.requires_grad = True
-
-    #         # unfreeze_heads = ["Food Product Group", "Food Product Category", "Basic Type"]
-    #         # if self.DEBUG_TRAINER:
-    #         #     logging.info(f"Training Step: {self.training_step_count + 1}")
-    #         #     logging.info(f"First backward pass...")
-    #         # for name, head in model.classification_heads.items():
-    #         #     if name not in unfreeze_heads:
-    #         #         if self.training_step_count == 0:
-    #         #             logging.info(f"Freezing {name} head")
-    #         #         for param in head.parameters():
-    #         #             param.requires_grad = False
-
-    #         # Note: deleted the non-standard loss handling options
-    #         # TODO: Is it possible that the summed loss is causing the issue here?
-    #         # loss.backward(retain_graph=True)
-    #         loss.backward()
-
-    #         if self.DEBUG_TRAINER:
-    #             # logging.info("First backward pass complete")
-    #             attention_weights = model.distilbert.transformer.layer[0].attention.q_lin.weight
-    #             attention_weight_val = attention_weights[0][0]
-    #             attention_grad = attention_weights.grad
-    #             attention_first_pass_grad = attention_grad[0].sum()
-    #             basic_type_weights = model.classification_heads['Basic Type'][0].weight
-    #             basic_type_weight_val = basic_type_weights[0][0]
-    #             basic_type_grad = basic_type_weights.grad
-    #             basic_type_first_pass_grad = basic_type_grad[0].sum()
-    #             fpg_weights = model.classification_heads['Food Product Group'][0].weight
-    #             fpg_weight_val = fpg_weights[0][0]
-    #             fpg_grad = fpg_weights.grad
-    #             fpg_first_pass_grad = fpg_grad[0].sum()
-    #             commodity_weights = model.classification_heads['Commodity'][0].weight
-    #             commodity_weight_val = commodity_weights[0][0]
-    #             commodity_grad = commodity_weights.grad
-    #             commodity_first_pass_grad = commodity_grad[0][0] if commodity_grad is not None else 'None'
-
-    #         # # Backprop for the other classification heads
-    #         # # Freeze all layers
-    #         # if self.DEBUG_TRAINER:
-    #         #     logging.info(f"Second backward pass...")
-    #         #     logging.info(f"Freezing entire model...")
-    #         # for param in model.parameters():
-    #         #     param.requires_grad = False
-
-    #         # # Unfreeze untrained classification heads
-    #         # for name, head in model.classification_heads.items():
-    #         #     if name not in unfreeze_heads:
-    #         #         if self.training_step_count == 0:
-    #         #             logging.info(f"Unfreezing {name} head")
-    #         #         for param in head.parameters():
-    #         #             param.requires_grad = True
-
-    #         # loss.backward()
-
-    #         # # Unfreeze everything or else optimizer won't update
-    #         # for param in model.parameters():
-    #         #     param.requires_grad = True
-
-    #         if self.DEBUG_TRAINER:
-    #             # logging.info("Second backward pass complete")
-
-    #             # attention_weights = model.distilbert.transformer.layer[0].attention.q_lin.weight
-    #             # attention_grad = attention_weights.grad
-    #             # attention_second_pass_grad = attention_grad[0][0]
-    #             # basic_type_weights = model.classification_heads['Basic Type'][0].weight
-    #             # basic_type_grad = basic_type_weights.grad
-    #             # basic_type_second_pass_grad = basic_type_grad[0][0]
-    #             # fpg_weights = model.classification_heads['Food Product Group'][0].weight
-    #             # fpg_grad = fpg_weights.grad
-    #             # fpg_second_pass_grad = fpg_grad[0][0]
-    #             # commodity_weights = model.classification_heads['Commodity'][0].weight
-    #             # commodity_grad = commodity_weights.grad
-    #             # commodity_second_pass_grad = commodity_grad[0][0] if commodity_grad is not None else 'None'
-
-    #             # logging.info(f"attention_weight_val: {attention_weight_val}")
-    #             # logging.info(f"attention_grads: {attention_first_pass_grad, attention_second_pass_grad}")
-    #             # logging.info(f"basic_type_weight_val: {basic_type_weight_val}")
-    #             # logging.info(f"basic_type_grads: {basic_type_first_pass_grad, basic_type_second_pass_grad}")
-    #             # logging.info(f"fpg_weight_val: {fpg_weight_val}")
-    #             # logging.info(f"fpg_grads: {fpg_first_pass_grad, fpg_second_pass_grad}")
-    #             # logging.info(f"commodity_weight_val: {commodity_weight_val}")
-    #             # logging.info(f"commodity_grads: {commodity_first_pass_grad, commodity_second_pass_grad}")
-
-    #             logging.info(f"attention_weight_val: {attention_weight_val}")
-    #             logging.info(f"attention_grads: {attention_first_pass_grad}")
-    #             logging.info(f"basic_type_weight_val: {basic_type_weight_val}")
-    #             logging.info(f"basic_type_grads: {basic_type_first_pass_grad}")
-    #             logging.info(f"fpg_weight_val: {fpg_weight_val}")
-    #             logging.info(f"fpg_grads: {fpg_first_pass_grad}")
-    #             logging.info(f"commodity_weight_val: {commodity_weight_val}")
-    #             logging.info(f"commodity_grads: {commodity_first_pass_grad}")
-
-    #         self.training_step_count += 1
-    #         return loss.detach()
 
     class MultiTaskTrainer(Trainer):
         def __init__(self, *args, **kwargs):
@@ -600,43 +368,11 @@ if __name__ == "__main__":
         def training_step(self, model, inputs):
             loss = super().training_step(model, inputs)
 
-            if (self.state.epoch + 1) % 5 == 0:
-                logging.info(f"Gradients at epoch {self.state.epoch}")
+            if (self.state.epoch) % 5 == 0 and self.state.epoch != 0:
+                logging.info(f"## Gradients at Epoch {int(self.state.epoch)} ##")
                 for name, param in self.logging_params.items():
                     self.log_gradients(name, param)
             return loss
-
-        # def on_step_end(self, args, state, control, model=None, **kwargs):
-        #     """Function that will be called at the end of each training step."""
-        #     epoch = state.epoch
-        #     # if model is not None and epoch % 5 == 0:
-        #     if model is not None:
-        #         logging.info(f"Gradients at epoch {epoch}")
-        #         attention_first_grad = self.safe_grad_sum(model.distilbert.transformer.layer[0].attention.q_lin.weight)
-        #         attention_last_grad = self.safe_grad_sum(model.distilbert.transformer.layer[-1].attention.q_lin.weight)
-        #         basic_type_grad = self.safe_grad_sum(model.classification_heads['Basic Type'][0].weight)
-        #         fpg_grad = self.safe_grad_sum(model.classification_heads['Food Product Group'][0].weight)
-                
-        #         logging.info(f"Attention First Layer Gradient: {attention_first_grad}")
-        #         logging.info(f"Attention Last Layer Gradient: {attention_last_grad}")
-        #         logging.info(f"Basic Type Head Gradient: {basic_type_grad}")
-        #         logging.info(f"Food Product Type Head Gradient: {fpg_grad}")
-        #     self.log_gradients()
-        #     return loss
-
-        # def log_gradients(self):
-        #     """Custom method to log gradients."""
-        #     if hasattr(self, 'model'):  # Check if model is an attribute
-        #         model = self.model
-        #     else:
-        #         return
-            
-        #     for name, parameter in model.named_parameters():
-        #         if parameter.grad is not None:
-        #             grad_sum = parameter.grad.sum().item()  # Use .item() to get a Python number
-        #             print(f"Gradient sum for {name}: {grad_sum}")
-        #         else:
-        #             print(f"No gradient for {name}")
 
     trainer = MultiTaskTrainer(
         model=model,
