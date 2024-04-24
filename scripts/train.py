@@ -119,7 +119,7 @@ if __name__ == "__main__":
     parser.add_argument('--loss', default="cross_entropy", type=str, help="Setup the loss function. Choices: cross_entropy, focal. Default is cross_entropy")
     # Hyperparameter args
     parser.add_argument('--lr', default=.001, type=float, help="Learning rate for the Huggingface Trainer")
-    parser.add_argument('--epochs', default=60, type=int, help="Training epochs for the Huggingface Trainer")
+    parser.add_argument('--epochs', default=80, type=int, help="Training epochs for the Huggingface Trainer")
     parser.add_argument('--train_batch_size', default=32, type=int, help="Training batch size for the Huggingface Trainer")
     parser.add_argument('--eval_batch_size', default=64, type=int, help="Evaluation batch size for the Huggingface Trainer")
     
