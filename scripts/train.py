@@ -153,6 +153,7 @@ if __name__ == "__main__":
     logging.getLogger().addHandler(file_handler)
 
     transformers_logger = logging.getLogger('transformers')
+    transformers_logger.setLevel(logging.INFO)
     transformers_logger.addHandler(file_handler)
 
     logging.info(f"DROP_MEALS: {DROP_MEALS}")
