@@ -273,6 +273,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    # TODO: This doesn't work on the cluster so need to change the configuration for the filepaths
     CLEAN_FILE = clean_file_prefix + args.input_file
     CLEAN_FILE = CLEAN_FILE.replace(" ", "_")
 

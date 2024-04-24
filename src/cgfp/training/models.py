@@ -2,6 +2,7 @@ import json
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 from collections import OrderedDict
 
@@ -16,6 +17,40 @@ from transformers import (
 )
 from transformers.modeling_outputs import SequenceClassifierOutput
 
+# TODO: Clean this up
+class FocalLoss(nn.Module):
+    # TODO: add documentation for the alpha and gamma parameters
+    def __init__(self, alpha=None, gamma=2.0, num_classes=None):
+        super(FocalLoss, self).__init__()
+        self.gamma = gamma
+        # TODO: set alpha based on class frequency » we should maybe calculate this during data processing?
+        if alpha is None:
+            self.alpha = torch.ones(num_classes) / num_classes
+        else:
+            self.alpha = torch.tensor(alpha, dtype=torch.float)
+        if self.alpha is not None:
+            if self.alpha.size(0) != num_classes:
+                raise ValueError("Alpha vector size must match number of classes.")
+        self.alpha = self.alpha.cuda() if self.alpha is not None else None
+
+    def forward(self, inputs, targets):
+        # Compute the cross entropy loss
+        ce_loss = F.cross_entropy(inputs, targets, reduction='none')
+
+        # Get the probabilities for the classes that are actually true
+        pt = torch.exp(-ce_loss)
+        
+        # Calculate alpha for each example
+        if self.alpha is not None:
+            alpha = self.alpha.gather(0, targets.data)
+        else:
+            alpha = 1
+
+        # Calculate the Focal Loss
+        focal_loss = alpha * ((1 - pt) ** self.gamma) * ce_loss
+
+        return focal_loss.mean()
+
 
 class MultiTaskConfig(DistilBertConfig):
     def __init__(
@@ -24,9 +59,11 @@ class MultiTaskConfig(DistilBertConfig):
         num_categories_per_task=None,
         decoders=None,
         columns=None,
+        counts=None,
         fpg_idx=0,
         basic_type_idx=2,
         inference_masks=None,
+        loss="focal",
         **kwargs
     ):
         super().__init__(**kwargs)
@@ -37,6 +74,8 @@ class MultiTaskConfig(DistilBertConfig):
         self.fpg_idx = fpg_idx
         self.basic_type_idx=basic_type_idx
         self.inference_masks=inference_masks
+        self.loss=loss
+        self.counts=counts
 
 
 class MultiTaskModel(PreTrainedModel):
@@ -52,32 +91,38 @@ class MultiTaskModel(PreTrainedModel):
         self.fpg_idx = config.fpg_idx  # index for the food product group task
         self.basic_type_idx = config.basic_type_idx
         self.inference_masks = {key: torch.tensor(value) for key, value in json.loads(config.inference_masks).items()}
+        self.loss = config.loss
+        self.counts = json.loads(config.counts)
+        self.losses = []
 
+        if self.loss == "focal":
+            for task, counts in self.counts.items():
+                counts = torch.tensor(counts, dtype=torch.float)
+                total = counts.sum()
+                alpha = (1 / counts) * (total / len(counts)) # Use the inverse frequency
+                # alpha /= alpha.sum()  # Normalize to sum to 1
+                self.losses.append(FocalLoss(num_classes=len(counts), alpha=alpha))
+        else:
+            for task, counts in self.counts.items():
+                self.losses.append(nn.CrossEntropyLoss())
 
-        # TODO:
+        # TODO: Name the classification heads based on the task
         if self.classification == "mlp":
-            # TODO: wait...the config.dim should be downsampled here probably...
-            self.classification_heads = nn.ModuleList(
-                [
-                    nn.Sequential(
-                        nn.Linear(config.dim, config.dim // 2),
-                        nn.ReLU(),
-                        nn.Dropout(config.seq_classif_dropout),
-                        nn.Linear(config.dim // 2, num_categories),
-                    )
-                    for num_categories in self.num_categories_per_task
-                ]
-            )
+            self.classification_heads = nn.ModuleDict({
+                task_name: nn.Sequential(
+                    nn.Linear(config.dim, config.dim // 2),
+                    nn.ReLU(),
+                    nn.Dropout(config.seq_classif_dropout),
+                    nn.Linear(config.dim // 2, num_categories),
+                ) for task_name, num_categories in zip(self.columns, self.num_categories_per_task)
+            })
         elif self.classification == "linear":
-            self.classification_heads = nn.ModuleList(
-                [
-                    nn.Sequential(
-                        nn.Linear(config.dim, num_categories),
-                        nn.Dropout(config.seq_classif_dropout),
-                    )
-                    for num_categories in self.num_categories_per_task
-                ]
-            )
+            self.classification_heads = nn.ModuleDict({
+                task_name: nn.Sequential(
+                    nn.Linear(config.dim, num_categories),
+                    nn.Dropout(config.seq_classif_dropout),
+                ) for task_name, num_categories in zip(self.columns, self.num_categories_per_task)
+            })
 
     def forward(
         self,
@@ -88,7 +133,7 @@ class MultiTaskModel(PreTrainedModel):
         labels=None,
         output_attentions=None,
         output_hidden_states=None,
-        return_dict=None,
+        return_dict=False,
     ):
         distilbert_output = self.distilbert(
             input_ids=input_ids,
@@ -101,16 +146,27 @@ class MultiTaskModel(PreTrainedModel):
         hidden_state = distilbert_output[0]
         pooled_output = hidden_state[:, 0]
 
-        logits = [classifier(pooled_output) for classifier in self.classification_heads]
+        # TODO: write actual documentation of what's happening here if this works
+        logits = []
+        important_losses = []
+        unfreeze_heads = ["Food Product Group", "Food Product Category", "Basic Type"]
+        for i, item in enumerate(self.classification_heads.items()):
+            head, classifier = item
+            if head not in unfreeze_heads:
+                logits.append(classifier(pooled_output.detach()))
+            else:
+                logits.append(classifier(pooled_output))
+                important_losses.append(i)
 
         loss = None
+        losses = []
+        # TODO: Fragile...fix later
         if labels is not None:
-            loss_fct = nn.CrossEntropyLoss()
-            losses = []
-            for logit, label in zip(
+            for i, output in enumerate(zip(
                 logits, labels.squeeze().transpose(0, 1)
-            ):  # trust me
-                losses.append(loss_fct(logit, label.view(-1)))
+            )):  # trust me
+                logit, label = output
+                losses.append(self.losses[i](logit, label.view(-1)))
             loss = sum(losses)
 
         output = (logits,) + distilbert_output[
