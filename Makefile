@@ -64,7 +64,7 @@ train: env
 	--output=$(RUN_LOGS)/$(OUTPUT_FILE) \
 	--error=$(RUN_LOGS)/$(ERR_FILE) \
 	--mail-user=$(SBATCH_MAIL) \
-	$(SCRIPTS_DIR)/train.slurm
+	$(SCRIPTS_DIR)/train-cgfp.slurm
 
 .PHONY: last-logs
 last-logs:

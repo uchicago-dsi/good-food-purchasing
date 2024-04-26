@@ -62,6 +62,7 @@ def test_inference(model, tokenizer, prompt, device="cuda:0"):
 
 ### DATA PREP ###
 
+# TODO: Move to trainer file
 def compute_metrics(pred):
     """
     Extract the predictions and labels for each task
@@ -282,27 +283,34 @@ if __name__ == "__main__":
     ### TRAINING ###
 
     logging.info("Instantiating model")
+    # TODO: hacky
     distilbert_model = DistilBertForSequenceClassification.from_pretrained(
         "distilbert-base-uncased"
     )
+    checkpoint = "/net/projects/cgfp/model-files/distilbert-base-uncased_20240424_1658_with_meals"
+    model = MultiTaskModel.from_pretrained(checkpoint)
+
 
     # TODO: Kill this now that we have the counts. Use counts object instead in models.py
-    num_categories_per_task = [len(v.classes_) for k, v in encoders.items()]
-    config = MultiTaskConfig(
-        num_categories_per_task=num_categories_per_task,
-        decoders=decoders,
-        columns=LABELS,
-        classification=classification,
-        fpg_idx=FPG_IDX,
-        basic_type_idx=BASIC_TYPE_IDX,
-        inference_masks=json.dumps(inference_masks),
-        counts=json.dumps(counts),
-        loss=loss,
-        **distilbert_model.config.to_dict(),
-    )
-    model = MultiTaskModel(config)
-    logging.info("Model instantiated")
+    # num_categories_per_task = [len(v.classes_) for k, v in encoders.items()]
 
+    # TODO: Need to comment this out in order to reload the model
+    # config = MultiTaskConfig(
+    #     num_categories_per_task=num_categories_per_task,
+    #     decoders=decoders,
+    #     columns=LABELS,
+    #     classification=classification,
+    #     fpg_idx=FPG_IDX,
+    #     basic_type_idx=BASIC_TYPE_IDX,
+    #     inference_masks=json.dumps(inference_masks),
+    #     counts=json.dumps(counts),
+    #     loss=loss,
+    #     **distilbert_model.config.to_dict(),
+    # )
+    # model = MultiTaskModel(config)
+    # logging.info("Model instantiated")
+
+    # TODO: Move this to a separate file
     class SaveBestModelCallback(TrainerCallback):
         def __init__(self, best_model_metric):
             self.best_metric = -float('inf')
@@ -328,37 +336,16 @@ if __name__ == "__main__":
                 logging.info(f"The best model was saved from epoch: {self.best_epoch}")
                 logging.info(f"The best result was {self.best_model_metric}: {self.best_metric}")
 
-    training_args = TrainingArguments(
-        output_dir="/net/projects/cgfp/checkpoints",
-        evaluation_strategy="epoch",
-        save_strategy="epoch",
-        num_train_epochs=epochs,
-        per_device_train_batch_size=train_batch_size,
-        per_device_eval_batch_size=eval_batch_size,
-        warmup_steps=100,
-        max_grad_norm=1.0,
-        report_to="wandb" if not SMOKE_TEST else None
-    )
-
-    best_model_metric = "basic_type_accuracy"
-    if SAVE_BEST:
-        training_args.load_best_model_at_end = True
-        training_args.metric_for_best_model = best_model_metric # TODO: Or accuracy? Maybe should be basic type accuracy?
-        training_args.greater_is_better = True
-
-    # TODO: Add adam config (and scheduler?) to config file
-    adamW = AdamW(model.parameters(), lr=lr, betas=(0.9, 0.95), eps=1e-5, weight_decay=0.1)
-    scheduler = CosineAnnealingWarmRestarts(adamW, T_0=2000, T_mult=1, eta_min=lr*0.1)
-
+    # TODO: Move this to a separate file also
     class MultiTaskTrainer(Trainer):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
             self.logging_params = {
-                "First Attention Layer Q": model.distilbert.transformer.layer[0].attention.q_lin.weight,
-                "Last Attention Layer Q": model.distilbert.transformer.layer[-1].attention.q_lin.weight,
-                "Basic Type Classification Head": model.classification_heads['Basic Type'][0].weight,
-                "Food Product Group Classification Head": model.classification_heads['Food Product Group'][0].weight,
-                "Sub-Type 1 Classification Head": model.classification_heads['Sub-Type 1'][0].weight,
+                "First Attention Layer Q": self.model.distilbert.transformer.layer[0].attention.q_lin.weight,
+                "Last Attention Layer Q": self.model.distilbert.transformer.layer[-1].attention.q_lin.weight,
+                "Basic Type Classification Head": self.model.classification_heads['Basic Type'][0].weight,
+                "Food Product Group Classification Head": self.model.classification_heads['Food Product Group'][0].weight,
+                "Sub-Type 1 Classification Head": self.model.classification_heads['Sub-Type 1'][0].weight,
             }
 
         def log_gradients(self, name, param):
@@ -374,6 +361,52 @@ if __name__ == "__main__":
                 for name, param in self.logging_params.items():
                     self.log_gradients(name, param)
             return loss
+        
+    # TODO: All of this should be moved into a train() function
+    epochs = 20 # TODO: hack to retrain the classification heads
+    training_args = TrainingArguments(
+        output_dir=f"/net/projects/cgfp/checkpoints/{run_name}",
+        evaluation_strategy="epoch",
+        save_strategy="epoch",
+        num_train_epochs=epochs,
+        per_device_train_batch_size=train_batch_size,
+        per_device_eval_batch_size=eval_batch_size,
+        warmup_steps=100,
+        max_grad_norm=1.0,
+        save_total_limit=2,
+        report_to="wandb" if not SMOKE_TEST else None
+    )
+
+    # TODO: Add adam config (and scheduler?) to config file
+    adamW = AdamW(model.parameters(), lr=lr, betas=(0.9, 0.95), eps=1e-5, weight_decay=0.1)
+    scheduler = CosineAnnealingWarmRestarts(adamW, T_0=2000, T_mult=1, eta_min=lr*0.1)
+
+    # best_model_metric = "basic_type_accuracy"
+    best_model_metric = "mean_f1_score"
+    if SAVE_BEST:
+        training_args.load_best_model_at_end = True
+        training_args.metric_for_best_model = best_model_metric
+        training_args.greater_is_better = True
+
+    # Freeze everything except the undertrained classification heads for second round of training
+    # FREEZE_MODEL = True
+    # if FREEZE_MODEL:
+    #     for param in model.parameters():
+    #         param.requires_grad = False
+
+    #     for name, head in model.classification_heads.named_children():
+    #         # TODO: Add this to config somehow
+    #         # TODO: Also, sort out what to do with sub-type 1 and sub-type 2
+    #         if name not in ["Food Product Category", "Primary Food Product Category", "Food Product Group", "Basic Type", "Sub-Type 1", "Sub-Type 2"]:
+    #             for param in head.parameters():
+    #                 param.requires_grad = True
+
+    #     for name, param in model.named_parameters():
+    #         if param.requires_grad:
+    #             print(name)
+
+    model.set_attached_heads(LABELS)
+        
 
     trainer = MultiTaskTrainer(
         model=model,

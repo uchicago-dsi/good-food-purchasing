@@ -64,6 +64,7 @@ class MultiTaskConfig(DistilBertConfig):
         basic_type_idx=2,
         inference_masks=None,
         loss="focal",
+        detach_heads=True,
         **kwargs
     ):
         super().__init__(**kwargs)
@@ -76,10 +77,13 @@ class MultiTaskConfig(DistilBertConfig):
         self.inference_masks=inference_masks
         self.loss=loss
         self.counts=counts
+        self.detach_heads=detach_heads
 
 
 class MultiTaskModel(PreTrainedModel):
     config_class = MultiTaskConfig
+
+    # TODO: add a setter for detach_heads and use that to run the model with heads reattached
 
     def __init__(self, config, *args, **kwargs):
         super().__init__(config)
@@ -94,6 +98,8 @@ class MultiTaskModel(PreTrainedModel):
         self.loss = config.loss
         self.counts = json.loads(config.counts)
         self.losses = []
+        # TODO: maybe this isn't actually right...can I reattach some other way?
+        self.detach_heads = config.detach_heads
 
         if self.loss == "focal":
             for task, counts in self.counts.items():
@@ -124,6 +130,12 @@ class MultiTaskModel(PreTrainedModel):
                 ) for task_name, num_categories in zip(self.columns, self.num_categories_per_task)
             })
 
+    def set_attached_heads(self, heads_to_attach):
+        """Set which heads should have their inputs attached to the computation graph. Allows for controlling the finetuning of the model."""
+        if not all(head in self.classification_heads for head in heads_to_attach):
+            raise ValueError("One or more specified heads do not exist in the model.")
+        self.attached_heads = heads_to_attach
+
     def forward(
         self,
         input_ids=None,
@@ -148,15 +160,14 @@ class MultiTaskModel(PreTrainedModel):
 
         # TODO: write actual documentation of what's happening here if this works
         logits = []
-        important_losses = []
-        unfreeze_heads = ["Food Product Group", "Food Product Category", "Basic Type"]
+        # TODO: uh....how should I actually do this?
+        # unfreeze_heads = ["Food Product Group", "Food Product Category", "Basic Type"]
         for i, item in enumerate(self.classification_heads.items()):
             head, classifier = item
-            if head not in unfreeze_heads:
+            if head not in self.attached_heads:
                 logits.append(classifier(pooled_output.detach()))
             else:
                 logits.append(classifier(pooled_output))
-                important_losses.append(i)
 
         loss = None
         losses = []
