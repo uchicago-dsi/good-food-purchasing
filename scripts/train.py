@@ -287,7 +287,7 @@ if __name__ == "__main__":
     distilbert_model = DistilBertForSequenceClassification.from_pretrained(
         "distilbert-base-uncased"
     )
-    checkpoint = "/net/projects/cgfp/model-files/distilbert-base-uncased_20240424_1658_with_meals"
+    checkpoint = "/net/projects/cgfp/model-files/distilbert-base-uncased_20240426_1655_finetuned_whole_model"
     model = MultiTaskModel.from_pretrained(checkpoint)
 
 
@@ -388,26 +388,18 @@ if __name__ == "__main__":
         training_args.metric_for_best_model = best_model_metric
         training_args.greater_is_better = True
 
-    # Freeze everything except the undertrained classification heads for second round of training
-    # FREEZE_MODEL = True
-    # if FREEZE_MODEL:
-    #     for param in model.parameters():
-    #         param.requires_grad = False
+    # Freeze everything except the classification heads for third round round of training
+    FREEZE_MODEL = True
+    if FREEZE_MODEL:
+        for param in model.parameters():
+            param.requires_grad = False
 
-    #     for name, head in model.classification_heads.named_children():
-    #         # TODO: Add this to config somehow
-    #         # TODO: Also, sort out what to do with sub-type 1 and sub-type 2
-    #         if name not in ["Food Product Category", "Primary Food Product Category", "Food Product Group", "Basic Type", "Sub-Type 1", "Sub-Type 2"]:
-    #             for param in head.parameters():
-    #                 param.requires_grad = True
-
-    #     for name, param in model.named_parameters():
-    #         if param.requires_grad:
-    #             print(name)
+        for name, head in model.classification_heads.items():
+            for param in head.parameters():
+                param.requires_grad = True
 
     model.set_attached_heads(LABELS)
         
-
     trainer = MultiTaskTrainer(
         model=model,
         args=training_args,
