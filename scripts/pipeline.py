@@ -36,10 +36,12 @@ if not os.path.exists(CLEAN_FOLDER + RUN_FOLDER):
 
 
 def clean_df(df):
-    # Cleaning:
-    # - Remove null and short (usually a mistake) Product Types
-    # - Remove null and short (usually a mistake) Product Names
-    # - Remove non-food items
+    """
+    Cleaning:
+    - Remove null and short (usually a mistake) Product Types
+    - Remove null and short (usually a mistake) Product Names
+    - Remove non-food items
+    """
     df = df[
         (df["Product Type"].str.len() >= 3)
         & (df["Product Name"].str.len() >= 3)
@@ -292,6 +294,14 @@ if __name__ == "__main__":
 
     df["Misc"] = None
     df = clean_df(df)
+
+    # Handle any typos or issues with Food Product Category and Primary Food Product Category
+    category_typos = {
+        "Roots & Tuber": "Roots & Tubers",
+    }
+    df["Primary Food Product Category"] = df["Primary Food Product Category"].map(
+        lambda x: category_typos.get(x, x)
+    )
 
     group_tags = pool_tags(GROUP_TAGS)
     category_tags = pool_tags(CATEGORY_TAGS)
