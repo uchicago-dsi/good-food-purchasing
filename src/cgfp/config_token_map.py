@@ -29,6 +29,8 @@ TOKEN_MAP_DICT = {
     "shelll": "shell",
     "stawberry": "strawberry",
     "tamato": "tomato",
+    "1 island": "1000 island",
+    "alfafa": "alfalfa",
     ## INCONSISTENCIES ##
     "skin-on": "skin on",
     "carrots": "carrot",
@@ -51,6 +53,10 @@ TOKEN_MAP_DICT = {
     "vetegable": "vegetable",
     "wheat bulgur": "bulgur",
     "yuca": "yucca",
+    "beef steak": "beefsteak",
+    "berry lemonage": "berry lemonade",
+    ## COOKED ##
+    "au jus": "cooked",
     ## RENAME ##
     "aprium": "pluot",
     "banana pepper": "pepper",
@@ -77,6 +83,8 @@ TOKEN_MAP_DICT = {
     "half": "cut",
     "spear": "cut",
     "crinkle cut": "cut",
+    "florette": "cut",
+    "filet": "cut",
     ## WHOLE GRAIN ##
     "whole wheat": "whole grain rich",
     "whole grain": "whole grain rich",

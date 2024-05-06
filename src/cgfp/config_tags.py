@@ -32,6 +32,9 @@ SKIP_TOKENS = {
     "ybarra",
     "sriracha",  # TODO: Seems like sriracha is allowed...sometimes?
     "fantastix",
+    "3 musketeer",
+    "bailey's irish",
+    "bailey's vanilla cream",
     ## FLAVORS (BUT DON'T TAG AS FLAVORED) ##
     "honey wheat",
     "salted caramel",
@@ -132,6 +135,7 @@ SKIP_TOKENS = {
     "small curd",
     ## SEAFOOD ##
     "claw",
+    "ahi",
     ## SIZE ##
     "jumbo",
     "king size",
@@ -154,6 +158,9 @@ SKIP_TOKENS = {
     "soft",
     "hard",
     "liquid",
+    ## ETHNICITIES ##
+    "Persian",
+    "Cuban",
     ## MISC ##
     "sea salt",
 }
@@ -510,7 +517,6 @@ GROUP_TAGS = {
             "sweetened",
             "unsalted",
             "unsweetened",
-            "caffeinated",
         },
         "Dietary Accommodation": {"gluten free", "kosher", "vegan", "vegetarian"},
         "Frozen": {"frozen"},
@@ -594,7 +600,7 @@ GROUP_TAGS = {
             "stick",
             "crumble",
         },
-        "Skin": {"skinless"},
+        "Skin": set(),
         "Seed/Bone": {"bone-in"},
         "Processing": {
             "au jus",
@@ -661,7 +667,7 @@ GROUP_TAGS = {
             "cut",
         },
         "Skin": {"skin on"},
-        "Seed/Bone": {"pitted", "seedless"},
+        "Seed/Bone": {"pitted"},
         "Processing": {
             "chopped",
             "cupped",
