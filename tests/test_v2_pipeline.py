@@ -23,7 +23,7 @@ test_args = [
 
 
 @pytest.mark.parametrize("input_file, raw_data", test_args)
-def test_new_pipeline_also_fails_without_input(input_file, raw_data, v2_arg_parser):
+def test_initial_and_v2_pipelines_match(input_file, raw_data, v2_arg_parser):
     """Setting this up to be parametrized
 
     NOTE: It would be great if we could turn off printing on the initial pipeline version.
