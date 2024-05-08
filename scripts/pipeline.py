@@ -254,7 +254,9 @@ def pool_tags(tags_dict):
     return tags_dict
 
 
-if __name__ == "__main__":
+def main(argv=None):
+    # wrap main script in function so that original script can be source of truth for next iteration on pipeline
+    # `argv` made to default to `None` so that top level args can be easily passed down to subparsers
     parser = argparse.ArgumentParser(description="Process some files.")
 
     default_input_file = "CONFIDENTIAL_CGFP bulk data_073123.xlsx"
@@ -273,7 +275,7 @@ if __name__ == "__main__":
         help="Clean file path. If not specified, it will be automatically generated based on the input file.",
     )
 
-    args = parser.parse_args()
+    args = parser.parse_args(argv)  # argv passed in here, behavior unchanged
 
     # TODO: This doesn't work on the cluster so need to change the configuration for the filepaths
     CLEAN_FILE = clean_file_prefix + args.input_file
@@ -291,6 +293,18 @@ if __name__ == "__main__":
         if file_extension in [".xls", ".xlsx"]
         else pd.read_csv(INPUT_PATH)
     )
+
+    # the meat of what we're checking
+    misc, df_processed = process_data(df)
+
+    # run IO operations separate from processing
+    df_processed.to_csv(CSV_PATH, index=False)
+    misc.to_csv(MISC_PATH, index=False)
+    print(f"Pipeline complete! File saved to {CSV_PATH}")
+
+
+def process_data(df):
+    # isolates data processing from IO without changing outputs
 
     df["Misc"] = None
     df = clean_df(df)
@@ -420,7 +434,7 @@ if __name__ == "__main__":
         "Basic Type",
     ]
     misc = misc.sort_values(by=MISC_SORT_ORDER)
-    misc.to_csv(MISC_PATH, index=False)
+    # misc is now returned and written in `main` outside of data processing path
 
     TAGS_SORT_ORDER = [
         "Food Product Group",
@@ -431,5 +445,14 @@ if __name__ == "__main__":
     ]
 
     df_split = df_split[COLUMNS_ORDER].sort_values(by=TAGS_SORT_ORDER)
-    df_split.to_csv(CSV_PATH, index=False)
-    print(f"Pipeline complete! File saved to {CSV_PATH}")
+
+    # return processed assets to main
+    return misc, df_split
+
+
+if __name__ == "__main__":
+    import sys
+
+    main(sys.argv[1:])
+    # remove first element since that is just the base command
+    # program continues to operate like cli script but entities calling main method can now manipulate input args
