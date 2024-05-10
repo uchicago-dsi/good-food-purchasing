@@ -4,13 +4,13 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from collections import OrderedDict
+# from collections import OrderedDict
 
 from transformers import (
-    DistilBertForSequenceClassification,
-    DistilBertTokenizerFast,
-    TrainingArguments,
-    Trainer,
+    # DistilBertForSequenceClassification,
+    # DistilBertTokenizerFast,
+    # TrainingArguments,
+    # Trainer,
     PreTrainedModel,
     DistilBertConfig,
     DistilBertModel,
@@ -193,3 +193,6 @@ class MultiTaskModel(PreTrainedModel):
             hidden_states=distilbert_output.hidden_states,
             attentions=distilbert_output.attentions,
         )
+    
+if __name__ == "__main__":
+    pass

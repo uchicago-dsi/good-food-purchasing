@@ -3,6 +3,8 @@
 from datetime import datetime
 import os
 
+CLEAN_FILE_PREFIX = "clean_"
+
 script_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.join(script_dir, "../..")
 DATA_FOLDER = os.path.join(project_root, "data/")
