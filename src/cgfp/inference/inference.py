@@ -5,7 +5,8 @@ import numpy as np
 import argparse
 
 import torch
-from transformers import AutoTokenizer
+# from transformers import AutoTokenizer
+from transformers import DistilBertTokenizerFast
 
 from cgfp.config_training import lower2label
 from cgfp.config_tags import GROUP_CATEGORY_VALIDATION
@@ -38,7 +39,6 @@ def inference(model, tokenizer, text, device, assertion=False, confidence_score=
     # TODO: This is fragile. Maybe change config to have a mapping of each column to index
     # TODO: This whole thing breaks if you have different columns that you're using...fix at some point
     fpc = prediction_to_string(model, softmaxed_scores, model.fpg_idx + 1)
-
 
     inference_mask = model.inference_masks[fpg].to(device)
 
@@ -210,13 +210,15 @@ def inference_handler(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Load model checkpoint.")
+    parser.add_argument("--filename", type=str, default="TestData_11.22.23.xlsx", help="Name of the file to classify.")
     parser.add_argument("--checkpoint", type=str, help="Path to the model checkpoint directory or Huggingface model name.")
     
     args = parser.parse_args()
     checkpoint = args.checkpoint if args.checkpoint else "uchicago-dsi/cgfp-classifier-dev"
+    FILENAME = args.filename
 
     model = MultiTaskModel.from_pretrained(checkpoint)
-    tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
+    tokenizer = DistilBertTokenizerFast.from_pretrained("distilbert-base-uncased")
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
     SHEET_NUMBER = 0
@@ -224,9 +226,8 @@ if __name__ == "__main__":
     CONFIDENCE_SCORE = False
     ROWS_TO_CLASSIFY = None
     RAW_RESULTS = False  # saves the raw model results rather than the formatted normalized name results
-    ASSERTION = True
+    ASSERTION = False
 
-    FILENAME = "TestData_11.22.23.xlsx"
     INPUT_COLUMN = "Product Type"
     DATA_DIR = "/net/projects/cgfp/data/raw/"
 
