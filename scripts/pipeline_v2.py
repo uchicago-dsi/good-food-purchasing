@@ -319,57 +319,51 @@ def clean_name(
     return normalized_name
 
 
+REPLACEMENT_MAP = {
+    "fruit": "blend",
+    "cheese": "blend",
+    "vegetable": "blend",
+    "melon": "variety",
+}
+
+
+def get_category(subtype):
+    # Helper function to determine the category of a subtype
+    if subtype in FRUITS:
+        return "fruit"
+    elif subtype in CHEESE_TYPES:
+        return "cheese"
+    elif subtype in VEGETABLES:
+        return "vegetable"
+    elif subtype in MELON_TYPES:
+        return "melon"
+    return None
+
+
 def postprocess_data(row):
-    # if more than one sub-type is fruit (or whatever) then replace the string
-    # Replace multiple fruits for juices with "blend"
-    if (
-        row["Basic Type"] == "juice"
-        and row["Sub-Type 1"] in FRUITS
-        and row["Sub-Type 2"] in FRUITS
-    ):
-        row["Sub-Type 1"] = "blend"
-        row["Sub-Type 2"] = None
+    # Count occurrences of each category
+    category_counts = {}
+    # TODO: subtypes should maybe be in config
+    subtypes = ["Sub-Type 1", "Sub-Type 2"]
+    for subtype in subtypes:
+        category = get_category(row[subtype])
+        if category:
+            if category in category_counts:
+                category_counts[category] += 1
+            else:
+                category_counts[category] = 1
 
-    # If anything that is not a fruit has more than one fruit, relabel it as "fruit"
-    if (
-        row["Food Product Category"] != "Fruit"
-        and row["Sub-Type 1"] in FRUITS
-        and row["Sub-Type 2"] in FRUITS
-    ):
-        if row["Basic Type"] == "water":
-            row["Sub-Type 1"] = "flavored"
-        else:
-            row["Sub-Type 1"] = "fruit"
-        row["Sub-Type 2"] = None
+    # TODO: this works with up to three subtypes — could break with more
+    # Replace subtypes if more than one belongs to the same category
+    for category, count in category_counts.items():
+        if count > 1:
+            replacement_value = REPLACEMENT_MAP[category]
+            for subtype in subtypes:
+                if get_category(row[subtype]) == category:
+                    row[subtype] = replacement_value
 
-    # Replace multiple cheeses with "blend"
-    if (
-        row["Food Product Category"] == "Cheese"
-        and row["Sub-Type 1"] in CHEESE_TYPES
-        and row["Sub-Type 2"] in CHEESE_TYPES
-    ):
-        row["Sub-Type 1"] = "blend"
-        row["Sub-Type 2"] = None
-
-    # Replace multiple veggies with "blend"
-    if (
-        row["Basic Type"] == "vegetable"
-        and row["Sub-Type 1"] in VEGETABLES
-        and row["Sub-Type 2"] in VEGETABLES
-    ):
-        row["Sub-Type 1"] = "blend"
-        row["Sub-Type 2"] = None
-
-    # Replace multiple melons with "variety"
-    if (
-        row["Basic Type"] == "melon"
-        and row["Sub-Type 1"] in MELON_TYPES
-        and row["Sub-Type 2"] in MELON_TYPES
-    ):
-        row["Sub-Type 1"] = "variety"
-        row["Sub-Type 2"] = None
-
-    # Handle edge cases for mislabeled data
+    ### Handle edge cases for mislabeled data ###
+    # "spice" is "Condiments & Snacks"
     if (
         row["Basic Type"] == "spice"
         and row["Food Product Group"] != "Condiments & Snacks"
@@ -378,7 +372,7 @@ def postprocess_data(row):
         row["Food Product Category"] = "Condiments & Snacks"
         row["Primary Product Category"] = "Condiments & Snacks"
 
-    # Update 'Basic Type' to 'watercress' and 'Sub-Type 1' to None for entries where 'Sub-Type 1' is 'watercress'
+    # "watercress" should be Basic Type, not Sub-Type 1
     if row["Sub-Type 1"] == "watercress" and row["Basic Type"] == "herb":
         row["Basic Type"] = "watercress"
         row["Sub-Type 1"] = None
@@ -391,8 +385,11 @@ def process_data(df, **options):
 
     # Set up the "Misc" column for uncategorized tags
     df["Misc"] = None
+
+    # Filter missing data and non-food items, handle typos in Category and Group columns
     df = clean_df(df)
 
+    # TODO: maybe this goes somewhere else
     group_tags = pool_tags(GROUP_TAGS)
     category_tags = pool_tags(CATEGORY_TAGS)
 
@@ -419,10 +416,11 @@ def process_data(df, **options):
         axis=1,
     )
 
-    # Apply rules to processed data
+    # Apply renaming rules to processed data and handle edge cases
     # TODO: Handle sub-type 3 when we add that
     df_split = df_split.apply(postprocess_data, axis=1)
 
+    # TODO: Clarify this part...kind of confusing
     # Save unallocated tags for manual review
     misc = df_split[df_split["Misc"].apply(lambda x: x != [])][
         [
@@ -456,63 +454,6 @@ def process_data(df, **options):
 
     # return processed assets to main
     return misc, df_split
-
-    # # super messy fill in the blanks on these dataframes
-
-    # # main df processing
-
-    # df_processed = df.copy()
-
-    # df_processed["Basic Type"] = df_processed["Product Name"]
-    # output_column_names = [
-    #     "Product Type",
-    #     "Food Product Group",
-    #     "Food Product Category",
-    #     "Primary Food Product Category",
-    #     "Product Name",
-    #     "Basic Type",
-    #     "Sub-Type 1",
-    #     "Sub-Type 2",
-    #     "Flavor/Cut",
-    #     "Shape",
-    #     "Skin",
-    #     "Seed/Bone",
-    #     "Processing",
-    #     "Cooked/Cleaned",
-    #     "WG/WGR",
-    #     "Dietary Concern",
-    #     "Additives",
-    #     "Dietary Accommodation",
-    #     "Frozen",
-    #     "Packaging",
-    #     "Commodity",
-    # ]
-
-    # missing_columns = [
-    #     column for column in output_column_names if column not in df_processed.columns
-    # ]
-    # for column in missing_columns:
-    #     df_processed[column] = None
-
-    # extra_columns = [
-    #     column for column in df_processed.columns if column not in output_column_names
-    # ]
-    # df_processed.drop(extra_columns, axis=1, inplace=True)
-
-    # # misc df processing
-
-    # misc_column_names = [
-    #     "Product Type",
-    #     "Food Product Group",
-    #     "Food Product Category",
-    #     "Basic Type",
-    #     "Sub-Type 1",
-    #     "Sub-Type 2",
-    #     "Misc",
-    # ]
-    # misc = pd.DataFrame(columns=misc_column_names)
-
-    # return misc, df_processed[output_column_names]
 
 
 def main(argv):
