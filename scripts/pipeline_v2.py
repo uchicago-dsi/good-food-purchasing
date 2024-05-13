@@ -103,6 +103,15 @@ def clean_df(df):
         & (df["Product Name"].str.len() >= 3)
         & (df["Food Product Group"] != "Non-Food")
     ].reset_index(drop=True)
+
+    # Handle typos in Primary Food Product Category
+    category_typos = {
+        "Roots & Tuber": "Roots & Tubers",
+    }
+    df["Primary Food Product Category"] = df["Primary Food Product Category"].map(
+        lambda x: category_typos.get(x, x)
+    )
+
     # Remove leading 'PREQUALIFIED: ' string
     df["Product Name"] = df["Product Name"].str.replace(
         "^PREQUALIFIED: ", "", regex=True
@@ -310,19 +319,79 @@ def clean_name(
     return normalized_name
 
 
+def postprocess_data(row):
+    # if more than one sub-type is fruit (or whatever) then replace the string
+    # Replace multiple fruits for juices with "blend"
+    if (
+        row["Basic Type"] == "juice"
+        and row["Sub-Type 1"] in FRUITS
+        and row["Sub-Type 2"] in FRUITS
+    ):
+        row["Sub-Type 1"] = "blend"
+        row["Sub-Type 2"] = None
+
+    # If anything that is not a fruit has more than one fruit, relabel it as "fruit"
+    if (
+        row["Food Product Category"] != "Fruit"
+        and row["Sub-Type 1"] in FRUITS
+        and row["Sub-Type 2"] in FRUITS
+    ):
+        if row["Basic Type"] == "water":
+            row["Sub-Type 1"] = "flavored"
+        else:
+            row["Sub-Type 1"] = "fruit"
+        row["Sub-Type 2"] = None
+
+    # Replace multiple cheeses with "blend"
+    if (
+        row["Food Product Category"] == "Cheese"
+        and row["Sub-Type 1"] in CHEESE_TYPES
+        and row["Sub-Type 2"] in CHEESE_TYPES
+    ):
+        row["Sub-Type 1"] = "blend"
+        row["Sub-Type 2"] = None
+
+    # Replace multiple veggies with "blend"
+    if (
+        row["Basic Type"] == "vegetable"
+        and row["Sub-Type 1"] in VEGETABLES
+        and row["Sub-Type 2"] in VEGETABLES
+    ):
+        row["Sub-Type 1"] = "blend"
+        row["Sub-Type 2"] = None
+
+    # Replace multiple melons with "variety"
+    if (
+        row["Basic Type"] == "melon"
+        and row["Sub-Type 1"] in MELON_TYPES
+        and row["Sub-Type 2"] in MELON_TYPES
+    ):
+        row["Sub-Type 1"] = "variety"
+        row["Sub-Type 2"] = None
+
+    # Handle edge cases for mislabeled data
+    if (
+        row["Basic Type"] == "spice"
+        and row["Food Product Group"] != "Condiments & Snacks"
+    ):
+        row["Food Product Group"] = "Condiments & Snacks"
+        row["Food Product Category"] = "Condiments & Snacks"
+        row["Primary Product Category"] = "Condiments & Snacks"
+
+    # Update 'Basic Type' to 'watercress' and 'Sub-Type 1' to None for entries where 'Sub-Type 1' is 'watercress'
+    if row["Sub-Type 1"] == "watercress" and row["Basic Type"] == "herb":
+        row["Basic Type"] = "watercress"
+        row["Sub-Type 1"] = None
+
+    return row
+
+
 def process_data(df, **options):
     # isolates data processing from IO without changing outputs
 
+    # Set up the "Misc" column for uncategorized tags
     df["Misc"] = None
     df = clean_df(df)
-
-    # Handle any typos or issues with Food Product Category and Primary Food Product Category
-    category_typos = {
-        "Roots & Tuber": "Roots & Tubers",
-    }
-    df["Primary Food Product Category"] = df["Primary Food Product Category"].map(
-        lambda x: category_typos.get(x, x)
-    )
 
     group_tags = pool_tags(GROUP_TAGS)
     category_tags = pool_tags(CATEGORY_TAGS)
@@ -350,77 +419,9 @@ def process_data(df, **options):
         axis=1,
     )
 
-    # TODO: All of this should be aggregated in a function that is applied as postprocessing to the dataframe
-
-    # TODO: Handle sub-type 3 when we add that » if more than one sub-type is fruit (or whatever) then replace the string
-    # TODO: Maybe want to abstract and functionalize this setup
-    # TODO: This should be done with a list for subtypes
-    # Replace multiple fruits for juices with "blend"
-    juice_blend = (
-        (df_split["Basic Type"] == "juice")
-        & (df_split["Sub-Type 1"].isin(FRUITS))
-        & (df_split["Sub-Type 2"].isin(FRUITS))
-    )
-
-    df_split.loc[juice_blend, "Sub Type 1"] = "blend"
-    df_split.loc[juice_blend, "Sub Type 2"] = None
-
-    # If anything that is not a fruit has more than one fruit, relabel it as "fruit"
-    multiple_fruits = (
-        (df_split["Food Product Category"] != "Fruit")
-        & (df_split["Sub-Type 1"].isin(FRUITS))
-        & (df_split["Sub-Type 2"].isin(FRUITS))
-    )
-    # TODO: make better logic for this
-    # for sparkling water, we want to replace multiple fruits with "flavored"
-    # for everything else we want it to be "fruit"
-    fruit_water = (df_split["Basic Type"] == "water") & multiple_fruits
-    not_fruit_water = (df_split["Basic Type"] != "water") & multiple_fruits
-
-    df_split.loc[fruit_water, "Sub Type 1"] = "flavored"
-    df_split.loc[fruit_water, "Sub Type 2"] = None
-    df_split.loc[not_fruit_water, "Sub Type 1"] = "fruit"
-    df_split.loc[not_fruit_water, "Sub Type 2"] = None
-
-    multiple_cheeses = (
-        (df_split["Food Product Category"] == "Cheese")
-        & (df_split["Sub-Type 1"].isin(CHEESE_TYPES))
-        & (df_split["Sub-Type 2"].isin(CHEESE_TYPES))
-    )
-    df_split.loc[multiple_cheeses, "Sub Type 1"] = "blend"
-    df_split.loc[multiple_cheeses, "Sub Type 2"] = None
-
-    multiple_veggies = (
-        (df_split["Basic Type"] == "vegetable")
-        & (df_split["Sub-Type 1"].isin(VEGETABLES))
-        & (df_split["Sub-Type 2"].isin(VEGETABLES))
-    )
-    df_split.loc[multiple_veggies, "Sub Type 1"] = "blend"
-    df_split.loc[multiple_veggies, "Sub Type 2"] = None
-
-    multiple_melon = (
-        (df_split["Basic Type"] == "melon")
-        & (df_split["Sub-Type 1"].isin(MELON_TYPES))
-        & (df_split["Sub-Type 2"].isin(MELON_TYPES))
-    )
-    df_split.loc[multiple_melon, "Sub Type 1"] = "variety"
-    df_split.loc[multiple_melon, "Sub Type 2"] = None
-
-    # Handle edge cases for mislabeled data
-    mask_spice = (df_split["Basic Type"] == "spice") & (
-        df_split["Food Product Group"] != "Condiments & Snacks"
-    )
-    df_split.loc[
-        mask_spice,
-        ["Food Product Group", "Food Product Category", "Primary Product Category"],
-    ] = "Condiments & Snacks"
-
-    # Update 'Basic Type' to 'watercress' and 'Sub-Type 1' to None for entries where 'Sub-Type 1' is 'watercress'
-    mask_watercress = (df_split["Sub-Type 1"] == "watercress") & (
-        df_split["Basic Type"] == "herb"
-    )
-    df_split.loc[mask_watercress, "Basic Type"] = "watercress"
-    df_split.loc[mask_watercress, "Sub-Type 1"] = None
+    # Apply rules to processed data
+    # TODO: Handle sub-type 3 when we add that
+    df_split = df_split.apply(postprocess_data, axis=1)
 
     # Save unallocated tags for manual review
     misc = df_split[df_split["Misc"].apply(lambda x: x != [])][
