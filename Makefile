@@ -107,7 +107,7 @@ last-errs:
 
 ##### HUGGINGFACE #####
 
-# TODO: update this to take model as an argument
+# TODO: update this to take model as an argumentsq
 # Usage: make update-dev-model MODEL_DIR=2024-02-05_10-56
 update-dev-model:
 	$(RUNNING)
