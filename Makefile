@@ -24,7 +24,6 @@ err_file         = $(run_logs)/$(err_file_name)
 output_file_name = res.txt
 output_file      = $(run_logs)/$(output_file_name)
 
-
 # includes SBATCH_MAIL, conda_yml, DSI_PARTITION and CGFP_DIR
 include .env
 
@@ -49,10 +48,10 @@ run: $(PYTHON)
 
 test: cmd  ?= -m pytest $(args)
 test: args ?= -s
-test: $(dev_reqs_ok)
+test: 
 	$(RUNNING)
 	$(running)
-	$(PYTHON) $(cmd)
+	python $(cmd)
 
 clean: conda=false
 clean:
