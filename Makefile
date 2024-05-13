@@ -4,7 +4,7 @@ app = pipeline
 _conda = conda
 
 # python + dependencies
-conda_yml =
+conda_yml = environment.yml
 
 workdir = .
 conda_name = .conda
@@ -87,7 +87,7 @@ train: $(PYTHON) $(run_logs)
 	--output=$(output_file) \
 	--error=$(err_file) \
 	--mail-user=$(SBATCH_MAIL) \
-	$(scripts_dir)/train.slurm
+	$(scripts_dir)/train-cgfp.slurm
 
 $(run_logs):
 	$(RUNNING)
