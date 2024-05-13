@@ -380,24 +380,24 @@ def process_data(df):
         & (df_split["Sub-Type 1"].isin(CHEESE_TYPES))
         & (df_split["Sub-Type 2"].isin(CHEESE_TYPES))
     )
-    df_split.loc[multiple_fruits, "Sub Type 1"] = "blend"
-    df_split.loc[multiple_fruits, "Sub Type 2"] = None
+    df_split.loc[multiple_cheeses, "Sub Type 1"] = "blend"
+    df_split.loc[multiple_cheeses, "Sub Type 2"] = None
 
     multiple_veggies = (
         (df_split["Basic Type"] == "vegetable")
         & (df_split["Sub-Type 1"].isin(VEGETABLES))
         & (df_split["Sub-Type 2"].isin(VEGETABLES))
     )
-    df_split.loc[multiple_fruits, "Sub Type 1"] = "blend"
-    df_split.loc[multiple_fruits, "Sub Type 2"] = None
+    df_split.loc[multiple_veggies, "Sub Type 1"] = "blend"
+    df_split.loc[multiple_veggies, "Sub Type 2"] = None
 
     multiple_melon = (
         (df_split["Basic Type"] == "melon")
         & (df_split["Sub-Type 1"].isin(MELON_TYPES))
         & (df_split["Sub-Type 2"].isin(MELON_TYPES))
     )
-    df_split.loc[multiple_fruits, "Sub Type 1"] = "variety"
-    df_split.loc[multiple_fruits, "Sub Type 2"] = None
+    df_split.loc[multiple_melon, "Sub Type 1"] = "variety"
+    df_split.loc[multiple_melon, "Sub Type 2"] = None
 
     # Handle edge cases for mislabeled data
     mask_spice = (df_split["Basic Type"] == "spice") & (
