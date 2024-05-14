@@ -59,15 +59,14 @@ def test_initial_and_v2_pipelines_match(input_file, raw_data, sample, v2_arg_par
         # TODO: write these files somewhere reasonable
         # Note: keep_equal is weird...you need to keep_shape and then filter by the index of the rows
         # with discrepancies in order to get the full rows
+        differences_only = v2_output.compare(initial_output)
+        differences_only.to_csv("differences_only.csv")
         differences = v2_output.compare(
             initial_output, keep_equal=True, keep_shape=True
-        ).loc[v2_output.compare(initial_output).index.tolist()]
+        ).loc[differences_only.index.tolist()]
         initial_output.to_csv("initial_output.csv")
         v2_output.to_csv("v2_output.csv")
         differences.to_csv("differences.csv")
-        # print("Differences in output DataFrames:")
-        # with pd.option_context("display.max_rows", None, "display.max_columns", None):
-        #     print(differences)
         assert v2_output.equals(
             initial_output
         ), "Output columns seem to match but other issue in dataframe"
@@ -82,19 +81,3 @@ def test_initial_and_v2_pipelines_match(input_file, raw_data, sample, v2_arg_par
         assert v2_misc.equals(
             initial_misc
         ), "Misc columns seem to match but other issue in dataframe"
-
-    # # TODO: Can I output the mismatched rows?
-    # assert v2_output.equals(
-    #     initial_output
-    # ), "Output columns seem to match but other issue in dataframe"
-
-    # mismatch_misc_columns = set(v2_misc.columns) ^ set(initial_misc.columns)
-    # assert len(mismatch_misc_columns) == 0, "Misc columns are mismatching"
-    # # assert v2_misc.equals(
-    # #     initial_misc
-    # # ), "Misc columns seem to match but other issue in dataframe"
-    # if not v2_misc.equals(initial_misc):
-    #     differences = v2_misc.compare(initial_misc)
-    #     print("Differences in misc DataFrames:")
-    #     print(differences)
-    #     assert False, "Misc columns seem to match but other issue in dataframe"

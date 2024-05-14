@@ -284,9 +284,11 @@ def clean_name(row, group_tags_dict=GROUP_TAGS, category_tags_dict=CATEGORY_TAGS
             "bar",
         ]:
             basic_type = "bar"
+            normalized_name["Basic Type"] = basic_type
             continue
         if basic_type == "sea salt":
             basic_type = "salt"
+            normalized_name["Basic Type"] = basic_type
             continue
 
         # TODO: pass row into token handler?
