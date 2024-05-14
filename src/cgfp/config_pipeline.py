@@ -19,6 +19,7 @@ GROUP_COLUMNS = [
 ]
 
 # TODO: Sub type 3?
+# TODO: Why did I exclude basic type from here?
 NORMALIZED_COLUMNS = [
     "Sub-Type 1",
     "Sub-Type 2",

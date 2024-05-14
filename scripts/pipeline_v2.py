@@ -63,6 +63,17 @@ from cgfp.config_pipeline import (
 ALL_FLAVORS = FLAVORS | FRUITS
 
 
+# TODO: maybe this goes somewhere else
+def pool_tags(tags_dict):
+    for top_level in tags_dict.keys():
+        tags_dict[top_level]["All"] = set.union(*tags_dict[top_level].values())
+    return tags_dict
+
+
+GROUP_TAGS = pool_tags(GROUP_TAGS)
+CATEGORY_TAGS = pool_tags(CATEGORY_TAGS)
+
+
 DEFAULT_INPUT_FILE = "CONFIDENTIAL_CGFP bulk data_073123.xlsx"
 DEFAULT_MISC_FILE = "misc.csv"
 CLEAN_FILE_PREFIX = "clean_"
@@ -117,12 +128,6 @@ def clean_df(df):
         "^PREQUALIFIED: ", "", regex=True
     )
     return df
-
-
-def pool_tags(tags_dict):
-    for top_level in tags_dict.keys():
-        tags_dict[top_level]["All"] = set.union(*tags_dict[top_level].values())
-    return tags_dict
 
 
 def token_handler(
@@ -243,16 +248,30 @@ def token_handler(
     return token
 
 
-def clean_name(
-    name_list,
-    food_product_group,
-    food_product_category,
-    group_tags_dict,
-    category_tags_dict,
-):
+# def clean_name(
+#     name_list,
+#     food_product_group,
+#     food_product_category,
+#     group_tags_dict,
+#     category_tags_dict,
+# ):
+def clean_name(row, group_tags_dict=GROUP_TAGS, category_tags_dict=CATEGORY_TAGS):
+    name_list = row["Product Name"].split(",")
+    food_product_group = row["Food Product Group"]
+    food_product_category = row["Food Product Category"]
+
     # TODO: Should set this up so that normalized name starts with every column
     # Then we add the tokens to the appropriate column based on membership
-    normalized_name = {}
+    # And maybe we have a list for subtypes, and we parse that at the end of everything
+    normalized_name = {col: None for col in NORMALIZED_COLUMNS}
+    # TODO: hack to make this work
+    normalized_name["Food Product Group"] = food_product_group
+    normalized_name["Food Product Category"] = food_product_category
+    normalized_name["Product Type"] = row["Product Type"]
+    normalized_name["Primary Food Product Category"] = row[
+        "Primary Food Product Category"
+    ]
+    normalized_name["Product Name"] = row["Product Name"]
     misc_col = {"Misc": []}  # make a list so we can append unmatched tokens
     # Initialize sub-type 1 since we need to pass it to token_handler
     sub_type_1 = None
@@ -261,9 +280,12 @@ def clean_name(
         token = TOKEN_MAP_DICT.get(token, token)
         # First token is always Basic Type
         if i == 0:
+            # TODO: probably a better way to maintain this state...update the name dictionary
             basic_type = token
             normalized_name["Basic Type"] = token
             continue
+        # TODO: These are weird edge cases where we are replacing the basic type with a subtype
+        # Should this all be done in postprocessing?
         # Handle edge cases for basic type
         if basic_type == "snack" and token in [
             "bar",
@@ -302,23 +324,32 @@ def clean_name(
                 continue
         # First token after basic type is sub-type 1 if it's not from the later tags
         # TODO: set this up so that I'm saving sub-types as a list
-        if "Sub-Type 1" not in normalized_name:
+        if normalized_name["Sub-Type 1"] is None:
             sub_type_1 = token
             normalized_name["Sub-Type 1"] = sub_type_1
             continue
-        elif "Sub-Type 2" not in normalized_name:
+        elif normalized_name["Sub-Type 2"] is None:
+            # elif "Sub-Type 2" not in normalized_name:
             normalized_name["Sub-Type 2"] = token
             continue
         # Aggregate unmatched tokens to add to tag dictionary
         misc_col["Misc"].append(token)
+    # TODO: The postprocessing stuff should probably actually go here
+    # But...we need the whole row here since we need to check FPG, FPC, etc.
+    normalized_name = postprocess_data(normalized_name)
+
     normalized_name.update(misc_col)
+    # TODO: this can probably go away since we intialize each column as empty
     # Make sure all columns are represented in dictionary for dataframe creation
-    for col in NORMALIZED_COLUMNS:
-        if col not in normalized_name:
-            normalized_name[col] = None
-    return normalized_name
+    # for col in NORMALIZED_COLUMNS:
+    #     if col not in normalized_name:
+    #         normalized_name[col] = None
+
+    # TODO: normalized_name vs row is messy here
+    return pd.Series(normalized_name)
 
 
+# TODO: This should go in config
 REPLACEMENT_MAP = {
     "fruit": "blend",
     "cheese": "blend",
@@ -389,36 +420,34 @@ def process_data(df, **options):
     # Filter missing data and non-food items, handle typos in Category and Group columns
     df = clean_df(df)
 
-    # TODO: maybe this goes somewhere else
-    group_tags = pool_tags(GROUP_TAGS)
-    category_tags = pool_tags(CATEGORY_TAGS)
-
     # Get a dictionary back with split tags allocated to appropriate columns
     # Then convert dictionary to dataframe
-    name_dict = df.apply(
-        lambda row: clean_name(
-            row["Product Name"].split(","),
-            row["Food Product Group"],
-            row["Food Product Category"],
-            group_tags,
-            category_tags,
-        ),
-        axis=1,
-    )
-    new_columns = pd.DataFrame(name_dict.tolist()).reset_index(drop=True)
+    # name_dict = df.apply(
+    #     lambda row: clean_name(
+    #         row["Product Name"].split(","),
+    #         row["Food Product Group"],
+    #         row["Food Product Category"],
+    #         group_tags,
+    #         category_tags,
+    #     ),
+    #     axis=1,
+    # )
+    # new_columns = pd.DataFrame(name_dict.tolist()).reset_index(drop=True)
 
-    # Combine split tags with group and category columns
-    df_split = pd.concat(
-        [
-            df[GROUP_COLUMNS],
-            new_columns,
-        ],
-        axis=1,
-    )
+    # # Combine split tags with group and category columns
+    # df_split = pd.concat(
+    #     [
+    #         df[GROUP_COLUMNS],
+    #         new_columns,
+    #     ],
+    #     axis=1,
+    # )
+
+    df_split = df.apply(clean_name, axis=1)
 
     # Apply renaming rules to processed data and handle edge cases
     # TODO: Handle sub-type 3 when we add that
-    df_split = df_split.apply(postprocess_data, axis=1)
+    # df_split = df_split.apply(postprocess_data, axis=1)
 
     # TODO: Clarify this part...kind of confusing
     # Save unallocated tags for manual review
@@ -459,6 +488,7 @@ def process_data(df, **options):
 def main(argv):
     # input
     parser = create_parser()
+    # TODO: wait what is this doing?
     options = vars(parser.parse_args(argv))
 
     # processing
@@ -466,8 +496,14 @@ def main(argv):
     misc, df_processed = process_data(df_loaded, **options)
 
     # output
+    # TODO: I...don't get this
     save_pd_to_csv(df_processed, **options)
-    save_pd_to_csv(misc, options.get("clean_folder"), options.get("misc_file"))
+    save_pd_to_csv(
+        misc,
+        options.get("clean_folder"),
+        options.get("misc_file"),
+        output_file="misc.csv",
+    )
 
 
 if __name__ == "__main__":
