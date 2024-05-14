@@ -248,13 +248,6 @@ def token_handler(
     return token
 
 
-# def clean_name(
-#     name_list,
-#     food_product_group,
-#     food_product_category,
-#     group_tags_dict,
-#     category_tags_dict,
-# ):
 def clean_name(row, group_tags_dict=GROUP_TAGS, category_tags_dict=CATEGORY_TAGS):
     name_list = row["Product Name"].split(",")
     food_product_group = row["Food Product Group"]
@@ -339,11 +332,6 @@ def clean_name(row, group_tags_dict=GROUP_TAGS, category_tags_dict=CATEGORY_TAGS
     normalized_name = postprocess_data(normalized_name)
 
     normalized_name.update(misc_col)
-    # TODO: this can probably go away since we intialize each column as empty
-    # Make sure all columns are represented in dictionary for dataframe creation
-    # for col in NORMALIZED_COLUMNS:
-    #     if col not in normalized_name:
-    #         normalized_name[col] = None
 
     # TODO: normalized_name vs row is messy here
     return pd.Series(normalized_name)
@@ -372,6 +360,7 @@ def get_category(subtype):
 
 
 def postprocess_data(row):
+    # TODO: Handle sub-type 3 when we add that
     # Count occurrences of each category
     category_counts = {}
     # TODO: subtypes should maybe be in config
@@ -420,34 +409,7 @@ def process_data(df, **options):
     # Filter missing data and non-food items, handle typos in Category and Group columns
     df = clean_df(df)
 
-    # Get a dictionary back with split tags allocated to appropriate columns
-    # Then convert dictionary to dataframe
-    # name_dict = df.apply(
-    #     lambda row: clean_name(
-    #         row["Product Name"].split(","),
-    #         row["Food Product Group"],
-    #         row["Food Product Category"],
-    #         group_tags,
-    #         category_tags,
-    #     ),
-    #     axis=1,
-    # )
-    # new_columns = pd.DataFrame(name_dict.tolist()).reset_index(drop=True)
-
-    # # Combine split tags with group and category columns
-    # df_split = pd.concat(
-    #     [
-    #         df[GROUP_COLUMNS],
-    #         new_columns,
-    #     ],
-    #     axis=1,
-    # )
-
     df_split = df.apply(clean_name, axis=1)
-
-    # Apply renaming rules to processed data and handle edge cases
-    # TODO: Handle sub-type 3 when we add that
-    # df_split = df_split.apply(postprocess_data, axis=1)
 
     # TODO: Clarify this part...kind of confusing
     # Save unallocated tags for manual review
