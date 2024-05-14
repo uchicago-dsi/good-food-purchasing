@@ -145,9 +145,6 @@ def clean_df(df):
     return df
 
 
-# def token_handler(
-#     token, food_product_group, food_product_category, basic_type, sub_type_1
-# ):
 def token_handler(token, row):
     food_product_group, food_product_category, basic_type, sub_type_1 = (
         row["Food Product Group"],
@@ -155,6 +152,14 @@ def token_handler(token, row):
         row["Basic Type"],
         row["Sub-Type 1"],
     )
+    # TODO: ...should this actually be here??
+    # These weird rename rules need to happen before the token handler in order to change the basic type
+    if (basic_type == "snack" and token == "bar") or (
+        basic_type == "herb" and token == "watercress"
+    ):
+        row["Basic Type"] = token
+        return None, row
+
     # Handle edge cases where a token is allowed
     if (
         (token == "blue" and basic_type == "cheese")
@@ -162,7 +167,7 @@ def token_handler(token, row):
         or (token == "black" and basic_type in ["tea", "drink"])
         or (token == "gluten free" and sub_type_1 in ["parfait"])
     ):
-        return token
+        return token, row
 
     # Handle edge cases where a token is not allowed
     if (
@@ -217,7 +222,7 @@ def token_handler(token, row):
             or (basic_type == "mix" and token in ["custard"])
         )
     ):
-        return None
+        return None, row
 
     # Map flavored tokens to "flavored"
     if (
@@ -234,40 +239,40 @@ def token_handler(token, row):
         )  # TODO: this doesn't work since sub-type 1 is bar
         or (food_product_group == "Seafood" and token in FLAVORS)
     ):
-        return "flavored"
+        return "flavored", row
 
     # Skip flavors and shapes for some basic types
     if basic_type in SKIP_FLAVORS and token in ALL_FLAVORS:
-        return None
+        return None, row
 
     if basic_type in SKIP_SHAPE and token in SHAPE_EXTRAS:
-        return None
+        return None, row
 
     ### EDGE CASES FOR RENAMING TOKENS ###
 
     # Map nut tokens to "nut" for some basic types
     if basic_type == "snack" and token in NUTS:
-        return "nut"
+        return "nut", row
 
     # Relabel cheese type as "cheese"
     if (
         food_product_group == "Meals" or basic_type == "snack"
     ) and token in CHEESE_TYPES:
-        return "cheese"
+        return "cheese", row
 
     # Map chocolate tokens to "chocolate" for candy
     if basic_type == "candy" and token in CHOCOLATE:
-        return "chocolate"
+        return "chocolate", row
 
     # "chip" should be mapped to "cut" for pickles...but "chip" is valid for snacks
     if sub_type_1 == "pickle" and token == "chip":
-        return "cut"
+        return "cut", row
 
     # Skip outdated tokens from old name normalization format
     # Do this last since some rules override this
     if token in SKIP_TOKENS:
-        return None
-    return token
+        return None, row
+    return token, row
 
 
 def clean_token(token, token_map_dict=TOKEN_MAP_DICT):
@@ -279,43 +284,30 @@ def clean_name(row, group_tags_dict=GROUP_TAGS, category_tags_dict=CATEGORY_TAGS
         row["Product Name"],
         row["Food Product Group"],
         row["Food Product Category"],
-        # row["Sub-Type 1"],
     )
     name_split = product_name.split(",")
-    row["Basic Type"] = clean_token(name_split[0])
-    # row["Basic Type"] = row["Basic Type"]
+    basic_type = clean_token(name_split[0])
+
+    # Handle basic type edge cases
+    # TODO: this could be a remap dictionary as needed
+    basic_type = "salt" if basic_type == "sea salt" else basic_type
+
+    row["Basic Type"] = basic_type
 
     misc = []
     for token in name_split[1:]:
         token = clean_token(token)
-
-        # TODO: This logic is ugly...need a better way to handle basic type renames based on subtype
-        if row["Basic Type"] == "snack" and token in [
-            "bar",
-        ]:
-            row["Basic Type"] = "bar"
-            continue
-        if row["Basic Type"] == "sea salt":
-            row["Basic Type"] = "salt"
-            continue
-
-        # TODO: pass row into token handler?
-        token = token_handler(
-            # token, food_product_group, food_product_category, basic_type, sub_type_1
-            token,
-            row,
-        )
+        token, row = token_handler(token, row)
         if token is None:  # Note: token_handler returns None for invalid tags
             continue
-
-        # Check if token is in tags — if so, enter the tagging loop
+        # If token is in pre-allowed tags, enter tagging loop
         if token in group_tags_dict.get(food_product_group, {}).get(
             "All", []
         ) or token in category_tags_dict.get(food_product_category, {}).get("All", []):
             matched = False
             for col in NORMALIZED_COLUMNS:
-                # TODO: Write better documentation here
                 # TODO: This is where the logic for categories is broken
+                # Should group and category tags be separate or not really?
                 # Find the category that the token is in and add to normalized_name
                 if col in group_tags_dict[food_product_group]:
                     if token in group_tags_dict[food_product_group][col]:
@@ -341,15 +333,14 @@ def clean_name(row, group_tags_dict=GROUP_TAGS, category_tags_dict=CATEGORY_TAGS
         # Aggregate unmatched tokens to add to tag dictionary
         misc.append(token)
     row = postprocess_data(row)
-    row.update(
-        {"Misc": misc}
-    )  # Note: Updates series in place...but only for not null values
+    # Note: Updates series in place...but only for not null values
+    row.update({"Misc": misc})
     return row
 
 
 # TODO: This should go in config
 REPLACEMENT_MAP = {
-    "fruit": "blend",
+    "fruit": "fruit",
     "cheese": "blend",
     "vegetable": "blend",
     "melon": "variety",
@@ -386,10 +377,12 @@ def postprocess_data(row):
     # TODO: this works with up to three subtypes — could break with more
     # Replace subtypes if more than one belongs to the same category
     for category, count in category_counts.items():
-        # TODO: Is this the correct rule?
-        if count > 1 and row["Food Product Group"] != "Condiments & Snacks":
-            replacement_value = REPLACEMENT_MAP[category]
-            # TODO: Maybe a better way to do this...replace the first category and subsequent ones are None
+        if count > 1:
+            if category == "fruit" and row["Food Product Category"] == "Fruit":
+                replacement_value = "blend"
+            else:
+                replacement_value = REPLACEMENT_MAP.get(category)
+
             replaced = False
             for subtype in subtypes:
                 if get_category(row[subtype]) == category:
@@ -398,6 +391,7 @@ def postprocess_data(row):
 
     ### Handle edge cases for mislabeled data ###
     # "spice" is "Condiments & Snacks"
+    # TODO: SPICE CHIVE FREEZE DRIED...should this be Condiments & Snacks?
     if (
         row["Basic Type"] == "spice"
         and row["Food Product Group"] != "Condiments & Snacks"
@@ -405,11 +399,6 @@ def postprocess_data(row):
         row["Food Product Group"] = "Condiments & Snacks"
         row["Food Product Category"] = "Condiments & Snacks"
         row["Primary Product Category"] = "Condiments & Snacks"
-
-    # "watercress" should be Basic Type, not Sub-Type 1
-    if row["Sub-Type 1"] == "watercress" and row["Basic Type"] == "herb":
-        row["Basic Type"] = "watercress"
-        row["Sub-Type 1"] = None
 
     return row
 
