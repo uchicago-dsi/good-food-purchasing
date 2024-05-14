@@ -109,6 +109,21 @@ def clean_df(df):
     - Remove null and short (usually a mistake) Product Names
     - Remove non-food items
     """
+    # TODO: put this in config
+    # TODO: Do we ever use "Primary Food Product Group?
+    df = df[
+        [
+            "Food Product Category",
+            "Primary Food Product Category",
+            "Product Type",
+            "Product Name",
+            "Food Product Group",
+        ]
+    ].copy()
+
+    # Add normalized name columns
+    df[NORMALIZED_COLUMNS + ["Misc"]] = None
+
     df = df[
         (df["Product Type"].str.len() >= 3)
         & (df["Product Name"].str.len() >= 3)
@@ -249,6 +264,7 @@ def token_handler(
 
 
 def clean_name(row, group_tags_dict=GROUP_TAGS, category_tags_dict=CATEGORY_TAGS):
+    normalized_name = row.copy()
     name_list = row["Product Name"].split(",")
     food_product_group = row["Food Product Group"]
     food_product_category = row["Food Product Category"]
@@ -256,7 +272,7 @@ def clean_name(row, group_tags_dict=GROUP_TAGS, category_tags_dict=CATEGORY_TAGS
     # TODO: Should set this up so that normalized name starts with every column
     # Then we add the tokens to the appropriate column based on membership
     # And maybe we have a list for subtypes, and we parse that at the end of everything
-    normalized_name = {col: None for col in NORMALIZED_COLUMNS}
+    # normalized_name = {col: None for col in NORMALIZED_COLUMNS}
     # TODO: hack to make this work
     normalized_name["Food Product Group"] = food_product_group
     normalized_name["Food Product Category"] = food_product_category
@@ -331,11 +347,12 @@ def clean_name(row, group_tags_dict=GROUP_TAGS, category_tags_dict=CATEGORY_TAGS
     # TODO: The postprocessing stuff should probably actually go here
     # But...we need the whole row here since we need to check FPG, FPC, etc.
     normalized_name = postprocess_data(normalized_name)
-
-    normalized_name.update(misc_col)
+    normalized_name.update(
+        misc_col
+    )  # Note: Updates in place...but only for not null values
 
     # TODO: normalized_name vs row is messy here
-    return pd.Series(normalized_name)
+    return normalized_name
 
 
 # TODO: This should go in config

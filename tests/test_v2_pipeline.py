@@ -56,8 +56,9 @@ def test_initial_and_v2_pipelines_match(input_file, raw_data, sample, v2_arg_par
     mismatch_output_columns = set(v2_output.columns) ^ set(initial_output.columns)
     assert len(mismatch_output_columns) == 0, "Output columns are mismatching"
     if not v2_output.equals(initial_output):
+        # TODO: write these files somewhere reasonable
         # Note: keep_equal is weird...you need to keep_shape and then filter by the index of the rows
-        # with discrpeancies in order to get the full rows
+        # with discrepancies in order to get the full rows
         differences = v2_output.compare(
             initial_output, keep_equal=True, keep_shape=True
         ).loc[v2_output.compare(initial_output).index.tolist()]
