@@ -281,70 +281,106 @@ def clean_token(token, token_map_dict=TOKEN_MAP_DICT):
     return token_map_dict.get(token.strip(), token.strip())
 
 
+# TODO: Move these mappings to config
+basic_type_mapping = {
+    "sea salt": ("salt", None),
+    "almond": ("nut", "almond"),
+    "baba ganoush": ("spread", "baba ganoush"),
+    "baklava": ("pastry", "baklava"),
+    "banana bread": ("bread", "banana"),
+    "barbacoa": ("beef", "barbacoa"),
+    "basil": ("herb", "basil"),
+    "bell pepper": ("pepper", "bell"),
+    "bran": ("wheat bran", None),
+    "bratwurst": ("pork", "sausage"),
+    "breakfast bar": ("bar", None),
+    "brownie": ("dessert", "brownie"),
+    "cake": ("dessert", "cake"),
+    "cannoli cream": ("filling", "cannoli"),
+    "cereal bar": ("bar", None),
+    "cheesecake": ("dessert", "cheesecake"),
+}
+
+for nut in NUTS:
+    basic_type_mapping[nut] = ("nut", nut)
+
+
 def basic_type_handler(row):
-    basic_type = row["Basic Type"]
+    mapping = basic_type_mapping.get(row["Basic Type"], (row["Basic Type"], None))
 
-    if basic_type == "sea salt":
-        row["Basic Type"] = "salt"
+    basic_type, subtype = mapping
+    row["Basic Type"] = basic_type
 
-    if basic_type in NUTS:
-        row["Basic Type"] = "nut"
-        row = add_subtype(row, basic_type, first=True)
-
-    if basic_type == "baba ganoush":
-        row["Basic Type"] = "spread"
-        row = add_subtype(row, basic_type, first=True)
-
-    if basic_type == "baklava":
-        row["Basic Type"] = "pastry"
-        row = add_subtype(row, basic_type, first=True)
-
-    if basic_type == "banana bread":
-        row["Basic Type"] = "bread"
-        row = add_subtype(row, "banana", first=True)
-
-    if basic_type == "barbacoa":
-        row["Basic Type"] = "beef"
-        row = add_subtype(row, basic_type, first=True)
-
-    if basic_type == "basil":
-        row["Basic Type"] = "herb"
-        row = add_subtype(row, basic_type, first=True)
-
-    if basic_type == "bell pepper":
-        row["Basic Type"] = "pepper"
-        row = add_subtype(row, "bell", first=True)
-
-    if basic_type == "bran":
-        row["Basic Type"] = "wheat bran"
-
-    if basic_type == "bratwurst":
-        row["Basic Type"] = "pork"
-        row = add_subtype(row, "sausage", first=True)
-
-    if basic_type == "breakfast bar":
-        row["Basic Type"] = "bar"
-
-    if basic_type == "brownie":
-        row["Basic Type"] = "dessert"
-        row = add_subtype(row, basic_type, first=True)
-
-    if basic_type == "cake":
-        row["Basic Type"] = "dessert"
-        row = add_subtype(row, basic_type, first=True)
-
-    if basic_type == "cannoli cream":
-        row["Basic Type"] = "filling"
-        row = add_subtype(row, "cannoli", first=True)
-
-    if basic_type == "cereal bar":
-        row["Basic Type"] = "bar"
-
-    if basic_type == "cheesecake":
-        row["Basic Type"] = "dessert"
-        row = add_subtype(row, basic_type, first=True)
+    if subtype:
+        row = add_subtype(row, subtype, first=True)
 
     return row
+
+
+# def basic_type_handler(row):
+#     basic_type = row["Basic Type"]
+
+#     if basic_type == "sea salt":
+#         row["Basic Type"] = "salt"
+
+#     if basic_type in NUTS:
+#         row["Basic Type"] = "nut"
+#         row = add_subtype(row, basic_type, first=True)
+
+#     if basic_type == "baba ganoush":
+#         row["Basic Type"] = "spread"
+#         row = add_subtype(row, basic_type, first=True)
+
+#     if basic_type == "baklava":
+#         row["Basic Type"] = "pastry"
+#         row = add_subtype(row, basic_type, first=True)
+
+#     if basic_type == "banana bread":
+#         row["Basic Type"] = "bread"
+#         row = add_subtype(row, "banana", first=True)
+
+#     if basic_type == "barbacoa":
+#         row["Basic Type"] = "beef"
+#         row = add_subtype(row, basic_type, first=True)
+
+#     if basic_type == "basil":
+#         row["Basic Type"] = "herb"
+#         row = add_subtype(row, basic_type, first=True)
+
+#     if basic_type == "bell pepper":
+#         row["Basic Type"] = "pepper"
+#         row = add_subtype(row, "bell", first=True)
+
+#     if basic_type == "bran":
+#         row["Basic Type"] = "wheat bran"
+
+#     if basic_type == "bratwurst":
+#         row["Basic Type"] = "pork"
+#         row = add_subtype(row, "sausage", first=True)
+
+#     if basic_type == "breakfast bar":
+#         row["Basic Type"] = "bar"
+
+#     if basic_type == "brownie":
+#         row["Basic Type"] = "dessert"
+#         row = add_subtype(row, basic_type, first=True)
+
+#     if basic_type == "cake":
+#         row["Basic Type"] = "dessert"
+#         row = add_subtype(row, basic_type, first=True)
+
+#     if basic_type == "cannoli cream":
+#         row["Basic Type"] = "filling"
+#         row = add_subtype(row, "cannoli", first=True)
+
+#     if basic_type == "cereal bar":
+#         row["Basic Type"] = "bar"
+
+#     if basic_type == "cheesecake":
+#         row["Basic Type"] = "dessert"
+#         row = add_subtype(row, basic_type, first=True)
+
+#     return row
 
 
 def add_subtype(row, token, first=False):
@@ -362,7 +398,7 @@ def add_subtype(row, token, first=False):
             row["Sub-Type 2"] = subtype
         else:
             # Not enough room!
-            row["Misc"].append(subtype)
+            break
     return row
 
 
@@ -409,6 +445,8 @@ def clean_name(row, group_tags_dict=GROUP_TAGS, category_tags_dict=CATEGORY_TAGS
                 continue
         row = add_subtype(row, token)  # Unmatched tokens are subtypes
     row = postprocess_data(row)
+    row["Misc"] = list(row["Sub-Types"])[2:] if len(row["Sub-Types"]) > 2 else []
+    # row["Misc"].append(subtype)
     return row
 
 
@@ -434,13 +472,15 @@ def get_category(subtype):
     return None
 
 
+# TODO: Put this in config
+SUBTYPE_COLUMNS = ["Sub-Type 1", "Sub-Type 2"]
+
+
 def postprocess_data(row):
     # TODO: Handle sub-type 3 when we add that
     # Count occurrences of each category
     category_counts = {}
-    # TODO: subtypes should maybe be in config
-    subtypes = ["Sub-Type 1", "Sub-Type 2"]
-    for subtype in subtypes:
+    for subtype in SUBTYPE_COLUMNS:
         category = get_category(row[subtype])
         if category:
             if category in category_counts:
@@ -458,10 +498,15 @@ def postprocess_data(row):
                 replacement_value = REPLACEMENT_MAP.get(category)
 
             replaced = False
-            for subtype in subtypes:
+            for subtype in SUBTYPE_COLUMNS:
                 if get_category(row[subtype]) == category:
-                    row[subtype] = replacement_value if not replaced else None
-                    replaced = True
+                    row["Sub-Types"].discard(row[subtype])
+                    if not replaced:
+                        row["Sub-Types"].add(replacement_value)
+                        row[subtype] = replacement_value
+                        replaced = True
+                    else:
+                        row[subtype] = None
 
     ### Handle edge cases for mislabeled data ###
     # "spice" is "Condiments & Snacks"
@@ -492,6 +537,7 @@ def process_data(df, **options):
     misc = df_normalized[df_normalized["Misc"].apply(lambda x: x != [])][
         [
             "Product Type",
+            "Product Name",
             "Food Product Group",
             "Food Product Category",
             "Basic Type",
