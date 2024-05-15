@@ -278,7 +278,11 @@ def token_handler(token, row):
 
 
 def clean_token(token, token_map_dict=TOKEN_MAP_DICT):
-    return token_map_dict.get(token.strip(), token.strip())
+    cleaned_token = token.strip().lower()
+    # can have multiple mappings
+    while cleaned_token in token_map_dict:
+        cleaned_token = token_map_dict[cleaned_token]
+    return cleaned_token
 
 
 # TODO: Move these mappings to config

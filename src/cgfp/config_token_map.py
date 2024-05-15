@@ -39,6 +39,8 @@ TOKEN_MAP_DICT = {
     "sweetner": "sweetener",
     "tat soi": "tatsoi",
     "tostado shell": "tostada",
+    "chery": "cherry",
+    "grean": "green",
     ## INCONSISTENCIES ##
     "skin-on": "skin on",
     "carrots": "carrot",
@@ -72,6 +74,18 @@ TOKEN_MAP_DICT = {
     "spring": "spring mix",
     "tostada shell": "tostada",
     "turnip green": "turnip greens",
+    "additive": "additives",
+    "chives": "chive",
+    "corn puffs": "corn puff",
+    "cornish game hen": "cornish hen",
+    "cous cous": "couscous",
+    "dougnut": "doughnut",
+    "florets": "floret",
+    "froot loop": "froot loops",
+    "fruit loop": "froot loops",
+    "fruit loops": "froot loops",
+    "frito": "fritos",
+    "grannysmith": "granny smith",
     ## COOKED ##
     "au jus": "cooked",
     ## RENAME ##
