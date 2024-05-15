@@ -1,6 +1,8 @@
 import pandas as pd
 import os
 import argparse
+from ordered_set import OrderedSet
+from pathlib import Path
 
 from cgfp.config_tags import (
     CATEGORY_TAGS,
@@ -279,36 +281,56 @@ def clean_token(token, token_map_dict=TOKEN_MAP_DICT):
     return token_map_dict.get(token.strip(), token.strip())
 
 
-# TODO: I probably want a class here that is like a RowManager or something
-# This can maintain a set for the subtypes and misc and update as we go
-# Whenver the subtypes get updated, it updates the row itself
+def basic_type_handler(row):
+    basic_type = row["Basic Type"]
+
+    # TODO: Could do a basic_type_mapping dictionary if necessary
+    if basic_type == "sea salt":
+        row["Basic Type"] = "salt"
+    return row
+
+
+def add_subtype(row, token, first=False):
+    if first:
+        subtypes = OrderedSet(token)
+        subtypes.update(row["Sub-Types"])
+        row["Sub-Types"] = subtypes
+    else:
+        row["Sub-Types"].add(token)
+    # TODO: maybe you can zip this with the sub-type columns?
+    for i, subtype in enumerate(row["Sub-Types"]):
+        if i == 0:
+            row["Sub-Type 1"] = subtype
+        elif i == 1:
+            row["Sub-Type 2"] = subtype
+        else:
+            # Not enough room!
+            row["Misc"].append(subtype)
+    return row
 
 
 def clean_name(row, group_tags_dict=GROUP_TAGS, category_tags_dict=CATEGORY_TAGS):
-    product_name, food_product_group, food_product_category = (
-        row["Product Name"],
+    food_product_group, food_product_category = (
         row["Food Product Group"],
         row["Food Product Category"],
     )
-    name_split = product_name.split(",")
+    name_split = row["Product Name"].split(",")
     basic_type = clean_token(name_split[0])
-
-    # Handle basic type edge cases
-    # TODO: this could be a remap dictionary as needed
-    basic_type = "salt" if basic_type == "sea salt" else basic_type
-
     row["Basic Type"] = basic_type
+    row["Sub-Types"] = OrderedSet()
+    row["Misc"] = []
 
-    misc = []
     for token in name_split[1:]:
         token = clean_token(token)
         token, row = token_handler(token, row)
-        if token is None:  # Note: token_handler returns None for invalid tags
-            continue
+        if token is None:
+            continue  # token_handler returns None for invalid tags so skip
+        # TODO: maybe pre-combine the tags?
         # If token is in pre-allowed tags, enter tagging loop
         if token in group_tags_dict.get(food_product_group, {}).get(
             "All", []
         ) or token in category_tags_dict.get(food_product_category, {}).get("All", []):
+            # TODO: Create some sort of tags_handler function
             matched = False
             for col in NORMALIZED_COLUMNS:
                 # TODO: This is where the logic for categories is broken
@@ -326,38 +348,8 @@ def clean_name(row, group_tags_dict=GROUP_TAGS, category_tags_dict=CATEGORY_TAGS
                         break
             if matched:
                 continue
-        # TODO: should we maintain a list of subtypes? and process it at the end?
-        # TODO: Ok, this logic is kind of messy since we need to be able to dynamically change the subtypes
-        # What we probably want to do is remake the subtypes list after the token handler, then add to it at the end
-        # If token is not in other tags, save it as sub-type
-        # TODO: Change this to match the length of the subtype columns allowed in config
-        # TODO: This won't work because we are manually changing subtypes throughout the processing
-        # if len(subtypes) < 2:
-        #     subtypes.add(token)
-        #     # Need to reestablish subtypes each iteration since they are used in token handling logic
-        #     # TODO: maybe you can zip this with the sub-type columns?
-        #     for i, subtype in enumerate(subtypes):
-        #         if i == 0:
-        #             row["Sub-Type 1"] = subtype
-        #         elif i == 1:
-        #             row["Sub-Type 2"] = subtype
-        # else:
-        #     misc.append(token)
-
-        # TODO: There has to be some sort of update_subtypes function that will work for this
-        # row, subtypes = add_subtype(row, subtypes, token, position=defaults to last)
-
-        if row["Sub-Type 1"] is None:
-            row["Sub-Type 1"] = token
-            continue
-        elif row["Sub-Type 2"] is None:
-            row["Sub-Type 2"] = token
-            continue
-        # Aggregate unmatched tokens to add to tag dictionary
-        misc.append(token)
+        row = add_subtype(row, token)  # Unmatched tokens are subtypes
     row = postprocess_data(row)
-    # Note: Updates series in place...but only for not null values
-    row.update({"Misc": misc})
     return row
 
 
@@ -433,13 +425,12 @@ def process_data(df, **options):
     df = clean_df(df)
 
     # Create normalized name
-    df_split = df.apply(clean_name, axis=1)
-    # TODO: This is here to try to pass the comparison tes
-    df_split = df_split.reset_index(drop=True)
+    df_normalized = df.apply(clean_name, axis=1)
+    df_normalized = df_normalized.reset_index(drop=True)
 
     # TODO: Clarify this part...kind of confusing
     # Save unallocated tags for manual review
-    misc = df_split[df_split["Misc"].apply(lambda x: x != [])][
+    misc = df_normalized[df_normalized["Misc"].apply(lambda x: x != [])][
         [
             "Product Type",
             "Food Product Group",
@@ -467,10 +458,10 @@ def process_data(df, **options):
         "Sub-Type 2",
     ]
 
-    df_split = df_split[COLUMNS_ORDER].sort_values(by=TAGS_SORT_ORDER)
+    df_normalized = df_normalized[COLUMNS_ORDER].sort_values(by=TAGS_SORT_ORDER)
 
     # return processed assets to main
-    return misc, df_split
+    return misc, df_normalized
 
 
 def main(argv):
@@ -492,6 +483,24 @@ def main(argv):
         options.get("misc_file"),
         output_file="misc.csv",
     )
+
+    # TODO: clean this up and maybe use Chris's save setup
+    run_folder_path = Path(CLEAN_FOLDER) / RUN_FOLDER
+    run_folder_path.mkdir(parents=True, exist_ok=True)
+
+    # Save counts for each column
+    counts_dict = {}
+    for column in NORMALIZED_COLUMNS:
+        counts_dict[column] = df_processed[column].value_counts()
+
+    counts_file = run_folder_path / "value_counts.xlsx"
+
+    # Write the counts to an Excel file
+    with pd.ExcelWriter(counts_file) as writer:
+        for column, counts in counts_dict.items():
+            df_counts = counts.reset_index()
+            df_counts.columns = [column, "Count"]
+            df_counts.to_excel(writer, sheet_name=column.replace("/", "_"), index=False)
 
 
 if __name__ == "__main__":

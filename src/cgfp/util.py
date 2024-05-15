@@ -1,4 +1,5 @@
 from pathlib import Path
+import os
 
 import pandas as pd
 
@@ -39,6 +40,10 @@ def save_pd_to_csv(
         )
     if not output_file:
         output_file = CLEAN_FILE_PREFIX + input_file
+
+    filename, ext = os.path.splitext(output_file)
+    if ext.lower() != ".csv":
+        output_file = filename + ".csv"
 
     run_folder_path = Path(clean_folder) / RUN_FOLDER
     run_folder_path.mkdir(parents=True, exist_ok=True)
