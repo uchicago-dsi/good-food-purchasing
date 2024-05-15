@@ -299,6 +299,55 @@ basic_type_mapping = {
     "cannoli cream": ("filling", "cannoli"),
     "cereal bar": ("bar", None),
     "cheesecake": ("dessert", "cheesecake"),
+    "chile": ("pepper", "chile"),
+    "chorizo": ("pork", "sausage"),
+    "clam juice": ("juice", "clam"),
+    "clover sprout": ("sprout", "clover"),
+    "club soda": ("soda", "club"),
+    "cooking wine": ("wine", "cooking"),
+    "cornish hen": ("chicken", "cornish hen"),
+    "crème fraiche": ("cream", "fraiche"),
+    "cupcake": ("dessert", "cupcake"),
+    "danish": ("pastry", "danish"),
+    "eggnog": ("drink", "eggnog"),
+    "farina": ("cereal", "farina"),
+    "frank": ("beef", "frank"),
+    "frisee": ("lettuce", "frisee"),
+    "fruit basket": ("fruit", "variety"),
+    "hog": ("pork", "hog"),
+    "honeydew": ("melon", "honeydew"),
+    "iced tea": ("tea", "iced"),
+    "jalepeno": ("pepper", "jalepeno"),
+    "juice slushie": ("juice", "slushie"),
+    "ketchup": ("condiment", "ketchup"),
+    "marmalade": ("spread", "marmalade"),
+    "marshmallow": ("candy", "marshmallow"),
+    "miso": ("paste", "miso"),
+    "mozzarella": ("cheese", "mozzarella"),
+    "nori": ("seaweed", "nori"),
+    "peppercorn": ("spice", "peppercorn"),
+    "pesto": ("sauce", "pesto"),
+    "pig feet": ("pork", "feet"),
+    "pita": ("bread", "pita"),
+    "potato yam": ("potato", "yam"),
+    "prosciutto": ("pork", "prosciutto"),
+    "pudding": ("dessert", "pudding"),
+    "romaine": ("lettuce", "romaine"),
+    "rotini": ("pasta", None),
+    "sauerkraut": ("condiment", "sauerkraut"),
+    "seasoning tajin": ("seasoning", "tajin"),
+    "slush": ("juice", "slushie"),
+    "spam": ("pork", "spam"),
+    "spring mix": ("lettuce", "spring mix"),
+    "squash blossom": ("squash", "blossom"),
+    "sunflower": ("seed", "sunflower"),
+    "sweet potato": ("potato", "sweet"),
+    "tostada": ("shell", "tostada"),
+    "trail mix": ("snack", "trail mix"),
+    "turnip greens": ("turnip", "greens"),
+    "vegetable mix": ("vegetable", "blend"),
+    "whipped cream": ("topping", "whipped cream"),
+    "cantaloupe": ("melon", "cantaloupe"),
 }
 
 for nut in NUTS:
@@ -509,8 +558,7 @@ def postprocess_data(row):
                         row[subtype] = None
 
     ### Handle edge cases for mislabeled data ###
-    # "spice" is "Condiments & Snacks"
-    # TODO: SPICE CHIVE FREEZE DRIED...should this be Condiments & Snacks?
+    # "spice" is always "Condiments & Snacks"
     if (
         row["Basic Type"] == "spice"
         and row["Food Product Group"] != "Condiments & Snacks"
@@ -553,7 +601,6 @@ def process_data(df, **options):
         "Basic Type",
     ]
     misc = misc.sort_values(by=MISC_SORT_ORDER)
-    # misc is now returned and written in `main` outside of data processing path
 
     TAGS_SORT_ORDER = [
         "Food Product Group",

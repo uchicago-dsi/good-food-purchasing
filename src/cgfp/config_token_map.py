@@ -32,6 +32,13 @@ TOKEN_MAP_DICT = {
     "1 island": "1000 island",
     "alfafa": "alfalfa",
     "brocolini": "broccolini",
+    "code": "cod",
+    "berry lemonage": "berry lemonade",
+    "gryo meat": "gyro meat",
+    "patry": "pastry",
+    "sweetner": "sweetener",
+    "tat soi": "tatsoi",
+    "tostado shell": "tostada",
     ## INCONSISTENCIES ##
     "skin-on": "skin on",
     "carrots": "carrot",
@@ -55,7 +62,16 @@ TOKEN_MAP_DICT = {
     "wheat bulgur": "bulgur",
     "yuca": "yucca",
     "beef steak": "beefsteak",
-    "berry lemonage": "berry lemonade",
+    "corn meal": "cornmeal",
+    "cornstarch": "corn starch",
+    "egg nog": "eggnog",
+    "micro greens": "microgreen",
+    "micro green": "microgreen",
+    "pimiento": "pimento",
+    "preserves": "preserve",
+    "spring": "spring mix",
+    "tostada shell": "tostada",
+    "turnip green": "turnip greens",
     ## COOKED ##
     "au jus": "cooked",
     ## RENAME ##
@@ -67,6 +83,11 @@ TOKEN_MAP_DICT = {
     "cotton candy": "candy",
     "pig": "pork",
     "romano bean": "bean",
+    "pigeon pea": "bean",
+    "cracker meal": "breadcrumb",
+    "hasu": "lotus root",
+    "satsuma": "mandarin",
+    "white rice": "rice",
     ## CUT ##
     "sliced": "cut",
     "diced": "cut",
@@ -107,6 +128,6 @@ TOKEN_MAP_DICT = {
     ## SMOKED ##
     "pecanwood smoked": "smoked",
     ## MIXED VEGGIES ##
-    "vegetable blend": "vegetable",
+    "vegetable blend": "vegetable",  # TODO: maybe we need this in basic type handler
     "vegetable cup": "vegetable",
 }
