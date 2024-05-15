@@ -31,6 +31,7 @@ TOKEN_MAP_DICT = {
     "tamato": "tomato",
     "1 island": "1000 island",
     "alfafa": "alfalfa",
+    "brocolini": "broccolini",
     ## INCONSISTENCIES ##
     "skin-on": "skin on",
     "carrots": "carrot",
@@ -60,7 +61,6 @@ TOKEN_MAP_DICT = {
     ## RENAME ##
     "aprium": "pluot",
     "banana pepper": "pepper",
-    "bell pepper": "pepper",
     "blood orange": "orange",
     "bluelake bean": "bean",
     "bouillon": "base",

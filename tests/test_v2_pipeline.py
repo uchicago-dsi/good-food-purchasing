@@ -8,8 +8,8 @@ import pytest
 import pandas as pd
 
 # from scripts.pipeline import process_data as initial_process_data
-from scripts.pipeline_v3 import process_data as initial_process_data
-from scripts.pipeline_v4 import process_data as v2_process_data
+from scripts.pipeline_v4 import process_data as initial_process_data
+from scripts.pipeline_v5 import process_data as v2_process_data
 from cgfp.util import load_to_pd
 
 

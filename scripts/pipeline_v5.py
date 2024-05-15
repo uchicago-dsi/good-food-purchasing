@@ -284,15 +284,72 @@ def clean_token(token, token_map_dict=TOKEN_MAP_DICT):
 def basic_type_handler(row):
     basic_type = row["Basic Type"]
 
-    # TODO: Could do a basic_type_mapping dictionary if necessary
     if basic_type == "sea salt":
         row["Basic Type"] = "salt"
+
+    if basic_type in NUTS:
+        row["Basic Type"] = "nut"
+        row = add_subtype(row, basic_type, first=True)
+
+    if basic_type == "baba ganoush":
+        row["Basic Type"] = "spread"
+        row = add_subtype(row, basic_type, first=True)
+
+    if basic_type == "baklava":
+        row["Basic Type"] = "pastry"
+        row = add_subtype(row, basic_type, first=True)
+
+    if basic_type == "banana bread":
+        row["Basic Type"] = "bread"
+        row = add_subtype(row, "banana", first=True)
+
+    if basic_type == "barbacoa":
+        row["Basic Type"] = "beef"
+        row = add_subtype(row, basic_type, first=True)
+
+    if basic_type == "basil":
+        row["Basic Type"] = "herb"
+        row = add_subtype(row, basic_type, first=True)
+
+    if basic_type == "bell pepper":
+        row["Basic Type"] = "pepper"
+        row = add_subtype(row, "bell", first=True)
+
+    if basic_type == "bran":
+        row["Basic Type"] = "wheat bran"
+
+    if basic_type == "bratwurst":
+        row["Basic Type"] = "pork"
+        row = add_subtype(row, "sausage", first=True)
+
+    if basic_type == "breakfast bar":
+        row["Basic Type"] = "bar"
+
+    if basic_type == "brownie":
+        row["Basic Type"] = "dessert"
+        row = add_subtype(row, basic_type, first=True)
+
+    if basic_type == "cake":
+        row["Basic Type"] = "dessert"
+        row = add_subtype(row, basic_type, first=True)
+
+    if basic_type == "cannoli cream":
+        row["Basic Type"] = "filling"
+        row = add_subtype(row, "cannoli", first=True)
+
+    if basic_type == "cereal bar":
+        row["Basic Type"] = "bar"
+
+    if basic_type == "cheesecake":
+        row["Basic Type"] = "dessert"
+        row = add_subtype(row, basic_type, first=True)
+
     return row
 
 
 def add_subtype(row, token, first=False):
     if first:
-        subtypes = OrderedSet(token)
+        subtypes = OrderedSet([token])
         subtypes.update(row["Sub-Types"])
         row["Sub-Types"] = subtypes
     else:
@@ -319,6 +376,8 @@ def clean_name(row, group_tags_dict=GROUP_TAGS, category_tags_dict=CATEGORY_TAGS
     row["Basic Type"] = basic_type
     row["Sub-Types"] = OrderedSet()
     row["Misc"] = []
+
+    row = basic_type_handler(row)
 
     for token in name_split[1:]:
         token = clean_token(token)
@@ -490,8 +549,8 @@ def main(argv):
 
     # Save counts for each column
     counts_dict = {}
-    for column in NORMALIZED_COLUMNS:
-        counts_dict[column] = df_processed[column].value_counts()
+    for col in df_processed.columns:
+        counts_dict[col] = df_processed[col].value_counts()
 
     counts_file = run_folder_path / "value_counts.xlsx"
 
