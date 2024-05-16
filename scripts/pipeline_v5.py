@@ -390,6 +390,40 @@ def add_subtype(row, token, first=False):
     return row
 
 
+def handle_subtypes(row):
+    # TODO: Make this robust to subtype changes, change to subtype 3, etc.
+    # Count occurrences of each category
+    category_counts = {}
+    for subtype in SUBTYPE_COLUMNS:
+        category = get_category(row[subtype])
+        if category:
+            if category in category_counts:
+                category_counts[category] += 1
+            else:
+                category_counts[category] = 1
+
+    # TODO: this works with up to three subtypes — could break with more
+    # Replace subtypes if more than one belongs to the same category
+    for category, count in category_counts.items():
+        if count > 1:
+            if category == "fruit" and row["Food Product Category"] == "Fruit":
+                replacement_value = "blend"
+            else:
+                replacement_value = REPLACEMENT_MAP.get(category)
+
+            replaced = False
+            for subtype in SUBTYPE_COLUMNS:
+                if get_category(row[subtype]) == category:
+                    row["Sub-Types"].discard(row[subtype])
+                    if not replaced:
+                        row["Sub-Types"].add(replacement_value)
+                        row[subtype] = replacement_value
+                        replaced = True
+                    else:
+                        row[subtype] = None
+    row["Misc"] = list(row["Sub-Types"])[2:] if len(row["Sub-Types"]) > 2 else []
+
+
 def clean_name(row, group_tags_dict=GROUP_TAGS, category_tags_dict=CATEGORY_TAGS):
     food_product_group, food_product_category = (
         row["Food Product Group"],
@@ -432,9 +466,9 @@ def clean_name(row, group_tags_dict=GROUP_TAGS, category_tags_dict=CATEGORY_TAGS
             if matched:
                 continue
         row = add_subtype(row, token)  # Unmatched tokens are subtypes
+
+    row = handle_subtypes(row)
     row = postprocess_data(row)
-    row["Misc"] = list(row["Sub-Types"])[2:] if len(row["Sub-Types"]) > 2 else []
-    # row["Misc"].append(subtype)
     return row
 
 
@@ -465,37 +499,6 @@ SUBTYPE_COLUMNS = ["Sub-Type 1", "Sub-Type 2"]
 
 
 def postprocess_data(row):
-    # TODO: Handle sub-type 3 when we add that
-    # Count occurrences of each category
-    category_counts = {}
-    for subtype in SUBTYPE_COLUMNS:
-        category = get_category(row[subtype])
-        if category:
-            if category in category_counts:
-                category_counts[category] += 1
-            else:
-                category_counts[category] = 1
-
-    # TODO: this works with up to three subtypes — could break with more
-    # Replace subtypes if more than one belongs to the same category
-    for category, count in category_counts.items():
-        if count > 1:
-            if category == "fruit" and row["Food Product Category"] == "Fruit":
-                replacement_value = "blend"
-            else:
-                replacement_value = REPLACEMENT_MAP.get(category)
-
-            replaced = False
-            for subtype in SUBTYPE_COLUMNS:
-                if get_category(row[subtype]) == category:
-                    row["Sub-Types"].discard(row[subtype])
-                    if not replaced:
-                        row["Sub-Types"].add(replacement_value)
-                        row[subtype] = replacement_value
-                        replaced = True
-                    else:
-                        row[subtype] = None
-
     ### Handle edge cases for mislabeled data ###
     # "spice" is always "Condiments & Snacks"
     if (
