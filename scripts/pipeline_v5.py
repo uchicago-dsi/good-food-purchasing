@@ -27,7 +27,7 @@ from cgfp.config_pipeline import (
     RAW_FOLDER,
     CLEAN_FOLDER,
     RUN_FOLDER,
-    NORMALIZED_COLUMNS,
+    NORMALIZED_COLUMNS,  # TODO: ...why doesn't this include "Basic Type"?
     GROUP_COLUMNS,
     COLUMNS_ORDER,
 )
@@ -517,6 +517,20 @@ def process_data(df, **options):
 
     # Create normalized name
     df_normalized = df.apply(clean_name, axis=1)
+
+    # Perform diff on "Normalized Name" column with "Product Name" column from df_loaded
+    # Save a diff on the "Product Name" column with the edited output
+    df_normalized["Normalized Name"] = df_normalized.apply(
+        lambda row: ", ".join(
+            row[["Basic Type"] + NORMALIZED_COLUMNS].dropna().astype(str)
+        ),
+        axis=1,
+    )
+    # TODO: do we want more here?
+    df_diff = df["Product Name"].compare(df_normalized["Normalized Name"])
+    df_diff = df_diff.sort_values(by="self")
+
+    # Reset index for future sorting
     df_normalized = df_normalized.reset_index(drop=True)
 
     # TODO: Clarify this part...kind of confusing
@@ -552,7 +566,7 @@ def process_data(df, **options):
     df_normalized = df_normalized[COLUMNS_ORDER].sort_values(by=TAGS_SORT_ORDER)
 
     # return processed assets to main
-    return misc, df_normalized
+    return df_normalized, misc, df_diff
 
 
 def main(argv):
@@ -563,7 +577,7 @@ def main(argv):
 
     # processing
     df_loaded = load_to_pd(**options)
-    misc, df_processed = process_data(df_loaded, **options)
+    df_processed, misc, df_diff = process_data(df_loaded, **options)
 
     # output
     # TODO: I...don't get this
@@ -578,6 +592,9 @@ def main(argv):
     # TODO: clean this up and maybe use Chris's save setup
     run_folder_path = Path(CLEAN_FOLDER) / RUN_FOLDER
     run_folder_path.mkdir(parents=True, exist_ok=True)
+
+    diff_file = run_folder_path / "normalized_name_diff.csv"
+    df_diff.to_csv(diff_file, index=False)
 
     # TODO: maybe this should get returned from the pipeline also?
     # Combine counts for each column
