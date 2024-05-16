@@ -3,6 +3,7 @@ import os
 import argparse
 from ordered_set import OrderedSet
 from pathlib import Path
+from collections import defaultdict
 
 from cgfp.config_tags import (
     CATEGORY_TAGS,
@@ -370,72 +371,6 @@ def basic_type_handler(row):
     return row
 
 
-# def basic_type_handler(row):
-#     basic_type = row["Basic Type"]
-
-#     if basic_type == "sea salt":
-#         row["Basic Type"] = "salt"
-
-#     if basic_type in NUTS:
-#         row["Basic Type"] = "nut"
-#         row = add_subtype(row, basic_type, first=True)
-
-#     if basic_type == "baba ganoush":
-#         row["Basic Type"] = "spread"
-#         row = add_subtype(row, basic_type, first=True)
-
-#     if basic_type == "baklava":
-#         row["Basic Type"] = "pastry"
-#         row = add_subtype(row, basic_type, first=True)
-
-#     if basic_type == "banana bread":
-#         row["Basic Type"] = "bread"
-#         row = add_subtype(row, "banana", first=True)
-
-#     if basic_type == "barbacoa":
-#         row["Basic Type"] = "beef"
-#         row = add_subtype(row, basic_type, first=True)
-
-#     if basic_type == "basil":
-#         row["Basic Type"] = "herb"
-#         row = add_subtype(row, basic_type, first=True)
-
-#     if basic_type == "bell pepper":
-#         row["Basic Type"] = "pepper"
-#         row = add_subtype(row, "bell", first=True)
-
-#     if basic_type == "bran":
-#         row["Basic Type"] = "wheat bran"
-
-#     if basic_type == "bratwurst":
-#         row["Basic Type"] = "pork"
-#         row = add_subtype(row, "sausage", first=True)
-
-#     if basic_type == "breakfast bar":
-#         row["Basic Type"] = "bar"
-
-#     if basic_type == "brownie":
-#         row["Basic Type"] = "dessert"
-#         row = add_subtype(row, basic_type, first=True)
-
-#     if basic_type == "cake":
-#         row["Basic Type"] = "dessert"
-#         row = add_subtype(row, basic_type, first=True)
-
-#     if basic_type == "cannoli cream":
-#         row["Basic Type"] = "filling"
-#         row = add_subtype(row, "cannoli", first=True)
-
-#     if basic_type == "cereal bar":
-#         row["Basic Type"] = "bar"
-
-#     if basic_type == "cheesecake":
-#         row["Basic Type"] = "dessert"
-#         row = add_subtype(row, basic_type, first=True)
-
-#     return row
-
-
 def add_subtype(row, token, first=False):
     if first:
         subtypes = OrderedSet([token])
@@ -644,16 +579,42 @@ def main(argv):
     run_folder_path = Path(CLEAN_FOLDER) / RUN_FOLDER
     run_folder_path.mkdir(parents=True, exist_ok=True)
 
-    # Save counts for each column
+    # TODO: maybe this should get returned from the pipeline also?
+    # Combine counts for each column
     counts_dict = {}
     for col in df_processed.columns:
         counts_dict[col] = df_processed[col].value_counts()
+
+    # Combine subtype counts
+    combined_subtype_counts = defaultdict(int)
+    for col in SUBTYPE_COLUMNS:
+        if col in counts_dict:
+            for value, count in counts_dict[col].items():
+                combined_subtype_counts[value] += count
+        del counts_dict[col]
+
+    counts_dict["Sub-Types"] = pd.Series(
+        dict(
+            sorted(
+                combined_subtype_counts.items(), key=lambda item: item[1], reverse=True
+            )
+        )
+    )
+
+    sorted_counts_dict = {}
+    for column in counts_dict.keys():
+        if column == "Basic Type":
+            sorted_counts_dict[column] = counts_dict[column]
+            if "Sub-Types" in counts_dict:
+                sorted_counts_dict["Sub-Types"] = counts_dict["Sub-Types"]
+        elif column != "Sub-Types":
+            sorted_counts_dict[column] = counts_dict[column]
 
     counts_file = run_folder_path / "value_counts.xlsx"
 
     # Write the counts to an Excel file
     with pd.ExcelWriter(counts_file) as writer:
-        for column, counts in counts_dict.items():
+        for column, counts in sorted_counts_dict.items():
             df_counts = counts.reset_index()
             df_counts.columns = [column, "Count"]
             df_counts.to_excel(writer, sheet_name=column.replace("/", "_"), index=False)
