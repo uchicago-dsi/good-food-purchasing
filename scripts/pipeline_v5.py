@@ -422,6 +422,7 @@ def handle_subtypes(row):
                     else:
                         row[subtype] = None
     row["Misc"] = list(row["Sub-Types"])[2:] if len(row["Sub-Types"]) > 2 else []
+    return row
 
 
 def clean_name(row, group_tags_dict=GROUP_TAGS, category_tags_dict=CATEGORY_TAGS):
