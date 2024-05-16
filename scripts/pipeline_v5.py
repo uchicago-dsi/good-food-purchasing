@@ -133,12 +133,23 @@ def clean_df(df):
         & (df["Food Product Group"] != "Non-Food")
     ].reset_index(drop=True)
 
+    # TODO: Maybe this goes in config?
     # Handle typos in Primary Food Product Category
     category_typos = {
         "Roots & Tuber": "Roots & Tubers",
     }
     df["Primary Food Product Category"] = df["Primary Food Product Category"].map(
         lambda x: category_typos.get(x, x)
+    )
+
+    # Replace "Whole/Minimally Processed" with the value from "Food Product Category"
+    df["Primary Food Product Category"] = df.apply(
+        lambda row: (
+            row["Food Product Category"]
+            if row["Primary Food Product Category"] == "Whole/Minimally Processed"
+            else row["Primary Food Product Category"]
+        ),
+        axis=1,
     )
 
     # Remove leading 'PREQUALIFIED: ' string
@@ -468,7 +479,9 @@ def clean_name(row, group_tags_dict=GROUP_TAGS, category_tags_dict=CATEGORY_TAGS
                 continue
         row = add_subtype(row, token)  # Unmatched tokens are subtypes
 
+    # split subtypes into columns and store extra tokens in "Misc"
     row = handle_subtypes(row)
+    # handle edge cases not captured by other rules
     row = postprocess_data(row)
     return row
 
