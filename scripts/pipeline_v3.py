@@ -109,6 +109,21 @@ def clean_df(df):
     - Remove null and short (usually a mistake) Product Names
     - Remove non-food items
     """
+    # TODO: put this in config
+    # TODO: Do we ever use "Primary Food Product Group?
+    df = df[
+        [
+            "Food Product Category",
+            "Primary Food Product Category",
+            "Product Type",
+            "Product Name",
+            "Food Product Group",
+        ]
+    ].copy()
+
+    # Add normalized name columns
+    df[NORMALIZED_COLUMNS + ["Misc"]] = None
+
     df = df[
         (df["Product Type"].str.len() >= 3)
         & (df["Product Name"].str.len() >= 3)
@@ -130,9 +145,21 @@ def clean_df(df):
     return df
 
 
-def token_handler(
-    token, food_product_group, food_product_category, basic_type, sub_type_1
-):
+def token_handler(token, row):
+    food_product_group, food_product_category, basic_type, sub_type_1 = (
+        row["Food Product Group"],
+        row["Food Product Category"],
+        row["Basic Type"],
+        row["Sub-Type 1"],
+    )
+    # TODO: ...should this actually be here??
+    # These weird rename rules need to happen before the token handler in order to change the basic type
+    if (basic_type == "snack" and token == "bar") or (
+        basic_type == "herb" and token == "watercress"
+    ):
+        row["Basic Type"] = token
+        return None, row
+
     # Handle edge cases where a token is allowed
     if (
         (token == "blue" and basic_type == "cheese")
@@ -140,7 +167,7 @@ def token_handler(
         or (token == "black" and basic_type in ["tea", "drink"])
         or (token == "gluten free" and sub_type_1 in ["parfait"])
     ):
-        return token
+        return token, row
 
     # Handle edge cases where a token is not allowed
     if (
@@ -195,7 +222,7 @@ def token_handler(
             or (basic_type == "mix" and token in ["custard"])
         )
     ):
-        return None
+        return None, row
 
     # Map flavored tokens to "flavored"
     if (
@@ -212,137 +239,131 @@ def token_handler(
         )  # TODO: this doesn't work since sub-type 1 is bar
         or (food_product_group == "Seafood" and token in FLAVORS)
     ):
-        return "flavored"
+        return "flavored", row
 
     # Skip flavors and shapes for some basic types
     if basic_type in SKIP_FLAVORS and token in ALL_FLAVORS:
-        return None
+        return None, row
 
     if basic_type in SKIP_SHAPE and token in SHAPE_EXTRAS:
-        return None
+        return None, row
 
     ### EDGE CASES FOR RENAMING TOKENS ###
 
     # Map nut tokens to "nut" for some basic types
     if basic_type == "snack" and token in NUTS:
-        return "nut"
+        return "nut", row
 
     # Relabel cheese type as "cheese"
     if (
         food_product_group == "Meals" or basic_type == "snack"
     ) and token in CHEESE_TYPES:
-        return "cheese"
+        return "cheese", row
 
     # Map chocolate tokens to "chocolate" for candy
     if basic_type == "candy" and token in CHOCOLATE:
-        return "chocolate"
+        return "chocolate", row
 
     # "chip" should be mapped to "cut" for pickles...but "chip" is valid for snacks
     if sub_type_1 == "pickle" and token == "chip":
-        return "cut"
+        return "cut", row
 
     # Skip outdated tokens from old name normalization format
     # Do this last since some rules override this
     if token in SKIP_TOKENS:
-        return None
-    return token
+        return None, row
+    return token, row
+
+
+def clean_token(token, token_map_dict=TOKEN_MAP_DICT):
+    return token_map_dict.get(token.strip(), token.strip())
+
+
+# TODO: I probably want a class here that is like a RowManager or something
+# This can maintain a set for the subtypes and misc and update as we go
+# Whenver the subtypes get updated, it updates the row itself
 
 
 def clean_name(row, group_tags_dict=GROUP_TAGS, category_tags_dict=CATEGORY_TAGS):
-    name_list = row["Product Name"].split(",")
-    food_product_group = row["Food Product Group"]
-    food_product_category = row["Food Product Category"]
+    product_name, food_product_group, food_product_category = (
+        row["Product Name"],
+        row["Food Product Group"],
+        row["Food Product Category"],
+    )
+    name_split = product_name.split(",")
+    basic_type = clean_token(name_split[0])
 
-    # TODO: Should set this up so that normalized name starts with every column
-    # Then we add the tokens to the appropriate column based on membership
-    # And maybe we have a list for subtypes, and we parse that at the end of everything
-    normalized_name = {col: None for col in NORMALIZED_COLUMNS}
-    # TODO: hack to make this work
-    normalized_name["Food Product Group"] = food_product_group
-    normalized_name["Food Product Category"] = food_product_category
-    normalized_name["Product Type"] = row["Product Type"]
-    normalized_name["Primary Food Product Category"] = row[
-        "Primary Food Product Category"
-    ]
-    normalized_name["Product Name"] = row["Product Name"]
-    misc_col = {"Misc": []}  # make a list so we can append unmatched tokens
-    # Initialize sub-type 1 since we need to pass it to token_handler
-    sub_type_1 = None
-    for i, token in enumerate(name_list):
-        token = token.strip()
-        token = TOKEN_MAP_DICT.get(token, token)
-        # First token is always Basic Type
-        if i == 0:
-            # TODO: probably a better way to maintain this state...update the name dictionary
-            basic_type = token
-            normalized_name["Basic Type"] = token
-            continue
-        # TODO: These are weird edge cases where we are replacing the basic type with a subtype
-        # Should this all be done in postprocessing?
-        # Handle edge cases for basic type
-        if basic_type == "snack" and token in [
-            "bar",
-        ]:
-            basic_type = "bar"
-            normalized_name["Basic Type"] = basic_type
-            continue
-        if basic_type == "sea salt":
-            basic_type = "salt"
-            normalized_name["Basic Type"] = basic_type
-            continue
+    # Handle basic type edge cases
+    # TODO: this could be a remap dictionary as needed
+    basic_type = "salt" if basic_type == "sea salt" else basic_type
 
-        # TODO: pass row into token handler?
-        token = token_handler(
-            token, food_product_group, food_product_category, basic_type, sub_type_1
-        )
-        if token is None:
+    row["Basic Type"] = basic_type
+
+    misc = []
+    for token in name_split[1:]:
+        token = clean_token(token)
+        token, row = token_handler(token, row)
+        if token is None:  # Note: token_handler returns None for invalid tags
             continue
-        # Check if token is in tags — if so, enter the tagging loop
+        # If token is in pre-allowed tags, enter tagging loop
         if token in group_tags_dict.get(food_product_group, {}).get(
             "All", []
         ) or token in category_tags_dict.get(food_product_category, {}).get("All", []):
             matched = False
             for col in NORMALIZED_COLUMNS:
-                # TODO: Write better documentation here
                 # TODO: This is where the logic for categories is broken
+                # Should group and category tags be separate or not really?
                 # Find the category that the token is in and add to normalized_name
                 if col in group_tags_dict[food_product_group]:
                     if token in group_tags_dict[food_product_group][col]:
-                        normalized_name[col] = token
+                        row[col] = token
                         matched = True
                         break
                 if col in category_tags_dict.get(food_product_category, {}):
                     if token in category_tags_dict[food_product_category][col]:
-                        normalized_name[col] = token
+                        row[col] = token
                         matched = True
                         break
             if matched:
                 continue
-        # First token after basic type is sub-type 1 if it's not from the later tags
-        # TODO: set this up so that I'm saving sub-types as a list
-        if normalized_name["Sub-Type 1"] is None:
-            sub_type_1 = token
-            normalized_name["Sub-Type 1"] = sub_type_1
+        # TODO: should we maintain a list of subtypes? and process it at the end?
+        # TODO: Ok, this logic is kind of messy since we need to be able to dynamically change the subtypes
+        # What we probably want to do is remake the subtypes list after the token handler, then add to it at the end
+        # If token is not in other tags, save it as sub-type
+        # TODO: Change this to match the length of the subtype columns allowed in config
+        # TODO: This won't work because we are manually changing subtypes throughout the processing
+        # if len(subtypes) < 2:
+        #     subtypes.add(token)
+        #     # Need to reestablish subtypes each iteration since they are used in token handling logic
+        #     # TODO: maybe you can zip this with the sub-type columns?
+        #     for i, subtype in enumerate(subtypes):
+        #         if i == 0:
+        #             row["Sub-Type 1"] = subtype
+        #         elif i == 1:
+        #             row["Sub-Type 2"] = subtype
+        # else:
+        #     misc.append(token)
+
+        # TODO: There has to be some sort of update_subtypes function that will work for this
+        # row, subtypes = add_subtype(row, subtypes, token, position=defaults to last)
+
+        if row["Sub-Type 1"] is None:
+            row["Sub-Type 1"] = token
             continue
-        elif normalized_name["Sub-Type 2"] is None:
-            # elif "Sub-Type 2" not in normalized_name:
-            normalized_name["Sub-Type 2"] = token
+        elif row["Sub-Type 2"] is None:
+            row["Sub-Type 2"] = token
             continue
         # Aggregate unmatched tokens to add to tag dictionary
-        misc_col["Misc"].append(token)
-    # TODO: The postprocessing stuff should probably actually go here
-    # But...we need the whole row here since we need to check FPG, FPC, etc.
-    normalized_name = postprocess_data(normalized_name)
-
-    normalized_name.update(misc_col)
-
-    # TODO: normalized_name vs row is messy here
-    return pd.Series(normalized_name)
+        misc.append(token)
+    row = postprocess_data(row)
+    # Note: Updates series in place...but only for not null values
+    row.update({"Misc": misc})
+    return row
 
 
 # TODO: This should go in config
 REPLACEMENT_MAP = {
-    "fruit": "blend",
+    "fruit": "fruit",
     "cheese": "blend",
     "vegetable": "blend",
     "melon": "variety",
@@ -380,8 +401,11 @@ def postprocess_data(row):
     # Replace subtypes if more than one belongs to the same category
     for category, count in category_counts.items():
         if count > 1:
-            replacement_value = REPLACEMENT_MAP[category]
-            # TODO: Maybe a better way to do this...replace the first category and subsequent ones are None
+            if category == "fruit" and row["Food Product Category"] == "Fruit":
+                replacement_value = "blend"
+            else:
+                replacement_value = REPLACEMENT_MAP.get(category)
+
             replaced = False
             for subtype in subtypes:
                 if get_category(row[subtype]) == category:
@@ -390,6 +414,7 @@ def postprocess_data(row):
 
     ### Handle edge cases for mislabeled data ###
     # "spice" is "Condiments & Snacks"
+    # TODO: SPICE CHIVE FREEZE DRIED...should this be Condiments & Snacks?
     if (
         row["Basic Type"] == "spice"
         and row["Food Product Group"] != "Condiments & Snacks"
@@ -397,11 +422,6 @@ def postprocess_data(row):
         row["Food Product Group"] = "Condiments & Snacks"
         row["Food Product Category"] = "Condiments & Snacks"
         row["Primary Product Category"] = "Condiments & Snacks"
-
-    # "watercress" should be Basic Type, not Sub-Type 1
-    if row["Sub-Type 1"] == "watercress" and row["Basic Type"] == "herb":
-        row["Basic Type"] = "watercress"
-        row["Sub-Type 1"] = None
 
     return row
 
