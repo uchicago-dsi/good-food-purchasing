@@ -4,7 +4,7 @@ app = pipeline
 _conda = conda
 
 # python + dependencies
-conda_yml =
+conda_yml = environment.yml
 
 workdir = .
 conda_name = .conda
@@ -23,7 +23,6 @@ err_file_name    = err.txt
 err_file         = $(run_logs)/$(err_file_name)
 output_file_name = res.txt
 output_file      = $(run_logs)/$(output_file_name)
-
 
 # includes SBATCH_MAIL, conda_yml, DSI_PARTITION and CGFP_DIR
 include .env
@@ -49,10 +48,10 @@ run: $(PYTHON)
 
 test: cmd  ?= -m pytest $(args)
 test: args ?= -s
-test: $(dev_reqs_ok)
+test: 
 	$(RUNNING)
 	$(running)
-	$(PYTHON) $(cmd)
+	python $(cmd)
 
 clean: conda=false
 clean:
@@ -88,7 +87,7 @@ train: $(PYTHON) $(run_logs)
 	--output=$(output_file) \
 	--error=$(err_file) \
 	--mail-user=$(SBATCH_MAIL) \
-	$(scripts_dir)/train.slurm
+	$(scripts_dir)/train-cgfp.slurm
 
 $(run_logs):
 	$(RUNNING)
@@ -108,7 +107,7 @@ last-errs:
 
 ##### HUGGINGFACE #####
 
-# TODO: update this to take model as an argument
+# TODO: update this to take model as an argumentsq
 # Usage: make update-dev-model MODEL_DIR=2024-02-05_10-56
 update-dev-model:
 	$(RUNNING)
