@@ -444,7 +444,10 @@ for nut in NUTS:
 
 
 def basic_type_handler(row):
-    mapping = basic_type_mapping.get(row["Basic Type"], (row["Basic Type"], None))
+    mapping = basic_type_mapping.get(row["Basic Type"], None)
+
+    if mapping is None:
+        return row
 
     for key, value in mapping.items():
         if key != "Subtype":

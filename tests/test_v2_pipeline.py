@@ -7,9 +7,10 @@ Beginning refactor with the goal of better code quality.
 import pytest
 import pandas as pd
 
+# TODO: Move these to the package
 # from scripts.pipeline import process_data as initial_process_data
 from scripts.pipeline_v5 import process_data as initial_process_data
-from scripts.pipeline_v6 import process_data as v2_process_data
+from scripts.pipeline_v6 import process_data as new_process_data
 from cgfp.util import load_to_pd
 
 
@@ -45,39 +46,39 @@ def test_initial_and_v2_pipelines_match(input_file, raw_data, sample, v2_arg_par
 
     # I don't think args are used after initial setup
     # if they are needed, extract create parser to it's own function as in v2 pipeline and repeat below process
-    initial_misc, initial_output = initial_process_data(data)
+    initial_output, initial_misc, _ = initial_process_data(data)
 
-    v2_options = vars(v2_arg_parser.parse_args(argv))
-    v2_misc, v2_output = v2_process_data(data, **v2_options)
+    new_options = vars(v2_arg_parser.parse_args(argv))
+    new_normalized, new_misc, _ = new_process_data(data, **new_options)
 
-    v2_output = v2_output.sort_index().reset_index(drop=True)
-    initial_output = initial_output.sort_index().reset_index(drop=True)
+    new_misc = new_misc.sort_index().reset_index(drop=True)
+    initial_misc = initial_misc.sort_index().reset_index(drop=True)
 
-    mismatch_output_columns = set(v2_output.columns) ^ set(initial_output.columns)
+    mismatch_output_columns = set(new_misc.columns) ^ set(initial_misc.columns)
     assert len(mismatch_output_columns) == 0, "Output columns are mismatching"
-    if not v2_output.equals(initial_output):
+    if not new_misc.equals(initial_misc):
         # TODO: write these files somewhere reasonable
         # Note: keep_equal is weird...you need to keep_shape and then filter by the index of the rows
         # with discrepancies in order to get the full rows
-        differences_only = v2_output.compare(initial_output)
+        differences_only = new_misc.compare(initial_misc)
         differences_only.to_csv("differences_only.csv")
-        differences = v2_output.compare(
-            initial_output, keep_equal=True, keep_shape=True
+        differences = new_misc.compare(
+            initial_misc, keep_equal=True, keep_shape=True
         ).loc[differences_only.index.tolist()]
-        initial_output.to_csv("initial_output.csv")
-        v2_output.to_csv("v2_output.csv")
+        initial_misc.to_csv("initial_output.csv")
+        new_misc.to_csv("v2_output.csv")
         differences.to_csv("differences.csv")
-        assert v2_output.equals(
-            initial_output
+        assert new_misc.equals(
+            initial_misc
         ), "Output columns seem to match but other issue in dataframe"
 
-    mismatch_misc_columns = set(v2_misc.columns) ^ set(initial_misc.columns)
+    mismatch_misc_columns = set(new_normalized.columns) ^ set(initial_output.columns)
     assert len(mismatch_misc_columns) == 0, "Misc columns are mismatching"
 
-    if not v2_misc.equals(initial_misc):
-        differences = v2_misc.compare(initial_misc)
+    if not new_normalized.equals(initial_output):
+        differences = new_normalized.compare(initial_output)
         print("Differences in misc DataFrames:")
         print(differences)
-        assert v2_misc.equals(
-            initial_misc
+        assert new_normalized.equals(
+            initial_output
         ), "Misc columns seem to match but other issue in dataframe"
