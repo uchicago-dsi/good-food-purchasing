@@ -9,8 +9,8 @@ import pandas as pd
 
 # TODO: Move these to the package
 # from scripts.pipeline import process_data as initial_process_data
-from scripts.pipeline_v6 import process_data as initial_process_data
-from scripts.pipeline_v7 import process_data as new_process_data
+from scripts.pipeline_v7 import process_data as initial_process_data
+from scripts.pipeline_v8 import process_data as new_process_data
 from cgfp.util import load_to_pd
 
 
