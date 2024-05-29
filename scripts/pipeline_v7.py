@@ -383,6 +383,7 @@ basic_type_mapping = {
     "toast": {"Basic Type": "bread", "Sub-Types": "toast"},
     "turmeric": {"Basic Type": "spice", "Sub-Types": "turmeric"},
     "orange blossom water": {"Basic Type": "water", "Sub-Types": "flavored"},
+    "gyro meat": {"Basic Type": "beef", "Sub-Types": ["lamb", "gyro"]},
 }
 
 # Add nuts to the mapping
@@ -421,6 +422,20 @@ def add_subtypes(row, tokens, first=False):
         subtypes.update(tokens)
         row["Sub-Types"] = subtypes
 
+    row = update_subtypes(row)
+    return row
+
+
+def remove_subtypes(row, tokens):
+    if not isinstance(tokens, list):
+        tokens = [tokens]
+
+    subtypes = OrderedSet(row.get("Sub-Types", []))
+
+    for token in tokens:
+        subtypes.discard(token)
+
+    row["Sub-Types"] = subtypes
     row = update_subtypes(row)
     return row
 
@@ -550,6 +565,14 @@ def get_category(subtype):
 SUBTYPE_COLUMNS = ["Sub-Type 1", "Sub-Type 2"]
 
 
+def clear_row(row):
+    for col in NORMALIZED_COLUMNS:
+        row[col] = None
+    row["Sub-Types"] = OrderedSet()
+    row["Misc"] = []
+    return row
+
+
 def postprocess_data(row):
     ### Handle edge cases for specific product types ###
 
@@ -563,9 +586,102 @@ def postprocess_data(row):
         row["Food Product Category"] = "Condiments & Snacks"
         row["Primary Product Category"] = "Condiments & Snacks"
 
-    # TODO: I need to figure out how to actually handle subtypes
+    # Note: Subtypes are finicky so we need to actually remove them with the remove_subtypes function
     if row["Basic Type"] == "beverage" and row["Sub-Type 1"] == "energy drink":
         row["Basic Type"] = "energy drink"
+        row = remove_subtypes(row, "energy drink")
+        return row
+
+    ### Handle mislabeled edge cases based on Product Type ###
+    if row["Product Type"] == "HAWAIIAN PUNCH CANS":
+        row = clear_row(row)
+        row["Basic Type"] = "drink"
+        row = add_subtypes(row, "fruit punch")
+    elif row["Product Type"] == "Concentrate Chipotle S/O":
+        row = clear_row(row)
+        row["Basic Type"] = "chipotle"
+        row = add_subtypes(row, "chipotle")
+    elif row["Product Type"] == "OREGANO AQUARESIN (7.5LB/PL)":
+        row = clear_row(row)
+        row["Basic Type"] = "spice"
+        row = add_subtypes(row, ["oregano", "concentrate"])
+    elif row["Product Type"] == "GRAIN, BLEND COUSCOUS TRI-COLOR QUINOA RESEALABLE BAG":
+        row = clear_row(row)
+        row["Basic Type"] = "quinoa"
+        row = add_subtypes(row, ["couscous", "blend"])
+    elif row["Product Type"] == "GREEN, MUST CHPD DMSTC IQF FZN":
+        row = clear_row(row)
+        row["Basic Type"] = "mustard green"
+        row["Shape"] = "cut"
+        row["Frozen"] = "frozen"
+    elif row["Product Type"] == "Turkey Cranberry Snack Sticks":
+        row = clear_row(row)
+        row["Basic Type"] = "turkey"
+        row = add_subtypes(row, "jerky")
+    elif row["Product Type"] == "TURKEY STICK SMOKEHOUSE":
+        row = clear_row(row)
+        row["Basic Type"] = "turkey"
+        row = add_subtypes(row, "jerky")
+    elif (
+        row["Product Type"]
+        == "APPETIZER, CHICKEN COCONUT SKEWER .85 OZ COOKED FROZEN KABOB"
+    ):
+        row = clear_row(row)
+        row["Basic Type"] = "chicken"
+        row = add_subtypes(row, ["kabob", "coconut"])
+        row["Cooked/Cleaned"] = "cooked"
+        row["Frozen"] = "frozen"
+    elif row["Product Type"] == "APPETIZER, CHICKEN SKEWER .8 OZ PARCOOKED FROZEN":
+        row = clear_row(row)
+        row["Basic Type"] = "chicken"
+        row = add_subtypes(row, "kabob")
+        row["Cooked/Cleaned"] = "cooked"
+    elif row["Product Type"] == "WG RAMEN MISO NOODLE KIT":
+        row = clear_row(row)
+        row["Basic Type"] = "meal kit"
+        row = add_subtypes(row, ["noodle", "miso"])
+        row["WG/WGR"] = "whole grain rich"
+    elif row["Product Type"] == "EDAMAME SUCCOTASH BLEND":
+        row = clear_row(row)
+        row["Basic Type"] = "vegetable"
+        row = add_subtypes(row, ["blend", "edamame", "succotash"])
+    elif row["Product Type"] == "MIX CAKE BASE RICHCREME":
+        row = clear_row(row)
+        row["Basic Type"] = "dessert"
+        row = add_subtypes(row, ["cake", "mix"])
+    elif row["Product Type"] == "QUICK OATS TUBES":
+        row = clear_row(row)
+        row["Basic Type"] = "oat"
+        row = add_subtypes(row, "quick")
+    elif row["Product Type"] == "RICE PILAF CHICKEN W/ORZO":
+        row = clear_row(row)
+        row["Basic Type"] = "entree"
+        row = add_subtypes(row, ["chicken", "rice pilaf"])
+    elif row["Product Type"] == "GRAIN SPCLTY BULGHUR WHEAT PLF":
+        row = clear_row(row)
+        row["Basic Type"] = "bulgur"
+        row = add_subtypes(row, ["wheat", "pilaf"])
+    elif row["Product Type"] == "POLENTA, CAKE VEG FIRE RSTD (6455314)":
+        row = clear_row(row)
+        row["Basic Type"] = "entree"
+        row = add_subtypes(row, ["polenta", "vegetable"])
+    elif row["Product Type"] == "ROOT TARO MALANGA COCA":
+        row = clear_row(row)
+        row["Basic Type"] = "taro"
+    elif row["Product Type"] == "SHORTBREAD STRAWBERRY":
+        row = clear_row(row)
+        row["Basic Type"] = "dessert"
+        row = add_subtypes(row, ["shortbread", "strawberry"])
+    elif row["Product Type"] == "SCOOBY DOO GRAHAM STIX IW":
+        row = clear_row(row)
+        row["Basic Type"] = "cracker"
+        row = add_subtypes(row, "graham")
+        row["WG/WGR"] = "whole grain rich"
+        row["Packaging"] = "ss"
+    elif row["Product Type"] == "BEAN, GOURMET MADAGASCAR BOURB (4648664)":
+        row = clear_row(row)
+        row["Basic Type"] = "spice"
+        row = add_subtypes(row, "vanilla bean")
 
     return row
 
