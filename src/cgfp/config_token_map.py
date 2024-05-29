@@ -67,6 +67,7 @@ TOKEN_MAP_DICT = {
     "sqare rib": "spare rib",
     "stawberry": "strawberry",
     "sun-dried": "sun dried",
+    "tumeric": "turmeric",
     ## INCONSISTENCIES ##
     "skin-on": "skin on",
     "carrots": "carrot",
@@ -112,6 +113,7 @@ TOKEN_MAP_DICT = {
     "fruit loops": "froot loops",
     "frito": "fritos",
     "grannysmith": "granny smith",
+    "cocoa": "cocoa powder",
     ## COOKED ##
     "au jus": "cooked",
     ## RENAME ##
@@ -170,4 +172,8 @@ TOKEN_MAP_DICT = {
     ## MIXED VEGGIES ##
     "vegetable blend": "vegetable",  # TODO: maybe we need this in basic type handler
     "vegetable cup": "vegetable",
+    ## PASTA TYPES ##
+    "penne rigate": "pasta",
+    ## PASTRIES ##
+    "sweet roll": "pastry",
 }

@@ -436,6 +436,25 @@ basic_type_mapping = {
     "vegetable mix": {"Basic Type": "vegetable", "Subtype": "blend"},
     "whipped cream": {"Basic Type": "topping", "Subtype": "whipped cream"},
     "cantaloupe": {"Basic Type": "melon", "Subtype": "cantaloupe"},
+    "blend": {"Basic Type": "vegetable", "Subtype": "blend"},
+    "soy sauce": {"Basic Type": "condiment", "Subtype": "soy sauce"},
+    "chicken breast": {"Basic Type": "chicken", "Shape": "breast"},
+    "chicken tender": {"Basic Type": "chicken", "Shape": "cut"},
+    "chocolate": {"Basic Type": "candy", "Shape": "chocolate"},
+    "chutney": {"Basic Type": "spread", "Subtype": "chutney"},
+    "corn nugget": {
+        "Basic Type": "appetizer",
+        "Subtype": "corn",
+        "Processing": "battered",
+    },
+    "gel": {"Basic Type": "topping", "Subtype": "icing"},
+    "ice cream cone": {"Basic Type": "cone", "Subtype": "ice cream"},
+    "pan coating": {"Basic Type": "oil", "Subtype": "spray"},
+    "paprika": {"Basic Type": "spice", "Subtype": "paprika"},
+    "salad mix": {"Basic Type": "salad", "Subtype": "mix"},
+    "toast": {"Basic Type": "bread", "Subtype": "toast"},
+    "turmeric": {"Basic Type": "spice", "Subtype": "turmeric"},
+    "orange blossom water": {"Basic Type": "water", "Subtype": "flavored"},
 }
 
 # Add nuts to the mapping
@@ -453,15 +472,14 @@ def basic_type_handler(row):
         if key != "Subtype":
             row[key] = value
 
-    # basic_type, subtype = mapping
-    # row["Basic Type"] = basic_type
-
     if "Subtype" in mapping:
         row = add_subtype(row, mapping["Subtype"], first=True)
     return row
 
 
 def add_subtype(row, token, first=False):
+    # TODO: Set this up to handle a list of subtypes
+    # Note: Insert new token as the first subtype
     if first:
         subtypes = OrderedSet([token])
         subtypes.update(row["Sub-Types"])
@@ -478,6 +496,33 @@ def add_subtype(row, token, first=False):
             # Not enough room!
             break
     return row
+
+
+# def add_subtype(row, tokens, first=False):
+#     # Note: Can handle either single or multiple tokens
+#     if not isinstance(tokens, list):
+#         tokens = [tokens]
+
+#     subtypes = OrderedSet(tokens)
+
+#     if first:
+#         subtypes.update(row.get("Sub-Types", []))
+#     else:
+#         subtypes.update(row.get("Sub-Types", []))
+#         row["Sub-Types"].update(tokens)
+
+#     row["Sub-Types"] = subtypes
+
+#     # TODO: maybe you can zip this with the sub-type columns?
+#     for i, subtype in enumerate(row["Sub-Types"]):
+#         if i == 0:
+#             row["Sub-Type 1"] = subtype
+#         elif i == 1:
+#             row["Sub-Type 2"] = subtype
+#         else:
+#             # Not enough room!
+#             break
+#     return row
 
 
 def handle_subtypes(row):
