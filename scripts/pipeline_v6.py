@@ -472,6 +472,7 @@ def basic_type_handler(row):
         if key != "Subtype":
             row[key] = value
 
+    # TODO: Ok yeah need to update the row and also the subtypes
     if "Subtype" in mapping:
         row = add_subtype(row, mapping["Subtype"], first=True)
     return row
@@ -496,33 +497,6 @@ def add_subtype(row, token, first=False):
             # Not enough room!
             break
     return row
-
-
-# def add_subtype(row, tokens, first=False):
-#     # Note: Can handle either single or multiple tokens
-#     if not isinstance(tokens, list):
-#         tokens = [tokens]
-
-#     subtypes = OrderedSet(tokens)
-
-#     if first:
-#         subtypes.update(row.get("Sub-Types", []))
-#     else:
-#         subtypes.update(row.get("Sub-Types", []))
-#         row["Sub-Types"].update(tokens)
-
-#     row["Sub-Types"] = subtypes
-
-#     # TODO: maybe you can zip this with the sub-type columns?
-#     for i, subtype in enumerate(row["Sub-Types"]):
-#         if i == 0:
-#             row["Sub-Type 1"] = subtype
-#         elif i == 1:
-#             row["Sub-Type 2"] = subtype
-#         else:
-#             # Not enough room!
-#             break
-#     return row
 
 
 def handle_subtypes(row):
@@ -648,6 +622,10 @@ def postprocess_data(row):
         row["Food Product Group"] = "Condiments & Snacks"
         row["Food Product Category"] = "Condiments & Snacks"
         row["Primary Product Category"] = "Condiments & Snacks"
+
+    # TODO: I need to figure out how to actually handle subtypes
+    if row["Basic Type"] == "beverage" and row["Sub-Type 1"] == "energy drink":
+        row["Basic Type"] = "energy drink"
 
     return row
 
