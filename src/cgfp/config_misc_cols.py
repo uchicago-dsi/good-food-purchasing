@@ -4,6 +4,7 @@ FPG2FPC = {
         "Vegetables",
         "Roots & Tubers",
         "Produce",
+        "Legumes",
     ],  # TODO: Wait, is produce allowed here?
     "Milk & Dairy": ["Butter", "Cheese", "Milk", "Yogurt", "Milk & Dairy"],
     "Meat": [
@@ -71,6 +72,7 @@ MISC_COLUMN_TAGS = {
         "Packaging": {"canned", "jarred", "pouch", "ss"},
         "Commodity": {"commodity"},
     },
+    ### FOOD PRODUCT GROUPS ###
     "Meat": {
         "Flavor/Cut": {
             "brisket",
@@ -106,17 +108,32 @@ MISC_COLUMN_TAGS = {
         "Seed/Bone": {"bone-in"},
         "Cooked/Cleaned": {"smoked"},
     },
-    "Fruit": {"Seed/Bone": {"pitted"}},
     "Condiments & Snacks": {
+        "Processing": {"dehydrated"},
         "Seed/Bone": {"pitted"},
         "Dietary Accommodation": {"non-dairy"},
     },
     "Beverages": {
+        "Shape": {"thickened"},
         "Dietary Concern": {"decaffeinated", "diet", "caffeinated"},
         "Frozen": {"iced"},
     },
+    "Milk & Dairy": {
+        "Processing": {"evaporated"},
+        "Dietary Concern": {"1%", "2%"},
+        "Dietary Accommodation": {"lactose free"},
+    },
+    "Meals": {"Processing": {"dehydrated"}},  # Note: Meals also share all "Meat" tags
+    ### FOOD PRODUCT CATEGORIES ###
+    "Fruit": {"Seed/Bone": {"pitted"}},
+    "Cheese": {"Processing": {"grated"}},
+    "Milk": {"Shape": {"thickened"}},
+    "Yogurt": {"Shape": {"thickened"}},
+    "Legumes": {"Processing": {"dehydrated"}},
+    "Roots & Tubers": {"Processing": {"dehydrated"}},
 }
 
+# TODO: Add rule so that all "Meat" tags are added to "Meals"
 NON_SUBTYPE_TAGS_FPC = {}
 
 for fpc in FPC2FPG.keys():
