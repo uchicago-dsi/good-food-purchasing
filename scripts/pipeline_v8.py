@@ -6,8 +6,8 @@ from pathlib import Path
 from collections import defaultdict
 
 from cgfp.config_tags import (
-    CATEGORY_TAGS,
-    GROUP_TAGS,
+    # CATEGORY_TAGS,
+    # GROUP_TAGS,
     TOKEN_MAP_DICT,
     SKIP_TOKENS,
     FLAVORS,
@@ -23,6 +23,8 @@ from cgfp.config_tags import (
     SKIP_SHAPE,
 )
 
+from cgfp.config_misc_cols import NON_SUBTYPE_TAGS_FPC
+
 from cgfp.config_pipeline import (
     RAW_FOLDER,
     CLEAN_FOLDER,
@@ -37,8 +39,8 @@ ALL_FLAVORS = FLAVORS | FRUITS
 from cgfp.util import load_to_pd, save_pd_to_csv
 
 from cgfp.config_tags import (
-    CATEGORY_TAGS,
-    GROUP_TAGS,
+    # # CATEGORY_TAGS,
+    # GROUP_TAGS,
     TOKEN_MAP_DICT,
     SKIP_TOKENS,
     FLAVORS,
@@ -66,15 +68,15 @@ from cgfp.config_pipeline import (
 ALL_FLAVORS = FLAVORS | FRUITS
 
 
-# TODO: maybe this goes somewhere else
-def pool_tags(tags_dict):
-    for top_level in tags_dict.keys():
-        tags_dict[top_level]["All"] = set.union(*tags_dict[top_level].values())
-    return tags_dict
+# # TODO: maybe this goes somewhere else
+# def pool_tags(tags_dict):
+#     for top_level in tags_dict.keys():
+#         tags_dict[top_level]["All"] = set.union(*tags_dict[top_level].values())
+#     return tags_dict
 
 
-GROUP_TAGS = pool_tags(GROUP_TAGS)
-CATEGORY_TAGS = pool_tags(CATEGORY_TAGS)
+# GROUP_TAGS = pool_tags(GROUP_TAGS)
+# CATEGORY_TAGS = pool_tags(CATEGORY_TAGS)
 
 
 DEFAULT_INPUT_FILE = "CONFIDENTIAL_CGFP bulk data_073123.xlsx"
@@ -560,7 +562,9 @@ product_type_mapping = {
 }
 
 
-def clean_name(row, group_tags_dict=GROUP_TAGS, category_tags_dict=CATEGORY_TAGS):
+# TODO: maybe pass the config dictionary here?
+def clean_name(row):
+    # def clean_name(row, group_tags_dict=GROUP_TAGS, category_tags_dict=CATEGORY_TAGS):
     # Handle product type edge cases — short-circuit if a mapping exists
     # Note: Need to add "Sub-Types" to the row if it doesn't exist
     row["Sub-Types"] = OrderedSet()
@@ -592,25 +596,33 @@ def clean_name(row, group_tags_dict=GROUP_TAGS, category_tags_dict=CATEGORY_TAGS
             continue  # token_handler returns None for invalid tags so skip
         # TODO: maybe pre-combine the tags?
         # If token is in pre-allowed tags, enter tagging loop
-        if token in group_tags_dict.get(food_product_group, {}).get(
-            "All", []
-        ) or token in category_tags_dict.get(food_product_category, {}).get("All", []):
-            # TODO: Create some sort of tags_handler function
+        # if token in group_tags_dict.get(food_product_group, {}).get(
+        #     "All", []
+        # ) or token in category_tags_dict.get(food_product_category, {}).get("All", []):
+        # TODO: Create some sort of tags_handler function
+        if token in NON_SUBTYPE_TAGS_FPC[food_product_category]["All"]:
             matched = False
             for col in NORMALIZED_COLUMNS:
+                # TODO: fix the column setup here
+                if "Sub-Type" in col:
+                    continue
+                if token in NON_SUBTYPE_TAGS_FPC[food_product_category][col]:
+                    row[col] = token
+                    matched = True
+                    break
                 # TODO: This is where the logic for categories is broken
                 # Should group and category tags be separate or not really?
                 # Find the category that the token is in and add to normalized_name
-                if col in group_tags_dict[food_product_group]:
-                    if token in group_tags_dict[food_product_group][col]:
-                        row[col] = token
-                        matched = True
-                        break
-                if col in category_tags_dict.get(food_product_category, {}):
-                    if token in category_tags_dict[food_product_category][col]:
-                        row[col] = token
-                        matched = True
-                        break
+                # if col in group_tags_dict[food_product_group]:
+                #     if token in group_tags_dict[food_product_group][col]:
+                #         row[col] = token
+                #         matched = True
+                #         break
+                # if col in category_tags_dict.get(food_product_category, {}):
+                #     if token in category_tags_dict[food_product_category][col]:
+                #         row[col] = token
+                #         matched = True
+                #         break
             if matched:
                 continue
         row = add_subtypes(row, token)  # Unmatched tokens are subtypes

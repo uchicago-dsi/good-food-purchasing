@@ -1,5 +1,10 @@
-GROUP_CATEGORY_VALIDATION = {
-    "Produce": ["Fruit", "Vegetables", "Roots & Tubers"],
+FPG2FPC = {
+    "Produce": [
+        "Fruit",
+        "Vegetables",
+        "Roots & Tubers",
+        "Produce",
+    ],  # TODO: Wait, is produce allowed here?
     "Milk & Dairy": ["Butter", "Cheese", "Milk", "Yogurt", "Milk & Dairy"],
     "Meat": [
         "Beef",
@@ -27,6 +32,12 @@ GROUP_CATEGORY_VALIDATION = {
     ],  # TODO: Figure out how to set something up for primary food product category here
     "Condiments & Snacks": ["Condiments & Snacks"],
 }
+
+FPC2FPG = {}
+
+for group, categories in FPG2FPC.items():
+    for category in categories:
+        FPC2FPG[category] = group
 
 MISC_COLUMN_TAGS = {
     "All": {
@@ -86,32 +97,14 @@ MISC_COLUMN_TAGS = {
             "salami",
             "crumble",
         },
-        "Skin": set(),
         "Seed/Bone": {"bone-in"},
         "Processing": {"corned"},
         "Cooked/Cleaned": {"smoked"},
-        "WG/WGR": set(),
-        "Dietary Concern": set(),
-        "Additives": set(),
-        "Dietary Accommodation": set(),
-        "Frozen": set(),
-        "Packaging": set(),
-        "Commodity": set(),
     },
     "Seafood": {
-        "Flavor/Cut": set(),
-        "Shape": set(),
         "Skin": {"tail on", "shell on"},
         "Seed/Bone": {"bone-in"},
-        "Processing": set(),
         "Cooked/Cleaned": {"smoked"},
-        "WG/WGR": set(),
-        "Dietary Concern": set(),
-        "Additives": set(),
-        "Dietary Accommodation": set(),
-        "Frozen": set(),
-        "Packaging": set(),
-        "Commodity": set(),
     },
     "Fruit": {"Seed/Bone": {"pitted"}},
     "Condiments & Snacks": {
@@ -123,3 +116,17 @@ MISC_COLUMN_TAGS = {
         "Frozen": {"iced"},
     },
 }
+
+NON_SUBTYPE_TAGS_FPC = {}
+
+for fpc in FPC2FPG.keys():
+    fpg = FPC2FPG[fpc]
+    all_tags = set()
+    NON_SUBTYPE_TAGS_FPC[fpc] = {}
+    for col, tags in MISC_COLUMN_TAGS["All"].items():
+        NON_SUBTYPE_TAGS_FPC[fpc][col] = tags
+        fpc_tags = MISC_COLUMN_TAGS.get(fpc, {}).get(col, set())
+        fpg_tags = MISC_COLUMN_TAGS.get(fpg, {}).get(col, set())
+        NON_SUBTYPE_TAGS_FPC[fpc][col].update(fpc_tags | fpg_tags)
+        all_tags.update(NON_SUBTYPE_TAGS_FPC[fpc][col])
+    NON_SUBTYPE_TAGS_FPC[fpc]["All"] = all_tags
