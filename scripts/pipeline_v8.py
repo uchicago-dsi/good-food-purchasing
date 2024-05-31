@@ -379,7 +379,7 @@ basic_type_mapping = {
     "ice cream cone": {"Basic Type": "cone", "Sub-Types": "ice cream"},
     "pan coating": {"Basic Type": "oil", "Sub-Types": "spray"},
     "paprika": {"Basic Type": "spice", "Sub-Types": "paprika"},
-    "salad mix": {"Basic Type": "salad", "Sub-Types": "mix"},
+    "salad mix": {"Basic Type": "lettuce", "Sub-Types": "blend"},
     "toast": {"Basic Type": "bread", "Sub-Types": "toast"},
     "turmeric": {"Basic Type": "spice", "Sub-Types": "turmeric"},
     "orange blossom water": {"Basic Type": "water", "Sub-Types": "flavored"},

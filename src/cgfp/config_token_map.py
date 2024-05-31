@@ -116,6 +116,9 @@ TOKEN_MAP_DICT = {
     "cocoa": "cocoa powder",
     ## COOKED ##
     "au jus": "cooked",
+    "charbroiled": "cooked",
+    "oil roasted": "cooked",
+    "roast": "cooked",
     ## RENAME ##
     "aprium": "pluot",
     "banana pepper": "pepper",
@@ -144,10 +147,19 @@ TOKEN_MAP_DICT = {
     "chunk": "cut",
     "trimmed": "cut",
     "half": "cut",
+    "halved": "cut",
     "spear": "cut",
     "crinkle cut": "cut",
     "florette": "cut",
     "filet": "cut",
+    "chunk": "cut",
+    "portion": "cut",
+    "rectangle": "cut",
+    "coin": "cut",
+    "square": "cut",
+    "strip": "cut",
+    "stripe": "cut",
+    "tender": "cut",
     ## WHOLE GRAIN ##
     "whole wheat": "whole grain rich",
     "whole grain": "whole grain rich",
@@ -162,9 +174,14 @@ TOKEN_MAP_DICT = {
     "parbaked": "cooked",
     "broiled": "cooked",
     "parfried": "cooked",
+    "blackened": "cooked",
     ## FLAVORED ##
+    ## PROCESSING ##
+    "condensed": "concentrate",
+    "crusted": "breaded",
     ## PACKAGING ##
     "bag": "ss",
+    "kcup": "ss",
     ## IN JUICE ##
     "in pear juice": "in juice",
     ## SMOKED ##
@@ -176,4 +193,7 @@ TOKEN_MAP_DICT = {
     "penne rigate": "pasta",
     ## PASTRIES ##
     "sweet roll": "pastry",
+    ## DIETARY CONCERN ##
+    "less sodium": "low sodium",
+    "less salt": "low sodium",
 }
