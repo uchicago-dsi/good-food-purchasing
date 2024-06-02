@@ -264,6 +264,45 @@ def token_handler(token, row):
     if basic_type in SKIP_SHAPE and token in SHAPE_EXTRAS:
         return None, row
 
+    ### EDGE CASES FOR NON-SUBTYPE COLUMNS ###
+
+    if token == "grated" and food_product_category != "Cheese":
+        return "cut", row
+
+    if token == "mix" and food_product_group == "Beverages":
+        return "concentrate", row
+
+    if token == "taco meat":
+        row["Shape"] = "crumble"
+        row["Processing"] = "seasoned"
+        return None, row
+
+    if token == "stick" and food_product_group in ["Produce", "Seafood"]:
+        return "cut", row
+
+    if token == "stick" and food_product_category in ["Cheese", "Meat"]:
+        return "ss", row
+
+    if token == "shredded" and food_product_group == "Meat":
+        row["Shape"] = "cut"
+        row["Cooked/Cleaned"] = "cooked"
+        return None, row
+    elif token == "shredded":
+        return "cut", row
+
+    if token == "powder" and food_product_group == "Beverages":
+        return "concentrate", row
+
+    if token == "popper":
+        row = add_subtypes(row, "cheese")
+        row["Processing"] = "breaded"
+        return None, row
+
+    if token == "popcorn" and food_product_category in ["Seafood", "Chicken"]:
+        row["Shape"] = "cut"
+        row["Processing"] = "breaded"
+        return None, row
+
     ### EDGE CASES FOR RENAMING TOKENS ###
 
     # Map nut tokens to "nut" for some basic types
@@ -564,10 +603,10 @@ product_type_mapping = {
 
 # TODO: maybe pass the config dictionary here?
 def clean_name(row):
-    # def clean_name(row, group_tags_dict=GROUP_TAGS, category_tags_dict=CATEGORY_TAGS):
-    # Handle product type edge cases — short-circuit if a mapping exists
-    # Note: Need to add "Sub-Types" to the row if it doesn't exist
+    # Note: Need to add "Sub-Types" to the row first thing
     row["Sub-Types"] = OrderedSet()
+
+    # Handle product type edge cases — short-circuit if a mapping exists
     if row["Product Type"] in product_type_mapping:
         mapping = product_type_mapping[row["Product Type"]]
         for key, value in mapping.items():
@@ -578,51 +617,31 @@ def clean_name(row):
         row = update_subtypes(row)
         return row
 
-    food_product_group, food_product_category = (
-        row["Food Product Group"],
-        row["Food Product Category"],
-    )
-    name_split = row["Product Name"].split(",")
-    basic_type = clean_token(name_split[0])
-    row["Basic Type"] = basic_type
+    food_product_category = row["Food Product Category"]
+    product_name_split = row["Product Name"].split(",")
     row["Misc"] = []
 
+    basic_type = clean_token(product_name_split[0])
+    row["Basic Type"] = basic_type
     row = basic_type_handler(row)
 
-    for token in name_split[1:]:
+    for token in product_name_split[1:]:
         token = clean_token(token)
         token, row = token_handler(token, row)
         if token is None:
             continue  # token_handler returns None for invalid tags so skip
-        # TODO: maybe pre-combine the tags?
-        # If token is in pre-allowed tags, enter tagging loop
-        # if token in group_tags_dict.get(food_product_group, {}).get(
-        #     "All", []
-        # ) or token in category_tags_dict.get(food_product_category, {}).get("All", []):
-        # TODO: Create some sort of tags_handler function
+        # TODO: Create some sort of misc_tags_handler function
         if token in NON_SUBTYPE_TAGS_FPC[food_product_category]["All"]:
             matched = False
             for col in NORMALIZED_COLUMNS:
-                # TODO: fix the column setup here
+                # TODO: fix the column setup here so we don't have to skip subtype columns
                 if "Sub-Type" in col:
                     continue
                 if token in NON_SUBTYPE_TAGS_FPC[food_product_category][col]:
+                    # TODO: Handle duplicates in a column
                     row[col] = token
                     matched = True
                     break
-                # TODO: This is where the logic for categories is broken
-                # Should group and category tags be separate or not really?
-                # Find the category that the token is in and add to normalized_name
-                # if col in group_tags_dict[food_product_group]:
-                #     if token in group_tags_dict[food_product_group][col]:
-                #         row[col] = token
-                #         matched = True
-                #         break
-                # if col in category_tags_dict.get(food_product_category, {}):
-                #     if token in category_tags_dict[food_product_category][col]:
-                #         row[col] = token
-                #         matched = True
-                #         break
             if matched:
                 continue
         row = add_subtypes(row, token)  # Unmatched tokens are subtypes

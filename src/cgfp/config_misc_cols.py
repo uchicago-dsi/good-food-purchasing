@@ -109,7 +109,7 @@ MISC_COLUMN_TAGS = {
         "Cooked/Cleaned": {"smoked"},
     },
     "Condiments & Snacks": {
-        "Processing": {"dehydrated"},
+        "Processing": {"dehydrated", "powder"},
         "Seed/Bone": {"pitted"},
         "Dietary Accommodation": {"non-dairy"},
     },
