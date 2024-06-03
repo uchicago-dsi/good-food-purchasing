@@ -4,6 +4,7 @@ import argparse
 from ordered_set import OrderedSet
 from pathlib import Path
 from collections import defaultdict
+from tqdm import tqdm
 
 from cgfp.config_tags import (
     TOKEN_MAP_DICT,
@@ -38,6 +39,8 @@ from cgfp.config_pipeline import (
     GROUP_COLUMNS,
     COLUMNS_ORDER,
 )
+
+tqdm.pandas()
 
 ALL_FLAVORS = FLAVORS | FRUITS
 
@@ -107,7 +110,7 @@ def clean_df(df):
     )
 
     # Replace "Whole/Minimally Processed" with the value from "Food Product Category"
-    df["Primary Food Product Category"] = df.apply(
+    df["Primary Food Product Category"] = df.progress_apply(
         lambda row: (
             row["Food Product Category"]
             if row["Primary Food Product Category"] == "Whole/Minimally Processed"
@@ -582,8 +585,9 @@ def clean_name(row):
         return row
 
     food_product_category = row["Food Product Category"]
+    # Tags are allowed based on primary food product category for meals
     if food_product_category == "Meals":
-        breakpoint()
+        food_product_category == row["Primary Food Product Category"]
     product_name_split = row["Product Name"].split(",")
     row["Misc"] = []
 
@@ -680,17 +684,16 @@ def postprocess_data(row):
 
 def process_data(df, **options):
     # Filter missing data and non-food items, handle typos in Category and Group columns
-    print("Loading data...")
     df = clean_df(df)
 
     # Create normalized name
     print("Normalizing names...")
-    df_normalized = df.apply(clean_name, axis=1)
+    df_normalized = df.progress_apply(clean_name, axis=1)
 
     # Perform diff on "Normalized Name" column with "Product Name" column from df_loaded
     # Save a diff on the "Product Name" column with the edited output
     print("Creating diff file...")
-    df_normalized["Normalized Name"] = df_normalized.apply(
+    df_normalized["Normalized Name"] = df_normalized.progress_apply(
         lambda row: ", ".join(
             row[["Basic Type"] + NORMALIZED_COLUMNS].dropna().astype(str)
         ),
@@ -706,7 +709,7 @@ def process_data(df, **options):
     # TODO: Clarify this part...kind of confusing
     # Save unallocated tags for manual review
     print("Creating misc file...")
-    misc = df_normalized[df_normalized["Misc"].apply(lambda x: x != [])][
+    misc = df_normalized[df_normalized["Misc"].progress_apply(lambda x: x != [])][
         [
             "Product Type",
             "Product Name",
@@ -747,6 +750,7 @@ def main(argv):
     options = vars(parser.parse_args(argv))
 
     # processing
+    print("Loading data...")
     df_loaded = load_to_pd(**options)
     df_processed, misc, df_diff = process_data(df_loaded, **options)
 

@@ -17,4 +17,5 @@ dependencies:
     - datasets
     - openpyxl
     - wandb==0.16.6
+    - tqdm
     - -e .

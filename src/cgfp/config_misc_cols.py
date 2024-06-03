@@ -123,7 +123,9 @@ MISC_COLUMN_TAGS = {
         "Dietary Concern": {"1%", "2%"},
         "Dietary Accommodation": {"lactose free"},
     },
-    "Meals": {"Processing": {"dehydrated"}},  # Note: Meals also share all "Meat" tags
+    "Meals": {
+        "Processing": {"dehydrated"}
+    },  # TODO: I'm using "primary food product category" for meals, so which ones are these allowed for?
     ### FOOD PRODUCT CATEGORIES ###
     "Fruit": {"Seed/Bone": {"pitted"}},
     "Cheese": {"Processing": {"grated"}},
@@ -133,7 +135,6 @@ MISC_COLUMN_TAGS = {
     "Roots & Tubers": {"Processing": {"dehydrated"}},
 }
 
-# TODO: Add rule so that all "Meat" tags are added to "Meals"
 NON_SUBTYPE_TAGS_FPC = {}
 
 for fpc in FPC2FPG.keys():
