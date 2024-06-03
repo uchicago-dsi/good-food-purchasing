@@ -2,7 +2,7 @@ import pandas as pd
 import os
 import argparse
 
-from cgfp.config_tags import (
+from cgfp.constants.tag_sets import (
     CATEGORY_TAGS,
     GROUP_TAGS,
     TOKEN_MAP_DICT,

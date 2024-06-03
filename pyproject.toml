@@ -1,7 +1,7 @@
 [project]
 name = "cgfp"
 version = "0.1.0"
-description = "Training for CGFP model"
+description = "Training and Pipeline for CGFP model"
 readme = "README.md"
 
 [tool.setuptools.packages.find]

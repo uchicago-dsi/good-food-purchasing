@@ -5,11 +5,12 @@ import numpy as np
 import argparse
 
 import torch
+
 # from transformers import AutoTokenizer
 from transformers import DistilBertTokenizerFast
 
 from cgfp.config_training import lower2label
-from cgfp.config_tags import GROUP_CATEGORY_VALIDATION
+from cgfp.constants.tag_sets import GROUP_CATEGORY_VALIDATION
 from cgfp.training.models import MultiTaskModel
 
 logger = logging.getLogger("inference_logger")
@@ -23,7 +24,15 @@ def prediction_to_string(model, scores, idx):
     return decoder[str(max_idx.item())]
 
 
-def inference(model, tokenizer, text, device, assertion=False, confidence_score=True, combine_name=False):
+def inference(
+    model,
+    tokenizer,
+    text,
+    device,
+    assertion=False,
+    confidence_score=True,
+    combine_name=False,
+):
     inputs = tokenizer(text, padding=True, truncation=True, return_tensors="pt")
 
     inputs = inputs.to(device)
@@ -88,7 +97,7 @@ def inference(model, tokenizer, text, device, assertion=False, confidence_score=
         for col, pred in legible_preds.items():
             if "_score" not in col and "Food" not in col and pred != "None":
                 normalized_name += pred + ", "
-        normalized_name = normalized_name.strip().rstrip(',')
+        normalized_name = normalized_name.strip().rstrip(",")
         return normalized_name
     return legible_preds
 
@@ -210,11 +219,22 @@ def inference_handler(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Load model checkpoint.")
-    parser.add_argument("--filename", type=str, default="TestData_11.22.23.xlsx", help="Name of the file to classify.")
-    parser.add_argument("--checkpoint", type=str, help="Path to the model checkpoint directory or Huggingface model name.")
-    
+    parser.add_argument(
+        "--filename",
+        type=str,
+        default="TestData_11.22.23.xlsx",
+        help="Name of the file to classify.",
+    )
+    parser.add_argument(
+        "--checkpoint",
+        type=str,
+        help="Path to the model checkpoint directory or Huggingface model name.",
+    )
+
     args = parser.parse_args()
-    checkpoint = args.checkpoint if args.checkpoint else "uchicago-dsi/cgfp-classifier-dev"
+    checkpoint = (
+        args.checkpoint if args.checkpoint else "uchicago-dsi/cgfp-classifier-dev"
+    )
     FILENAME = args.filename
 
     model = MultiTaskModel.from_pretrained(checkpoint)

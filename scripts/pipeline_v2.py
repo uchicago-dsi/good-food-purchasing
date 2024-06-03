@@ -2,7 +2,7 @@ import pandas as pd
 import os
 import argparse
 
-from cgfp.config_tags import (
+from cgfp.constants.tag_sets import (
     CATEGORY_TAGS,
     GROUP_TAGS,
     TOKEN_MAP_DICT,
@@ -33,7 +33,7 @@ ALL_FLAVORS = FLAVORS | FRUITS
 
 from cgfp.util import load_to_pd, save_pd_to_csv
 
-from cgfp.config_tags import (
+from cgfp.constants.tag_sets import (
     CATEGORY_TAGS,
     GROUP_TAGS,
     TOKEN_MAP_DICT,
