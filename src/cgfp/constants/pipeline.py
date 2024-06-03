@@ -24,28 +24,24 @@ GROUP_COLUMNS = [
     "Primary Food Product Category",
 ]
 
-SUBTYPE_COLUMNS = ["Sub-Type 1", "Sub-Type 2"]
-
 # TODO: Sub type 3?
-NORMALIZED_COLUMNS = (
-    ["Basic Type"]
-    + SUBTYPE_COLUMNS
-    + [
-        "Flavor/Cut",
-        "Shape",
-        "Skin",
-        "Seed/Bone",
-        "Processing",
-        "Cooked/Cleaned",
-        "WG/WGR",
-        "Dietary Concern",
-        "Additives",
-        "Dietary Accommodation",
-        "Frozen",
-        "Packaging",
-        "Commodity",
-    ]
-)
+SUBTYPE_COLUMNS = ["Sub-Type 1", "Sub-Type 2"]
+NON_SUBTYPE_COLUMNS = [
+    "Flavor/Cut",
+    "Shape",
+    "Skin",
+    "Seed/Bone",
+    "Processing",
+    "Cooked/Cleaned",
+    "WG/WGR",
+    "Dietary Concern",
+    "Additives",
+    "Dietary Accommodation",
+    "Frozen",
+    "Packaging",
+    "Commodity",
+]
+NORMALIZED_COLUMNS = ["Basic Type"] + SUBTYPE_COLUMNS + NON_SUBTYPE_COLUMNS
 
 COLUMNS_ORDER = [
     "Product Type",

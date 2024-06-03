@@ -18,17 +18,22 @@ from cgfp.constants.tag_sets import (
     MELON_TYPES,
     SKIP_SHAPE,
     ALL_FLAVORS,
+    SUBTYPE_REPLACEMENT_MAPPING,
 )
 from cgfp.constants.misc_tags import NON_SUBTYPE_TAGS_FPC
 from cgfp.constants.token_map import TOKEN_MAP_DICT
 from cgfp.constants.skip_tokens import SKIP_TOKENS
+from cgfp.constants.product_type_mapping import PRODUCT_TYPE_MAPPING
 from cgfp.constants.pipeline import (
     CLEAN_FOLDER,
     RUN_FOLDER,
+    GROUP_COLUMNS,
     SUBTYPE_COLUMNS,
+    NON_SUBTYPE_COLUMNS,
     NORMALIZED_COLUMNS,
     COLUMNS_ORDER,
 )
+from cgfp.constants.basic_type_mapping import BASIC_TYPE_MAPPING
 from cgfp.util import load_to_pd, save_pd_to_csv
 
 tqdm.pandas()
@@ -68,17 +73,8 @@ def clean_df(df):
     - Remove null and short (usually a mistake) Product Names
     - Remove non-food items
     """
-    # TODO: put this in config
     # TODO: Do we ever use "Primary Food Product Group?
-    df = df[
-        [
-            "Food Product Category",
-            "Primary Food Product Category",
-            "Product Type",
-            "Product Name",
-            "Food Product Group",
-        ]
-    ].copy()
+    df = df[GROUP_COLUMNS].copy()
 
     # Add normalized name columns
     df[NORMALIZED_COLUMNS + ["Misc"]] = None
@@ -89,7 +85,6 @@ def clean_df(df):
         & (df["Food Product Group"] != "Non-Food")
     ].reset_index(drop=True)
 
-    # TODO: Maybe this goes in config?
     # Handle typos in Primary Food Product Category
     category_typos = {
         "Roots & Tuber": "Roots & Tubers",
@@ -122,8 +117,8 @@ def token_handler(token, row):
         row["Basic Type"],
         row["Sub-Type 1"],
     )
-    # TODO: ...should this actually be here??
-    # These weird rename rules need to happen before the token handler in order to change the basic type
+
+    # Handle edge cases where Basic Type should change to Sub-Type
     if (basic_type == "snack" and token == "bar") or (
         basic_type == "herb" and token == "watercress"
     ):
@@ -292,102 +287,8 @@ def clean_token(token, token_map_dict=TOKEN_MAP_DICT):
     return cleaned_token
 
 
-# TODO: config
-basic_type_mapping = {
-    "sea salt": {"Basic Type": "salt"},
-    "almond": {"Basic Type": "nut", "Sub-Types": "almond"},
-    "baba ganoush": {"Basic Type": "spread", "Sub-Types": "baba ganoush"},
-    "baklava": {"Basic Type": "pastry", "Sub-Types": "baklava"},
-    "banana bread": {"Basic Type": "bread", "Sub-Types": "banana"},
-    "barbacoa": {"Basic Type": "beef", "Sub-Types": "barbacoa"},
-    "basil": {"Basic Type": "herb", "Sub-Types": "basil"},
-    "bell pepper": {"Basic Type": "pepper", "Sub-Types": "bell"},
-    "bran": {"Basic Type": "wheat bran"},
-    "bratwurst": {"Basic Type": "pork", "Sub-Types": "sausage"},
-    "breakfast bar": {"Basic Type": "bar"},
-    "brownie": {"Basic Type": "dessert", "Sub-Types": "brownie"},
-    "cake": {"Basic Type": "dessert", "Sub-Types": "cake"},
-    "cannoli cream": {"Basic Type": "filling", "Sub-Types": "cannoli"},
-    "cereal bar": {"Basic Type": "bar"},
-    "cheesecake": {"Basic Type": "dessert", "Sub-Types": "cheesecake"},
-    "chile": {"Basic Type": "pepper", "Sub-Types": "chile"},
-    "chorizo": {"Basic Type": "pork", "Sub-Types": "sausage"},
-    "clam juice": {"Basic Type": "juice", "Sub-Types": "clam"},
-    "clover sprout": {"Basic Type": "sprout", "Sub-Types": "clover"},
-    "club soda": {"Basic Type": "soda", "Sub-Types": "club"},
-    "cooking wine": {"Basic Type": "wine", "Sub-Types": "cooking"},
-    "cornish hen": {"Basic Type": "chicken", "Sub-Types": "cornish hen"},
-    "crème fraiche": {"Basic Type": "cream", "Sub-Types": "fraiche"},
-    "cupcake": {"Basic Type": "dessert", "Sub-Types": "cupcake"},
-    "danish": {"Basic Type": "pastry", "Sub-Types": "danish"},
-    "eggnog": {"Basic Type": "drink", "Sub-Types": "eggnog"},
-    "farina": {"Basic Type": "cereal", "Sub-Types": "farina"},
-    "frank": {"Basic Type": "beef", "Sub-Types": "frank"},
-    "frisee": {"Basic Type": "lettuce", "Sub-Types": "frisee"},
-    "fruit basket": {"Basic Type": "fruit", "Sub-Types": "variety"},
-    "hog": {"Basic Type": "pork", "Sub-Types": "hog"},
-    "honeydew": {"Basic Type": "melon", "Sub-Types": "honeydew"},
-    "iced tea": {"Basic Type": "tea", "Sub-Types": "iced"},
-    "jalepeno": {"Basic Type": "pepper", "Sub-Types": "jalepeno"},
-    "juice slushie": {"Basic Type": "juice", "Sub-Types": "slushie"},
-    "ketchup": {"Basic Type": "condiment", "Sub-Types": "ketchup"},
-    "marmalade": {"Basic Type": "spread", "Sub-Types": "marmalade"},
-    "marshmallow": {"Basic Type": "candy", "Sub-Types": "marshmallow"},
-    "miso": {"Basic Type": "paste", "Sub-Types": "miso"},
-    "mozzarella": {"Basic Type": "cheese", "Sub-Types": "mozzarella"},
-    "nori": {"Basic Type": "seaweed", "Sub-Types": "nori"},
-    "peppercorn": {"Basic Type": "spice", "Sub-Types": "peppercorn"},
-    "pesto": {"Basic Type": "sauce", "Sub-Types": "pesto"},
-    "pig feet": {"Basic Type": "pork", "Sub-Types": "feet"},
-    "pita": {"Basic Type": "bread", "Sub-Types": "pita"},
-    "potato yam": {"Basic Type": "potato", "Sub-Types": "yam"},
-    "prosciutto": {"Basic Type": "pork", "Sub-Types": "prosciutto"},
-    "pudding": {"Basic Type": "dessert", "Sub-Types": "pudding"},
-    "romaine": {"Basic Type": "lettuce", "Sub-Types": "romaine"},
-    "rotini": {"Basic Type": "pasta"},
-    "sauerkraut": {"Basic Type": "condiment", "Sub-Types": "sauerkraut"},
-    "seasoning tajin": {"Basic Type": "seasoning", "Sub-Types": "tajin"},
-    "slush": {"Basic Type": "juice", "Sub-Types": "slushie"},
-    "spam": {"Basic Type": "pork", "Sub-Types": "spam"},
-    "spring mix": {"Basic Type": "lettuce", "Sub-Types": "spring mix"},
-    "squash blossom": {"Basic Type": "squash", "Sub-Types": "blossom"},
-    "sunflower": {"Basic Type": "seed", "Sub-Types": "sunflower"},
-    "sweet potato": {"Basic Type": "potato", "Sub-Types": "sweet"},
-    "tostada": {"Basic Type": "shell", "Sub-Types": "tostada"},
-    "trail mix": {"Basic Type": "snack", "Sub-Types": "trail mix"},
-    "turnip greens": {"Basic Type": "turnip", "Sub-Types": "greens"},
-    "vegetable mix": {"Basic Type": "vegetable", "Sub-Types": "blend"},
-    "whipped cream": {"Basic Type": "topping", "Sub-Types": "whipped cream"},
-    "cantaloupe": {"Basic Type": "melon", "Sub-Types": "cantaloupe"},
-    "blend": {"Basic Type": "vegetable", "Sub-Types": "blend"},
-    "soy sauce": {"Basic Type": "condiment", "Sub-Types": "soy sauce"},
-    "chicken breast": {"Basic Type": "chicken", "Shape": "breast"},
-    "chicken tender": {"Basic Type": "chicken", "Shape": "cut"},
-    "chocolate": {"Basic Type": "candy", "Sub-Types": "chocolate"},
-    "chutney": {"Basic Type": "spread", "Sub-Types": "chutney"},
-    "corn nugget": {
-        "Basic Type": "appetizer",
-        "Sub-Types": "corn",
-        "Processing": "battered",
-    },
-    "gel": {"Basic Type": "topping", "Sub-Types": "icing"},
-    "ice cream cone": {"Basic Type": "cone", "Sub-Types": "ice cream"},
-    "pan coating": {"Basic Type": "oil", "Sub-Types": "spray"},
-    "paprika": {"Basic Type": "spice", "Sub-Types": "paprika"},
-    "salad mix": {"Basic Type": "lettuce", "Sub-Types": "blend"},
-    "toast": {"Basic Type": "bread", "Sub-Types": "toast"},
-    "turmeric": {"Basic Type": "spice", "Sub-Types": "turmeric"},
-    "orange blossom water": {"Basic Type": "water", "Sub-Types": "flavored"},
-    "gyro meat": {"Basic Type": "beef", "Sub-Types": ["lamb", "gyro"]},
-}
-
-# Add nuts to the mapping
-for nut in NUTS:
-    basic_type_mapping[nut] = {"Basic Type": "nut", "Sub-Types": nut}
-
-
 def basic_type_handler(row):
-    mapping = basic_type_mapping.get(row["Basic Type"], None)
+    mapping = BASIC_TYPE_MAPPING.get(row["Basic Type"], None)
 
     if mapping is None:
         return row
@@ -470,7 +371,7 @@ def handle_subtypes(row):
             if category == "fruit" and row["Food Product Category"] == "Fruit":
                 replacement_value = "blend"
             else:
-                replacement_value = REPLACEMENT_MAP.get(category)
+                replacement_value = SUBTYPE_REPLACEMENT_MAPPING.get(category)
 
             replaced = False
             for subtype in SUBTYPE_COLUMNS:
@@ -486,85 +387,13 @@ def handle_subtypes(row):
     return row
 
 
-# TODO: Config...
-product_type_mapping = {
-    "HAWAIIAN PUNCH CANS": {"Basic Type": "drink", "Sub-Types": ["fruit punch"]},
-    "Concentrate Chipotle S/O": {"Basic Type": "chipotle", "Sub-Types": ["chipotle"]},
-    "OREGANO AQUARESIN (7.5LB/PL)": {
-        "Basic Type": "spice",
-        "Sub-Types": ["oregano", "concentrate"],
-    },
-    "GRAIN, BLEND COUSCOUS TRI-COLOR QUINOA RESEALABLE BAG": {
-        "Basic Type": "quinoa",
-        "Sub-Types": ["couscous", "blend"],
-    },
-    "GREEN, MUST CHPD DMSTC IQF FZN": {
-        "Basic Type": "mustard green",
-        "Shape": "cut",
-        "Frozen": "frozen",
-    },
-    "Turkey Cranberry Snack Sticks": {"Basic Type": "turkey", "Sub-Types": ["jerky"]},
-    "TURKEY STICK SMOKEHOUSE": {"Basic Type": "turkey", "Sub-Types": ["jerky"]},
-    "APPETIZER, CHICKEN COCONUT SKEWER .85 OZ COOKED FROZEN KABOB": {
-        "Basic Type": "chicken",
-        "Sub-Types": ["kabob", "coconut"],
-        "Cooked/Cleaned": "cooked",
-        "Frozen": "frozen",
-    },
-    "APPETIZER, CHICKEN SKEWER .8 OZ PARCOOKED FROZEN": {
-        "Basic Type": "chicken",
-        "Sub-Types": ["kabob"],
-        "Cooked/Cleaned": "cooked",
-    },
-    "WG RAMEN MISO NOODLE KIT": {
-        "Basic Type": "meal kit",
-        "Sub-Types": ["noodle", "miso"],
-        "WG/WGR": "whole grain rich",
-    },
-    "EDAMAME SUCCOTASH BLEND": {
-        "Basic Type": "vegetable",
-        "Sub-Types": ["blend", "edamame", "succotash"],
-    },
-    "MIX CAKE BASE RICHCREME": {"Basic Type": "dessert", "Sub-Types": ["cake", "mix"]},
-    "QUICK OATS TUBES": {"Basic Type": "oat", "Sub-Types": ["quick"]},
-    "RICE PILAF CHICKEN W/ORZO": {
-        "Basic Type": "entree",
-        "Sub-Types": ["chicken", "rice pilaf"],
-    },
-    "GRAIN SPCLTY BULGHUR WHEAT PLF": {
-        "Basic Type": "bulgur",
-        "Sub-Types": ["wheat", "pilaf"],
-    },
-    "POLENTA, CAKE VEG FIRE RSTD (6455314)": {
-        "Basic Type": "entree",
-        "Sub-Types": ["polenta", "vegetable"],
-    },
-    "ROOT TARO MALANGA COCA": {"Basic Type": "taro"},
-    "SHORTBREAD STRAWBERRY": {
-        "Basic Type": "dessert",
-        "Sub-Types": ["shortbread", "strawberry"],
-    },
-    "SCOOBY DOO GRAHAM STIX IW": {
-        "Basic Type": "cracker",
-        "Sub-Types": ["graham"],
-        "WG/WGR": "whole grain rich",
-        "Packaging": "ss",
-    },
-    "BEAN, GOURMET MADAGASCAR BOURB (4648664)": {
-        "Basic Type": "spice",
-        "Sub-Types": ["vanilla bean"],
-    },
-}
-
-
-# TODO: maybe pass the config dictionary here?
 def clean_name(row):
     # Note: Need to add "Sub-Types" to the row first thing
     row["Sub-Types"] = OrderedSet()
 
     # Handle product type edge cases — short-circuit if a mapping exists
-    if row["Product Type"] in product_type_mapping:
-        mapping = product_type_mapping[row["Product Type"]]
+    if row["Product Type"] in PRODUCT_TYPE_MAPPING:
+        mapping = PRODUCT_TYPE_MAPPING[row["Product Type"]]
         for key, value in mapping.items():
             if key != "Sub-Types":
                 row[key] = value
@@ -589,16 +418,16 @@ def clean_name(row):
         token, row = token_handler(token, row)
         if token is None:
             continue  # token_handler returns None for invalid tags so skip
-        # TODO: Create some sort of misc_tags_handler function
+        # If token is allowed in a non-subtype column, put it there
+        # Otherwise, add to subtypes
         if token in NON_SUBTYPE_TAGS_FPC[food_product_category]["All"]:
             matched = False
             # Note: Skip "Basic Type" column since it's already set
-            for col in NORMALIZED_COLUMNS[1:]:
-                # TODO: fix the column setup here so we don't have to skip subtype columns
-                if "Sub-Type" in col:
-                    continue
+            for col in NON_SUBTYPE_COLUMNS:
                 if token in NON_SUBTYPE_TAGS_FPC[food_product_category][col]:
-                    # TODO: Handle duplicates in a column
+                    # Duplicate entry for column, add to subtypes
+                    if row[col] is not None:
+                        break
                     row[col] = token
                     matched = True
                     break
@@ -616,15 +445,6 @@ def clean_name(row):
     row_normalized[row_normalized.notna() & row_normalized.duplicated()] = None
     row[NORMALIZED_COLUMNS] = row_normalized
     return row
-
-
-# TODO: This should go in config
-REPLACEMENT_MAP = {
-    "fruit": "fruit",
-    "cheese": "blend",
-    "vegetable": "blend",
-    "melon": "variety",
-}
 
 
 def get_category(subtype):
@@ -684,15 +504,14 @@ def process_data(df, **options):
         lambda row: ", ".join(row[NORMALIZED_COLUMNS].dropna().astype(str)),
         axis=1,
     )
-    # TODO: do we want more here?
+    # TODO: do we want more here? Probably should add "Product Type"
     df_diff = df["Product Name"].compare(df_normalized["Normalized Name"])
     df_diff = df_diff.sort_values(by="self")
 
     # Reset index for future sorting
     df_normalized = df_normalized.reset_index(drop=True)
 
-    # TODO: Clarify this part...kind of confusing
-    # Save unallocated tags for manual review
+    # If there are more subtype tags than allowed in the subtype columns, they are saved here for review
     print("Creating misc file...")
     misc = df_normalized[df_normalized["Misc"].progress_apply(lambda x: x != [])][
         [
@@ -757,7 +576,6 @@ def main(argv):
     diff_file = run_folder_path / "normalized_name_diff.csv"
     df_diff.to_csv(diff_file, index=False)
 
-    # TODO: maybe this should get returned from the pipeline also?
     # Combine counts for each column
     counts_dict = {}
     for col in df_processed.columns:
