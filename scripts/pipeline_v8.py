@@ -582,6 +582,8 @@ def clean_name(row):
         return row
 
     food_product_category = row["Food Product Category"]
+    if food_product_category == "Meals":
+        breakpoint()
     product_name_split = row["Product Name"].split(",")
     row["Misc"] = []
 

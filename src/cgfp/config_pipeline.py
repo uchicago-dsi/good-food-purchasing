@@ -1,7 +1,5 @@
 from datetime import datetime
-import os
 from pathlib import Path
-
 
 script_dir = Path(__file__).resolve().parent
 project_root = script_dir.parent.parent
