@@ -2,7 +2,7 @@ from datetime import datetime
 from pathlib import Path
 
 script_dir = Path(__file__).resolve().parent
-project_root = script_dir.parent.parent
+project_root = script_dir.parent.parent.parent
 DATA_FOLDER = project_root / "data"
 RAW_FOLDER = DATA_FOLDER / "raw"
 CLEAN_FOLDER = DATA_FOLDER / "clean"

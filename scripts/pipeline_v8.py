@@ -1,7 +1,6 @@
 import pandas as pd
 import argparse
 from ordered_set import OrderedSet
-from pathlib import Path
 from collections import defaultdict
 from tqdm import tqdm
 
@@ -20,12 +19,7 @@ from cgfp.constants.tag_sets import (
     ALL_FLAVORS,
     SUBTYPE_REPLACEMENT_MAPPING,
 )
-from cgfp.constants.misc_tags import NON_SUBTYPE_TAGS_FPC
-from cgfp.constants.token_map import TOKEN_MAP_DICT
-from cgfp.constants.skip_tokens import SKIP_TOKENS
-from cgfp.constants.product_type_mapping import PRODUCT_TYPE_MAPPING
 from cgfp.constants.pipeline import (
-    CLEAN_FOLDER,
     RUN_FOLDER,
     GROUP_COLUMNS,
     SUBTYPE_COLUMNS,
@@ -33,6 +27,10 @@ from cgfp.constants.pipeline import (
     NORMALIZED_COLUMNS,
     COLUMNS_ORDER,
 )
+from cgfp.constants.misc_tags import NON_SUBTYPE_TAGS_FPC
+from cgfp.constants.token_map import TOKEN_MAP_DICT
+from cgfp.constants.skip_tokens import SKIP_TOKENS
+from cgfp.constants.product_type_mapping import PRODUCT_TYPE_MAPPING
 from cgfp.constants.basic_type_mapping import BASIC_TYPE_MAPPING
 from cgfp.util import load_to_pd, save_pd_to_csv
 
@@ -569,11 +567,7 @@ def main(argv):
         output_file="misc.csv",
     )
 
-    # TODO: clean this up and maybe use Chris's save setup
-    run_folder_path = Path(CLEAN_FOLDER) / RUN_FOLDER
-    run_folder_path.mkdir(parents=True, exist_ok=True)
-
-    diff_file = run_folder_path / "normalized_name_diff.csv"
+    diff_file = RUN_FOLDER / "normalized_name_diff.csv"
     df_diff.to_csv(diff_file, index=False)
 
     # Combine counts for each column
@@ -606,7 +600,7 @@ def main(argv):
         elif column != "Sub-Types":
             sorted_counts_dict[column] = counts_dict[column]
 
-    counts_file = run_folder_path / "value_counts.xlsx"
+    counts_file = RUN_FOLDER / "value_counts.xlsx"
 
     # Write the counts to an Excel file
     with pd.ExcelWriter(counts_file) as writer:
