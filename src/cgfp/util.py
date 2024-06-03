@@ -3,7 +3,7 @@ import os
 
 import pandas as pd
 
-from cgfp.config_pipeline import RUN_FOLDER, CLEAN_FILE_PREFIX
+from cgfp.constants.pipeline import RUN_FOLDER, CLEAN_FILE_PREFIX
 
 
 # Files

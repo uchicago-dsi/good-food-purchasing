@@ -1,15 +1,10 @@
 import pandas as pd
-import os
 import argparse
 from ordered_set import OrderedSet
-from pathlib import Path
 from collections import defaultdict
+from tqdm import tqdm
 
 from cgfp.constants.tag_sets import (
-    CATEGORY_TAGS,
-    GROUP_TAGS,
-    TOKEN_MAP_DICT,
-    SKIP_TOKENS,
     FLAVORS,
     FRUITS,
     CHOCOLATE,
@@ -21,61 +16,25 @@ from cgfp.constants.tag_sets import (
     VEGETABLES,
     MELON_TYPES,
     SKIP_SHAPE,
+    ALL_FLAVORS,
+    SUBTYPE_REPLACEMENT_MAPPING,
 )
-
-from cgfp.config_pipeline import (
-    RAW_FOLDER,
-    CLEAN_FOLDER,
+from cgfp.constants.pipeline import (
     RUN_FOLDER,
-    NORMALIZED_COLUMNS,  # TODO: ...why doesn't this include "Basic Type"?
     GROUP_COLUMNS,
+    SUBTYPE_COLUMNS,
+    NON_SUBTYPE_COLUMNS,
+    NORMALIZED_COLUMNS,
     COLUMNS_ORDER,
 )
-
-ALL_FLAVORS = FLAVORS | FRUITS
-
+from cgfp.constants.misc_tags import NON_SUBTYPE_TAGS_FPC
+from cgfp.constants.token_map import TOKEN_MAP_DICT
+from cgfp.constants.skip_tokens import SKIP_TOKENS
+from cgfp.constants.product_type_mapping import PRODUCT_TYPE_MAPPING
+from cgfp.constants.basic_type_mapping import BASIC_TYPE_MAPPING
 from cgfp.util import load_to_pd, save_pd_to_csv
 
-from cgfp.constants.tag_sets import (
-    CATEGORY_TAGS,
-    GROUP_TAGS,
-    TOKEN_MAP_DICT,
-    SKIP_TOKENS,
-    FLAVORS,
-    FRUITS,
-    CHOCOLATE,
-    SHAPE_EXTRAS,
-    SKIP_FLAVORS,
-    FLAVORED_BASIC_TYPES,
-    NUTS,
-    CHEESE_TYPES,
-    VEGETABLES,
-    MELON_TYPES,
-    SKIP_SHAPE,
-)
-
-from cgfp.config_pipeline import (
-    RAW_FOLDER,
-    CLEAN_FOLDER,
-    RUN_FOLDER,
-    NORMALIZED_COLUMNS,
-    GROUP_COLUMNS,
-    COLUMNS_ORDER,
-)
-
-ALL_FLAVORS = FLAVORS | FRUITS
-
-
-# TODO: maybe this goes somewhere else
-def pool_tags(tags_dict):
-    for top_level in tags_dict.keys():
-        tags_dict[top_level]["All"] = set.union(*tags_dict[top_level].values())
-    return tags_dict
-
-
-GROUP_TAGS = pool_tags(GROUP_TAGS)
-CATEGORY_TAGS = pool_tags(CATEGORY_TAGS)
-
+tqdm.pandas()
 
 DEFAULT_INPUT_FILE = "CONFIDENTIAL_CGFP bulk data_073123.xlsx"
 DEFAULT_MISC_FILE = "misc.csv"
@@ -112,17 +71,8 @@ def clean_df(df):
     - Remove null and short (usually a mistake) Product Names
     - Remove non-food items
     """
-    # TODO: put this in config
     # TODO: Do we ever use "Primary Food Product Group?
-    df = df[
-        [
-            "Food Product Category",
-            "Primary Food Product Category",
-            "Product Type",
-            "Product Name",
-            "Food Product Group",
-        ]
-    ].copy()
+    df = df[GROUP_COLUMNS].copy()
 
     # Add normalized name columns
     df[NORMALIZED_COLUMNS + ["Misc"]] = None
@@ -133,7 +83,6 @@ def clean_df(df):
         & (df["Food Product Group"] != "Non-Food")
     ].reset_index(drop=True)
 
-    # TODO: Maybe this goes in config?
     # Handle typos in Primary Food Product Category
     category_typos = {
         "Roots & Tuber": "Roots & Tubers",
@@ -143,7 +92,7 @@ def clean_df(df):
     )
 
     # Replace "Whole/Minimally Processed" with the value from "Food Product Category"
-    df["Primary Food Product Category"] = df.apply(
+    df["Primary Food Product Category"] = df.progress_apply(
         lambda row: (
             row["Food Product Category"]
             if row["Primary Food Product Category"] == "Whole/Minimally Processed"
@@ -166,8 +115,8 @@ def token_handler(token, row):
         row["Basic Type"],
         row["Sub-Type 1"],
     )
-    # TODO: ...should this actually be here??
-    # These weird rename rules need to happen before the token handler in order to change the basic type
+
+    # Handle edge cases where Basic Type should change to Sub-Type
     if (basic_type == "snack" and token == "bar") or (
         basic_type == "herb" and token == "watercress"
     ):
@@ -262,6 +211,45 @@ def token_handler(token, row):
     if basic_type in SKIP_SHAPE and token in SHAPE_EXTRAS:
         return None, row
 
+    ### EDGE CASES FOR NON-SUBTYPE COLUMNS ###
+
+    if token == "grated" and food_product_category != "Cheese":
+        return "cut", row
+
+    if token == "mix" and food_product_group == "Beverages":
+        return "concentrate", row
+
+    if token == "taco meat":
+        row["Shape"] = "crumble"
+        row["Processing"] = "seasoned"
+        return None, row
+
+    if token == "stick" and food_product_group in ["Produce", "Seafood"]:
+        return "cut", row
+
+    if token == "stick" and food_product_category in ["Cheese", "Meat"]:
+        return "ss", row
+
+    if token == "shredded" and food_product_group == "Meat":
+        row["Shape"] = "cut"
+        row["Cooked/Cleaned"] = "cooked"
+        return None, row
+    elif token == "shredded":
+        return "cut", row
+
+    if token == "powder" and food_product_group == "Beverages":
+        return "concentrate", row
+
+    if token == "popper":
+        row = add_subtypes(row, "cheese")
+        row["Processing"] = "breaded"
+        return None, row
+
+    if token == "popcorn" and food_product_category in ["Seafood", "Chicken"]:
+        row["Shape"] = "cut"
+        row["Processing"] = "breaded"
+        return None, row
+
     ### EDGE CASES FOR RENAMING TOKENS ###
 
     # Map nut tokens to "nut" for some basic types
@@ -297,99 +285,58 @@ def clean_token(token, token_map_dict=TOKEN_MAP_DICT):
     return cleaned_token
 
 
-# TODO: Move these mappings to config
-# Note: This is a mapping of Basic Type to Basic Type & Sub-Type 1
-basic_type_mapping = {
-    "sea salt": ("salt", None),
-    "almond": ("nut", "almond"),
-    "baba ganoush": ("spread", "baba ganoush"),
-    "baklava": ("pastry", "baklava"),
-    "banana bread": ("bread", "banana"),
-    "barbacoa": ("beef", "barbacoa"),
-    "basil": ("herb", "basil"),
-    "bell pepper": ("pepper", "bell"),
-    "bran": ("wheat bran", None),
-    "bratwurst": ("pork", "sausage"),
-    "breakfast bar": ("bar", None),
-    "brownie": ("dessert", "brownie"),
-    "cake": ("dessert", "cake"),
-    "cannoli cream": ("filling", "cannoli"),
-    "cereal bar": ("bar", None),
-    "cheesecake": ("dessert", "cheesecake"),
-    "chile": ("pepper", "chile"),
-    "chorizo": ("pork", "sausage"),
-    "clam juice": ("juice", "clam"),
-    "clover sprout": ("sprout", "clover"),
-    "club soda": ("soda", "club"),
-    "cooking wine": ("wine", "cooking"),
-    "cornish hen": ("chicken", "cornish hen"),
-    "crème fraiche": ("cream", "fraiche"),
-    "cupcake": ("dessert", "cupcake"),
-    "danish": ("pastry", "danish"),
-    "eggnog": ("drink", "eggnog"),
-    "farina": ("cereal", "farina"),
-    "frank": ("beef", "frank"),
-    "frisee": ("lettuce", "frisee"),
-    "fruit basket": ("fruit", "variety"),
-    "hog": ("pork", "hog"),
-    "honeydew": ("melon", "honeydew"),
-    "iced tea": ("tea", "iced"),
-    "jalepeno": ("pepper", "jalepeno"),
-    "juice slushie": ("juice", "slushie"),
-    "ketchup": ("condiment", "ketchup"),
-    "marmalade": ("spread", "marmalade"),
-    "marshmallow": ("candy", "marshmallow"),
-    "miso": ("paste", "miso"),
-    "mozzarella": ("cheese", "mozzarella"),
-    "nori": ("seaweed", "nori"),
-    "peppercorn": ("spice", "peppercorn"),
-    "pesto": ("sauce", "pesto"),
-    "pig feet": ("pork", "feet"),
-    "pita": ("bread", "pita"),
-    "potato yam": ("potato", "yam"),
-    "prosciutto": ("pork", "prosciutto"),
-    "pudding": ("dessert", "pudding"),
-    "romaine": ("lettuce", "romaine"),
-    "rotini": ("pasta", None),
-    "sauerkraut": ("condiment", "sauerkraut"),
-    "seasoning tajin": ("seasoning", "tajin"),
-    "slush": ("juice", "slushie"),
-    "spam": ("pork", "spam"),
-    "spring mix": ("lettuce", "spring mix"),
-    "squash blossom": ("squash", "blossom"),
-    "sunflower": ("seed", "sunflower"),
-    "sweet potato": ("potato", "sweet"),
-    "tostada": ("shell", "tostada"),
-    "trail mix": ("snack", "trail mix"),
-    "turnip greens": ("turnip", "greens"),
-    "vegetable mix": ("vegetable", "blend"),
-    "whipped cream": ("topping", "whipped cream"),
-    "cantaloupe": ("melon", "cantaloupe"),
-}
-
-for nut in NUTS:
-    basic_type_mapping[nut] = ("nut", nut)
-
-
 def basic_type_handler(row):
-    mapping = basic_type_mapping.get(row["Basic Type"], (row["Basic Type"], None))
+    mapping = BASIC_TYPE_MAPPING.get(row["Basic Type"], None)
 
-    basic_type, subtype = mapping
-    row["Basic Type"] = basic_type
+    if mapping is None:
+        return row
 
-    if subtype:
-        row = add_subtype(row, subtype, first=True)
+    for key, value in mapping.items():
+        if key != "Sub-Types":
+            row[key] = value
 
+    # TODO: Ok yeah need to update the row and also the subtypes
+    # Maybe make a separate "update_subtypes" function here?
+    # Or is this ok?
+    if "Sub-Types" in mapping:
+        row = add_subtypes(row, mapping["Sub-Types"], first=True)
     return row
 
 
-def add_subtype(row, token, first=False):
+def add_subtypes(row, tokens, first=False):
+    # Ensure tokens is a list
+    if not isinstance(tokens, list):
+        tokens = [tokens]
+
+    # Note: Reorder the set with the new token(s) first if 'first' is True
     if first:
-        subtypes = OrderedSet([token])
-        subtypes.update(row["Sub-Types"])
+        subtypes = OrderedSet(tokens)
+        subtypes.update(row.get("Sub-Types", []))
         row["Sub-Types"] = subtypes
     else:
-        row["Sub-Types"].add(token)
+        subtypes = OrderedSet(row.get("Sub-Types", []))
+        subtypes.update(tokens)
+        row["Sub-Types"] = subtypes
+
+    row = update_subtypes(row)
+    return row
+
+
+def remove_subtypes(row, tokens):
+    if not isinstance(tokens, list):
+        tokens = [tokens]
+
+    subtypes = OrderedSet(row.get("Sub-Types", []))
+
+    for token in tokens:
+        subtypes.discard(token)
+
+    row["Sub-Types"] = subtypes
+    row = update_subtypes(row)
+    return row
+
+
+def update_subtypes(row):
     # TODO: maybe you can zip this with the sub-type columns?
     for i, subtype in enumerate(row["Sub-Types"]):
         if i == 0:
@@ -399,6 +346,7 @@ def add_subtype(row, token, first=False):
         else:
             # Not enough room!
             break
+    row["Misc"] = list(row["Sub-Types"])[2:] if len(row["Sub-Types"]) > 2 else []
     return row
 
 
@@ -421,7 +369,7 @@ def handle_subtypes(row):
             if category == "fruit" and row["Food Product Category"] == "Fruit":
                 replacement_value = "blend"
             else:
-                replacement_value = REPLACEMENT_MAP.get(category)
+                replacement_value = SUBTYPE_REPLACEMENT_MAPPING.get(category)
 
             replaced = False
             for subtype in SUBTYPE_COLUMNS:
@@ -433,67 +381,68 @@ def handle_subtypes(row):
                         replaced = True
                     else:
                         row[subtype] = None
-    row["Misc"] = list(row["Sub-Types"])[2:] if len(row["Sub-Types"]) > 2 else []
+    row = update_subtypes(row)
     return row
 
 
-def clean_name(row, group_tags_dict=GROUP_TAGS, category_tags_dict=CATEGORY_TAGS):
-    food_product_group, food_product_category = (
-        row["Food Product Group"],
-        row["Food Product Category"],
-    )
-    name_split = row["Product Name"].split(",")
-    basic_type = clean_token(name_split[0])
-    row["Basic Type"] = basic_type
+def clean_name(row):
+    # Note: Need to add "Sub-Types" to the row first thing
     row["Sub-Types"] = OrderedSet()
+
+    # Handle product type edge cases — short-circuit if a mapping exists
+    if row["Product Type"] in PRODUCT_TYPE_MAPPING:
+        mapping = PRODUCT_TYPE_MAPPING[row["Product Type"]]
+        for key, value in mapping.items():
+            if key != "Sub-Types":
+                row[key] = value
+        subtypes = mapping.get("Sub-Types", [])
+        row = add_subtypes(row, subtypes)
+        row = update_subtypes(row)
+        return row
+
+    food_product_category = row["Food Product Category"]
+    # Tags are allowed based on primary food product category for meals
+    if food_product_category == "Meals":
+        food_product_category == row["Primary Food Product Category"]
+    product_name_split = row["Product Name"].split(",")
     row["Misc"] = []
 
+    basic_type = clean_token(product_name_split[0])
+    row["Basic Type"] = basic_type
     row = basic_type_handler(row)
 
-    for token in name_split[1:]:
+    for token in product_name_split[1:]:
         token = clean_token(token)
         token, row = token_handler(token, row)
         if token is None:
             continue  # token_handler returns None for invalid tags so skip
-        # TODO: maybe pre-combine the tags?
-        # If token is in pre-allowed tags, enter tagging loop
-        if token in group_tags_dict.get(food_product_group, {}).get(
-            "All", []
-        ) or token in category_tags_dict.get(food_product_category, {}).get("All", []):
-            # TODO: Create some sort of tags_handler function
+        # If token is allowed in a non-subtype column, put it there
+        # Otherwise, add to subtypes
+        if token in NON_SUBTYPE_TAGS_FPC[food_product_category]["All"]:
             matched = False
-            for col in NORMALIZED_COLUMNS:
-                # TODO: This is where the logic for categories is broken
-                # Should group and category tags be separate or not really?
-                # Find the category that the token is in and add to normalized_name
-                if col in group_tags_dict[food_product_group]:
-                    if token in group_tags_dict[food_product_group][col]:
-                        row[col] = token
-                        matched = True
+            # Note: Skip "Basic Type" column since it's already set
+            for col in NON_SUBTYPE_COLUMNS:
+                if token in NON_SUBTYPE_TAGS_FPC[food_product_category][col]:
+                    # Duplicate entry for column, add to subtypes
+                    if row[col] is not None:
                         break
-                if col in category_tags_dict.get(food_product_category, {}):
-                    if token in category_tags_dict[food_product_category][col]:
-                        row[col] = token
-                        matched = True
-                        break
+                    row[col] = token
+                    matched = True
+                    break
             if matched:
                 continue
-        row = add_subtype(row, token)  # Unmatched tokens are subtypes
+        row = add_subtypes(row, token)  # Unmatched tokens are subtypes
 
-    # split subtypes into columns and store extra tokens in "Misc"
+    # Apply subtype rules for specific groups and categories
     row = handle_subtypes(row)
-    # handle edge cases not captured by other rules
+    # Handle edge cases not captured by other rules
     row = postprocess_data(row)
+
+    # Deduplicate column values
+    row_normalized = row[NORMALIZED_COLUMNS]
+    row_normalized[row_normalized.notna() & row_normalized.duplicated()] = None
+    row[NORMALIZED_COLUMNS] = row_normalized
     return row
-
-
-# TODO: This should go in config
-REPLACEMENT_MAP = {
-    "fruit": "fruit",
-    "cheese": "blend",
-    "vegetable": "blend",
-    "melon": "variety",
-}
 
 
 def get_category(subtype):
@@ -509,13 +458,16 @@ def get_category(subtype):
     return None
 
 
-# TODO: Put this in config
-SUBTYPE_COLUMNS = ["Sub-Type 1", "Sub-Type 2"]
+def clear_row(row):
+    # Note: Don't clear Basic Type
+    for col in NORMALIZED_COLUMNS[1:]:
+        row[col] = None
+    row["Sub-Types"] = OrderedSet()
+    row["Misc"] = []
+    return row
 
 
 def postprocess_data(row):
-    ### Handle edge cases for specific product types ###
-
     ### Handle edge cases for mislabeled data ###
     # "spice" is always "Condiments & Snacks"
     if (
@@ -526,36 +478,40 @@ def postprocess_data(row):
         row["Food Product Category"] = "Condiments & Snacks"
         row["Primary Product Category"] = "Condiments & Snacks"
 
+    if row["Basic Type"] == "beverage" and row["Sub-Type 1"] == "energy drink":
+        row["Basic Type"] = "energy drink"
+        # Note: Subtypes are finicky so we need to actually remove them with the remove_subtypes function
+        row = remove_subtypes(row, "energy drink")
+        return row
+
     return row
 
 
 def process_data(df, **options):
-    # isolates data processing from IO without changing outputs
-
     # Filter missing data and non-food items, handle typos in Category and Group columns
     df = clean_df(df)
 
     # Create normalized name
-    df_normalized = df.apply(clean_name, axis=1)
+    print("Normalizing names...")
+    df_normalized = df.progress_apply(clean_name, axis=1)
 
     # Perform diff on "Normalized Name" column with "Product Name" column from df_loaded
     # Save a diff on the "Product Name" column with the edited output
-    df_normalized["Normalized Name"] = df_normalized.apply(
-        lambda row: ", ".join(
-            row[["Basic Type"] + NORMALIZED_COLUMNS].dropna().astype(str)
-        ),
+    print("Creating diff file...")
+    df_normalized["Normalized Name"] = df_normalized.progress_apply(
+        lambda row: ", ".join(row[NORMALIZED_COLUMNS].dropna().astype(str)),
         axis=1,
     )
-    # TODO: do we want more here?
+    # TODO: do we want more here? Probably should add "Product Type"
     df_diff = df["Product Name"].compare(df_normalized["Normalized Name"])
     df_diff = df_diff.sort_values(by="self")
 
     # Reset index for future sorting
     df_normalized = df_normalized.reset_index(drop=True)
 
-    # TODO: Clarify this part...kind of confusing
-    # Save unallocated tags for manual review
-    misc = df_normalized[df_normalized["Misc"].apply(lambda x: x != [])][
+    # If there are more subtype tags than allowed in the subtype columns, they are saved here for review
+    print("Creating misc file...")
+    misc = df_normalized[df_normalized["Misc"].progress_apply(lambda x: x != [])][
         [
             "Product Type",
             "Product Name",
@@ -596,11 +552,13 @@ def main(argv):
     options = vars(parser.parse_args(argv))
 
     # processing
+    print("Loading data...")
     df_loaded = load_to_pd(**options)
     df_processed, misc, df_diff = process_data(df_loaded, **options)
 
     # output
     # TODO: I...don't get this
+    print("Saving files...")
     save_pd_to_csv(df_processed, **options)
     save_pd_to_csv(
         misc,
@@ -609,14 +567,9 @@ def main(argv):
         output_file="misc.csv",
     )
 
-    # TODO: clean this up and maybe use Chris's save setup
-    run_folder_path = Path(CLEAN_FOLDER) / RUN_FOLDER
-    run_folder_path.mkdir(parents=True, exist_ok=True)
-
-    diff_file = run_folder_path / "normalized_name_diff.csv"
+    diff_file = RUN_FOLDER / "normalized_name_diff.csv"
     df_diff.to_csv(diff_file, index=False)
 
-    # TODO: maybe this should get returned from the pipeline also?
     # Combine counts for each column
     counts_dict = {}
     for col in df_processed.columns:
@@ -647,7 +600,7 @@ def main(argv):
         elif column != "Sub-Types":
             sorted_counts_dict[column] = counts_dict[column]
 
-    counts_file = run_folder_path / "value_counts.xlsx"
+    counts_file = RUN_FOLDER / "value_counts.xlsx"
 
     # Write the counts to an Excel file
     with pd.ExcelWriter(counts_file) as writer:

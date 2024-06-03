@@ -2,7 +2,7 @@ from datetime import datetime
 from pathlib import Path
 
 script_dir = Path(__file__).resolve().parent
-project_root = script_dir.parent.parent
+project_root = script_dir.parent.parent.parent
 DATA_FOLDER = project_root / "data"
 RAW_FOLDER = DATA_FOLDER / "raw"
 CLEAN_FOLDER = DATA_FOLDER / "clean"
@@ -25,10 +25,8 @@ GROUP_COLUMNS = [
 ]
 
 # TODO: Sub type 3?
-# TODO: Why did I exclude basic type from here?
-NORMALIZED_COLUMNS = [
-    "Sub-Type 1",
-    "Sub-Type 2",
+SUBTYPE_COLUMNS = ["Sub-Type 1", "Sub-Type 2"]
+NON_SUBTYPE_COLUMNS = [
     "Flavor/Cut",
     "Shape",
     "Skin",
@@ -43,15 +41,12 @@ NORMALIZED_COLUMNS = [
     "Packaging",
     "Commodity",
 ]
+NORMALIZED_COLUMNS = ["Basic Type"] + SUBTYPE_COLUMNS + NON_SUBTYPE_COLUMNS
 
-COLUMNS_ORDER = (
-    [
-        "Product Type",
-        "Food Product Group",
-        "Food Product Category",
-        "Primary Food Product Category",
-        "Product Name",
-    ]
-    + ["Basic Type"]
-    + NORMALIZED_COLUMNS
-)
+COLUMNS_ORDER = [
+    "Product Type",
+    "Food Product Group",
+    "Food Product Category",
+    "Primary Food Product Category",
+    "Product Name",
+] + NORMALIZED_COLUMNS

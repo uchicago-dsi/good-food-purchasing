@@ -297,99 +297,150 @@ def clean_token(token, token_map_dict=TOKEN_MAP_DICT):
     return cleaned_token
 
 
-# TODO: Move these mappings to config
-# Note: This is a mapping of Basic Type to Basic Type & Sub-Type 1
+# TODO: config
 basic_type_mapping = {
-    "sea salt": ("salt", None),
-    "almond": ("nut", "almond"),
-    "baba ganoush": ("spread", "baba ganoush"),
-    "baklava": ("pastry", "baklava"),
-    "banana bread": ("bread", "banana"),
-    "barbacoa": ("beef", "barbacoa"),
-    "basil": ("herb", "basil"),
-    "bell pepper": ("pepper", "bell"),
-    "bran": ("wheat bran", None),
-    "bratwurst": ("pork", "sausage"),
-    "breakfast bar": ("bar", None),
-    "brownie": ("dessert", "brownie"),
-    "cake": ("dessert", "cake"),
-    "cannoli cream": ("filling", "cannoli"),
-    "cereal bar": ("bar", None),
-    "cheesecake": ("dessert", "cheesecake"),
-    "chile": ("pepper", "chile"),
-    "chorizo": ("pork", "sausage"),
-    "clam juice": ("juice", "clam"),
-    "clover sprout": ("sprout", "clover"),
-    "club soda": ("soda", "club"),
-    "cooking wine": ("wine", "cooking"),
-    "cornish hen": ("chicken", "cornish hen"),
-    "crème fraiche": ("cream", "fraiche"),
-    "cupcake": ("dessert", "cupcake"),
-    "danish": ("pastry", "danish"),
-    "eggnog": ("drink", "eggnog"),
-    "farina": ("cereal", "farina"),
-    "frank": ("beef", "frank"),
-    "frisee": ("lettuce", "frisee"),
-    "fruit basket": ("fruit", "variety"),
-    "hog": ("pork", "hog"),
-    "honeydew": ("melon", "honeydew"),
-    "iced tea": ("tea", "iced"),
-    "jalepeno": ("pepper", "jalepeno"),
-    "juice slushie": ("juice", "slushie"),
-    "ketchup": ("condiment", "ketchup"),
-    "marmalade": ("spread", "marmalade"),
-    "marshmallow": ("candy", "marshmallow"),
-    "miso": ("paste", "miso"),
-    "mozzarella": ("cheese", "mozzarella"),
-    "nori": ("seaweed", "nori"),
-    "peppercorn": ("spice", "peppercorn"),
-    "pesto": ("sauce", "pesto"),
-    "pig feet": ("pork", "feet"),
-    "pita": ("bread", "pita"),
-    "potato yam": ("potato", "yam"),
-    "prosciutto": ("pork", "prosciutto"),
-    "pudding": ("dessert", "pudding"),
-    "romaine": ("lettuce", "romaine"),
-    "rotini": ("pasta", None),
-    "sauerkraut": ("condiment", "sauerkraut"),
-    "seasoning tajin": ("seasoning", "tajin"),
-    "slush": ("juice", "slushie"),
-    "spam": ("pork", "spam"),
-    "spring mix": ("lettuce", "spring mix"),
-    "squash blossom": ("squash", "blossom"),
-    "sunflower": ("seed", "sunflower"),
-    "sweet potato": ("potato", "sweet"),
-    "tostada": ("shell", "tostada"),
-    "trail mix": ("snack", "trail mix"),
-    "turnip greens": ("turnip", "greens"),
-    "vegetable mix": ("vegetable", "blend"),
-    "whipped cream": ("topping", "whipped cream"),
-    "cantaloupe": ("melon", "cantaloupe"),
+    "sea salt": {"Basic Type": "salt"},
+    "almond": {"Basic Type": "nut", "Sub-Types": "almond"},
+    "baba ganoush": {"Basic Type": "spread", "Sub-Types": "baba ganoush"},
+    "baklava": {"Basic Type": "pastry", "Sub-Types": "baklava"},
+    "banana bread": {"Basic Type": "bread", "Sub-Types": "banana"},
+    "barbacoa": {"Basic Type": "beef", "Sub-Types": "barbacoa"},
+    "basil": {"Basic Type": "herb", "Sub-Types": "basil"},
+    "bell pepper": {"Basic Type": "pepper", "Sub-Types": "bell"},
+    "bran": {"Basic Type": "wheat bran"},
+    "bratwurst": {"Basic Type": "pork", "Sub-Types": "sausage"},
+    "breakfast bar": {"Basic Type": "bar"},
+    "brownie": {"Basic Type": "dessert", "Sub-Types": "brownie"},
+    "cake": {"Basic Type": "dessert", "Sub-Types": "cake"},
+    "cannoli cream": {"Basic Type": "filling", "Sub-Types": "cannoli"},
+    "cereal bar": {"Basic Type": "bar"},
+    "cheesecake": {"Basic Type": "dessert", "Sub-Types": "cheesecake"},
+    "chile": {"Basic Type": "pepper", "Sub-Types": "chile"},
+    "chorizo": {"Basic Type": "pork", "Sub-Types": "sausage"},
+    "clam juice": {"Basic Type": "juice", "Sub-Types": "clam"},
+    "clover sprout": {"Basic Type": "sprout", "Sub-Types": "clover"},
+    "club soda": {"Basic Type": "soda", "Sub-Types": "club"},
+    "cooking wine": {"Basic Type": "wine", "Sub-Types": "cooking"},
+    "cornish hen": {"Basic Type": "chicken", "Sub-Types": "cornish hen"},
+    "crème fraiche": {"Basic Type": "cream", "Sub-Types": "fraiche"},
+    "cupcake": {"Basic Type": "dessert", "Sub-Types": "cupcake"},
+    "danish": {"Basic Type": "pastry", "Sub-Types": "danish"},
+    "eggnog": {"Basic Type": "drink", "Sub-Types": "eggnog"},
+    "farina": {"Basic Type": "cereal", "Sub-Types": "farina"},
+    "frank": {"Basic Type": "beef", "Sub-Types": "frank"},
+    "frisee": {"Basic Type": "lettuce", "Sub-Types": "frisee"},
+    "fruit basket": {"Basic Type": "fruit", "Sub-Types": "variety"},
+    "hog": {"Basic Type": "pork", "Sub-Types": "hog"},
+    "honeydew": {"Basic Type": "melon", "Sub-Types": "honeydew"},
+    "iced tea": {"Basic Type": "tea", "Sub-Types": "iced"},
+    "jalepeno": {"Basic Type": "pepper", "Sub-Types": "jalepeno"},
+    "juice slushie": {"Basic Type": "juice", "Sub-Types": "slushie"},
+    "ketchup": {"Basic Type": "condiment", "Sub-Types": "ketchup"},
+    "marmalade": {"Basic Type": "spread", "Sub-Types": "marmalade"},
+    "marshmallow": {"Basic Type": "candy", "Sub-Types": "marshmallow"},
+    "miso": {"Basic Type": "paste", "Sub-Types": "miso"},
+    "mozzarella": {"Basic Type": "cheese", "Sub-Types": "mozzarella"},
+    "nori": {"Basic Type": "seaweed", "Sub-Types": "nori"},
+    "peppercorn": {"Basic Type": "spice", "Sub-Types": "peppercorn"},
+    "pesto": {"Basic Type": "sauce", "Sub-Types": "pesto"},
+    "pig feet": {"Basic Type": "pork", "Sub-Types": "feet"},
+    "pita": {"Basic Type": "bread", "Sub-Types": "pita"},
+    "potato yam": {"Basic Type": "potato", "Sub-Types": "yam"},
+    "prosciutto": {"Basic Type": "pork", "Sub-Types": "prosciutto"},
+    "pudding": {"Basic Type": "dessert", "Sub-Types": "pudding"},
+    "romaine": {"Basic Type": "lettuce", "Sub-Types": "romaine"},
+    "rotini": {"Basic Type": "pasta"},
+    "sauerkraut": {"Basic Type": "condiment", "Sub-Types": "sauerkraut"},
+    "seasoning tajin": {"Basic Type": "seasoning", "Sub-Types": "tajin"},
+    "slush": {"Basic Type": "juice", "Sub-Types": "slushie"},
+    "spam": {"Basic Type": "pork", "Sub-Types": "spam"},
+    "spring mix": {"Basic Type": "lettuce", "Sub-Types": "spring mix"},
+    "squash blossom": {"Basic Type": "squash", "Sub-Types": "blossom"},
+    "sunflower": {"Basic Type": "seed", "Sub-Types": "sunflower"},
+    "sweet potato": {"Basic Type": "potato", "Sub-Types": "sweet"},
+    "tostada": {"Basic Type": "shell", "Sub-Types": "tostada"},
+    "trail mix": {"Basic Type": "snack", "Sub-Types": "trail mix"},
+    "turnip greens": {"Basic Type": "turnip", "Sub-Types": "greens"},
+    "vegetable mix": {"Basic Type": "vegetable", "Sub-Types": "blend"},
+    "whipped cream": {"Basic Type": "topping", "Sub-Types": "whipped cream"},
+    "cantaloupe": {"Basic Type": "melon", "Sub-Types": "cantaloupe"},
+    "blend": {"Basic Type": "vegetable", "Sub-Types": "blend"},
+    "soy sauce": {"Basic Type": "condiment", "Sub-Types": "soy sauce"},
+    "chicken breast": {"Basic Type": "chicken", "Shape": "breast"},
+    "chicken tender": {"Basic Type": "chicken", "Shape": "cut"},
+    "chocolate": {"Basic Type": "candy", "Shape": "chocolate"},
+    "chutney": {"Basic Type": "spread", "Sub-Types": "chutney"},
+    "corn nugget": {
+        "Basic Type": "appetizer",
+        "Sub-Types": "corn",
+        "Processing": "battered",
+    },
+    "gel": {"Basic Type": "topping", "Sub-Types": "icing"},
+    "ice cream cone": {"Basic Type": "cone", "Sub-Types": "ice cream"},
+    "pan coating": {"Basic Type": "oil", "Sub-Types": "spray"},
+    "paprika": {"Basic Type": "spice", "Sub-Types": "paprika"},
+    "salad mix": {"Basic Type": "salad", "Sub-Types": "mix"},
+    "toast": {"Basic Type": "bread", "Sub-Types": "toast"},
+    "turmeric": {"Basic Type": "spice", "Sub-Types": "turmeric"},
+    "orange blossom water": {"Basic Type": "water", "Sub-Types": "flavored"},
+    "gyro meat": {"Basic Type": "beef", "Sub-Types": ["lamb", "gyro"]},
 }
 
+# Add nuts to the mapping
 for nut in NUTS:
-    basic_type_mapping[nut] = ("nut", nut)
+    basic_type_mapping[nut] = {"Basic Type": "nut", "Sub-Types": nut}
 
 
 def basic_type_handler(row):
-    mapping = basic_type_mapping.get(row["Basic Type"], (row["Basic Type"], None))
+    mapping = basic_type_mapping.get(row["Basic Type"], None)
 
-    basic_type, subtype = mapping
-    row["Basic Type"] = basic_type
+    if mapping is None:
+        return row
 
-    if subtype:
-        row = add_subtype(row, subtype, first=True)
+    for key, value in mapping.items():
+        if key != "Sub-Types":
+            row[key] = value
 
+    # TODO: Ok yeah need to update the row and also the subtypes
+    if "Sub-Types" in mapping:
+        row = add_subtypes(row, mapping["Sub-Types"], first=True)
     return row
 
 
-def add_subtype(row, token, first=False):
+def add_subtypes(row, tokens, first=False):
+    # Ensure tokens is a list
+    if not isinstance(tokens, list):
+        tokens = [tokens]
+
+    # Note: Reorder the set with the new token(s) first if 'first' is True
     if first:
-        subtypes = OrderedSet([token])
-        subtypes.update(row["Sub-Types"])
+        subtypes = OrderedSet(tokens)
+        subtypes.update(row.get("Sub-Types", []))
         row["Sub-Types"] = subtypes
     else:
-        row["Sub-Types"].add(token)
+        subtypes = OrderedSet(row.get("Sub-Types", []))
+        subtypes.update(tokens)
+        row["Sub-Types"] = subtypes
+
+    row = update_subtypes(row)
+    return row
+
+
+def remove_subtypes(row, tokens):
+    if not isinstance(tokens, list):
+        tokens = [tokens]
+
+    subtypes = OrderedSet(row.get("Sub-Types", []))
+
+    for token in tokens:
+        subtypes.discard(token)
+
+    row["Sub-Types"] = subtypes
+    row = update_subtypes(row)
+    return row
+
+
+def update_subtypes(row):
     # TODO: maybe you can zip this with the sub-type columns?
     for i, subtype in enumerate(row["Sub-Types"]):
         if i == 0:
@@ -399,6 +450,7 @@ def add_subtype(row, token, first=False):
         else:
             # Not enough room!
             break
+    row["Misc"] = list(row["Sub-Types"])[2:] if len(row["Sub-Types"]) > 2 else []
     return row
 
 
@@ -433,7 +485,7 @@ def handle_subtypes(row):
                         replaced = True
                     else:
                         row[subtype] = None
-    row["Misc"] = list(row["Sub-Types"])[2:] if len(row["Sub-Types"]) > 2 else []
+    row = update_subtypes(row)
     return row
 
 
@@ -478,7 +530,7 @@ def clean_name(row, group_tags_dict=GROUP_TAGS, category_tags_dict=CATEGORY_TAGS
                         break
             if matched:
                 continue
-        row = add_subtype(row, token)  # Unmatched tokens are subtypes
+        row = add_subtypes(row, token)  # Unmatched tokens are subtypes
 
     # split subtypes into columns and store extra tokens in "Misc"
     row = handle_subtypes(row)
@@ -513,6 +565,14 @@ def get_category(subtype):
 SUBTYPE_COLUMNS = ["Sub-Type 1", "Sub-Type 2"]
 
 
+def clear_row(row):
+    for col in NORMALIZED_COLUMNS:
+        row[col] = None
+    row["Sub-Types"] = OrderedSet()
+    row["Misc"] = []
+    return row
+
+
 def postprocess_data(row):
     ### Handle edge cases for specific product types ###
 
@@ -525,6 +585,103 @@ def postprocess_data(row):
         row["Food Product Group"] = "Condiments & Snacks"
         row["Food Product Category"] = "Condiments & Snacks"
         row["Primary Product Category"] = "Condiments & Snacks"
+
+    # Note: Subtypes are finicky so we need to actually remove them with the remove_subtypes function
+    if row["Basic Type"] == "beverage" and row["Sub-Type 1"] == "energy drink":
+        row["Basic Type"] = "energy drink"
+        row = remove_subtypes(row, "energy drink")
+        return row
+
+    ### Handle mislabeled edge cases based on Product Type ###
+    if row["Product Type"] == "HAWAIIAN PUNCH CANS":
+        row = clear_row(row)
+        row["Basic Type"] = "drink"
+        row = add_subtypes(row, "fruit punch")
+    elif row["Product Type"] == "Concentrate Chipotle S/O":
+        row = clear_row(row)
+        row["Basic Type"] = "chipotle"
+        row = add_subtypes(row, "chipotle")
+    elif row["Product Type"] == "OREGANO AQUARESIN (7.5LB/PL)":
+        row = clear_row(row)
+        row["Basic Type"] = "spice"
+        row = add_subtypes(row, ["oregano", "concentrate"])
+    elif row["Product Type"] == "GRAIN, BLEND COUSCOUS TRI-COLOR QUINOA RESEALABLE BAG":
+        row = clear_row(row)
+        row["Basic Type"] = "quinoa"
+        row = add_subtypes(row, ["couscous", "blend"])
+    elif row["Product Type"] == "GREEN, MUST CHPD DMSTC IQF FZN":
+        row = clear_row(row)
+        row["Basic Type"] = "mustard green"
+        row["Shape"] = "cut"
+        row["Frozen"] = "frozen"
+    elif row["Product Type"] == "Turkey Cranberry Snack Sticks":
+        row = clear_row(row)
+        row["Basic Type"] = "turkey"
+        row = add_subtypes(row, "jerky")
+    elif row["Product Type"] == "TURKEY STICK SMOKEHOUSE":
+        row = clear_row(row)
+        row["Basic Type"] = "turkey"
+        row = add_subtypes(row, "jerky")
+    elif (
+        row["Product Type"]
+        == "APPETIZER, CHICKEN COCONUT SKEWER .85 OZ COOKED FROZEN KABOB"
+    ):
+        row = clear_row(row)
+        row["Basic Type"] = "chicken"
+        row = add_subtypes(row, ["kabob", "coconut"])
+        row["Cooked/Cleaned"] = "cooked"
+        row["Frozen"] = "frozen"
+    elif row["Product Type"] == "APPETIZER, CHICKEN SKEWER .8 OZ PARCOOKED FROZEN":
+        row = clear_row(row)
+        row["Basic Type"] = "chicken"
+        row = add_subtypes(row, "kabob")
+        row["Cooked/Cleaned"] = "cooked"
+    elif row["Product Type"] == "WG RAMEN MISO NOODLE KIT":
+        row = clear_row(row)
+        row["Basic Type"] = "meal kit"
+        row = add_subtypes(row, ["noodle", "miso"])
+        row["WG/WGR"] = "whole grain rich"
+    elif row["Product Type"] == "EDAMAME SUCCOTASH BLEND":
+        row = clear_row(row)
+        row["Basic Type"] = "vegetable"
+        row = add_subtypes(row, ["blend", "edamame", "succotash"])
+    elif row["Product Type"] == "MIX CAKE BASE RICHCREME":
+        row = clear_row(row)
+        row["Basic Type"] = "dessert"
+        row = add_subtypes(row, ["cake", "mix"])
+    elif row["Product Type"] == "QUICK OATS TUBES":
+        row = clear_row(row)
+        row["Basic Type"] = "oat"
+        row = add_subtypes(row, "quick")
+    elif row["Product Type"] == "RICE PILAF CHICKEN W/ORZO":
+        row = clear_row(row)
+        row["Basic Type"] = "entree"
+        row = add_subtypes(row, ["chicken", "rice pilaf"])
+    elif row["Product Type"] == "GRAIN SPCLTY BULGHUR WHEAT PLF":
+        row = clear_row(row)
+        row["Basic Type"] = "bulgur"
+        row = add_subtypes(row, ["wheat", "pilaf"])
+    elif row["Product Type"] == "POLENTA, CAKE VEG FIRE RSTD (6455314)":
+        row = clear_row(row)
+        row["Basic Type"] = "entree"
+        row = add_subtypes(row, ["polenta", "vegetable"])
+    elif row["Product Type"] == "ROOT TARO MALANGA COCA":
+        row = clear_row(row)
+        row["Basic Type"] = "taro"
+    elif row["Product Type"] == "SHORTBREAD STRAWBERRY":
+        row = clear_row(row)
+        row["Basic Type"] = "dessert"
+        row = add_subtypes(row, ["shortbread", "strawberry"])
+    elif row["Product Type"] == "SCOOBY DOO GRAHAM STIX IW":
+        row = clear_row(row)
+        row["Basic Type"] = "cracker"
+        row = add_subtypes(row, "graham")
+        row["WG/WGR"] = "whole grain rich"
+        row["Packaging"] = "ss"
+    elif row["Product Type"] == "BEAN, GOURMET MADAGASCAR BOURB (4648664)":
+        row = clear_row(row)
+        row["Basic Type"] = "spice"
+        row = add_subtypes(row, "vanilla bean")
 
     return row
 

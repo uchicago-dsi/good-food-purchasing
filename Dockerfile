@@ -2,7 +2,7 @@ FROM python:3.10.0
 
 WORKDIR /good-food-purchasing
 
-# Install vim as a text editor
+# Install vim as a text editor and build-essential for Make
 RUN apt-get update && \
     apt-get install -y vim && \
     apt-get install build-essential -y
