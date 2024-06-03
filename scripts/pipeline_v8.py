@@ -409,7 +409,7 @@ basic_type_mapping = {
     "soy sauce": {"Basic Type": "condiment", "Sub-Types": "soy sauce"},
     "chicken breast": {"Basic Type": "chicken", "Shape": "breast"},
     "chicken tender": {"Basic Type": "chicken", "Shape": "cut"},
-    "chocolate": {"Basic Type": "candy", "Shape": "chocolate"},
+    "chocolate": {"Basic Type": "candy", "Sub-Types": "chocolate"},
     "chutney": {"Basic Type": "spread", "Sub-Types": "chutney"},
     "corn nugget": {
         "Basic Type": "appetizer",
@@ -443,6 +443,8 @@ def basic_type_handler(row):
             row[key] = value
 
     # TODO: Ok yeah need to update the row and also the subtypes
+    # Maybe make a separate "update_subtypes" function here?
+    # Or is this ok?
     if "Sub-Types" in mapping:
         row = add_subtypes(row, mapping["Sub-Types"], first=True)
     return row
@@ -646,10 +648,15 @@ def clean_name(row):
                 continue
         row = add_subtypes(row, token)  # Unmatched tokens are subtypes
 
-    # split subtypes into columns and store extra tokens in "Misc"
+    # Apply subtype rules for specific groups and categories
     row = handle_subtypes(row)
-    # handle edge cases not captured by other rules
+    # Handle edge cases not captured by other rules
     row = postprocess_data(row)
+
+    # Deduplicate column values
+    row_normalized = row[["Basic Type"] + NORMALIZED_COLUMNS]
+    row_normalized[row_normalized.notna() & row_normalized.duplicated()] = None
+    row[["Basic Type"] + NORMALIZED_COLUMNS] = row_normalized
     return row
 
 
@@ -688,8 +695,6 @@ def clear_row(row):
 
 
 def postprocess_data(row):
-    ### Handle edge cases for specific product types ###
-
     ### Handle edge cases for mislabeled data ###
     # "spice" is always "Condiments & Snacks"
     if (
@@ -700,9 +705,9 @@ def postprocess_data(row):
         row["Food Product Category"] = "Condiments & Snacks"
         row["Primary Product Category"] = "Condiments & Snacks"
 
-    # Note: Subtypes are finicky so we need to actually remove them with the remove_subtypes function
     if row["Basic Type"] == "beverage" and row["Sub-Type 1"] == "energy drink":
         row["Basic Type"] = "energy drink"
+        # Note: Subtypes are finicky so we need to actually remove them with the remove_subtypes function
         row = remove_subtypes(row, "energy drink")
         return row
 
@@ -710,16 +715,17 @@ def postprocess_data(row):
 
 
 def process_data(df, **options):
-    # isolates data processing from IO without changing outputs
-
     # Filter missing data and non-food items, handle typos in Category and Group columns
+    print("Loading data...")
     df = clean_df(df)
 
     # Create normalized name
+    print("Normalizing names...")
     df_normalized = df.apply(clean_name, axis=1)
 
     # Perform diff on "Normalized Name" column with "Product Name" column from df_loaded
     # Save a diff on the "Product Name" column with the edited output
+    print("Creating diff file...")
     df_normalized["Normalized Name"] = df_normalized.apply(
         lambda row: ", ".join(
             row[["Basic Type"] + NORMALIZED_COLUMNS].dropna().astype(str)
@@ -735,6 +741,7 @@ def process_data(df, **options):
 
     # TODO: Clarify this part...kind of confusing
     # Save unallocated tags for manual review
+    print("Creating misc file...")
     misc = df_normalized[df_normalized["Misc"].apply(lambda x: x != [])][
         [
             "Product Type",
@@ -781,6 +788,7 @@ def main(argv):
 
     # output
     # TODO: I...don't get this
+    print("Saving files...")
     save_pd_to_csv(df_processed, **options)
     save_pd_to_csv(
         misc,
