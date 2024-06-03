@@ -6,8 +6,6 @@
 # also white corn, etc.
 # TODO: "whole weat" for pasta? ravioli?
 
-from cgfp.config_token_map import TOKEN_MAP_DICT
-
 SKIP_TOKENS = {
     ## GENERAL ##
     "organic",
@@ -345,8 +343,6 @@ SKIP_FLAVORS = {
 }
 
 # For these basic types, tag anything that includes a FLAVORS tag as "flavored"
-# TODO: what happens if we return flavored twice? should probably have some deduping eventually
-# Check "bread, naan, garlic, chili" to see what happes here
 FLAVORED_BASIC_TYPES = {
     "bread",
     "yogurt",
@@ -486,140 +482,5 @@ CHEESE_TYPES = {
 
 MELON_TYPES = {"cantaloupe", "honeydew", "watermelon"}
 
-
 # TODO: is this ok?
 CHOCOLATE = {"dark chocolate", "chocolate covered"}
-
-# FOOD PRODUCT CATEGORY & GROUP STRUCTURE #
-"""
-Produce
-Milk & Dairy
-Meat
-Seafood
-Beverages
-Meals
-Condiments & Snacks
-"""
-
-"""
-## PRODUCE ##
-Fruit
-Vegetables
-Roots & Tubers
-## MILK & DAIRY ##
-Butter
-Cheese
-Milk
-Yogurt
-Milk & Dairy (Includes other items, buttermilk, ice cream, coffee creamer, etc)
-## MEAT ##
-Beef
-Chicken
-Eggs
-Pork
-Turkey, Other Poultry
-Meat (includes other like bison, lamb, veal, venison, etc)
-## SEAFOOD ##
-Fish (Farm-raised)
-Fish (Wild)
-Seafood (includes other)
-## BREAD, GRAINS & LEGUMES ##
-Grain Products
-Legumes
-Rice
-Tree Nuts & Seeds
-Bread, Grains & Legumes
-"""
-
-# GROUP_CATEGORY_VALIDATION = {
-#     "Produce": ["Fruit", "Vegetables", "Roots & Tubers"],
-#     "Milk & Dairy": ["Butter", "Cheese", "Milk", "Yogurt", "Milk & Dairy"],
-#     "Meat": [
-#         "Beef",
-#         "Chicken",
-#         "Eggs",
-#         "Pork",
-#         "Turkey, Other Poultry",
-#         "Meat",
-#     ],  # "Meat" is used for other items without a category like bison, lamb, venison, rabbit, etc.
-#     "Seafood": [
-#         "Fish (Farm-Raised)",
-#         "Fish (Wild)",
-#         "Seafood",
-#     ],  # "Seafood" is used for fish that are unconfirmed farm-raised or wild, shellfish, crab, mollusks, scallops, clams, shrimp, etc.
-#     "Bread, Grains & Legumes": [
-#         "Grain Products",
-#         "Legumes",
-#         "Rice",
-#         "Tree Nuts & Seeds",
-#         "Bread, Grains & Legumes",
-#     ],  # "Bread, Grains & Legumes" is used to account for items not belonging to the other categories
-#     "Beverages": ["Beverages"],
-#     "Meals": [
-#         "Meals"
-#     ],  # TODO: Figure out how to set something up for primary food product category here
-#     "Condiments & Snacks": ["Condiments & Snacks"],
-# }
-
-# MISC_COLUMN_TAGS = {
-#     "All": {
-#         "Flavor/Cut": {"flavored"},
-#         "Shape": {"concentrate", "cut", "ground", "jerky"},
-#         "Skin": set(),
-#         "Seed/Bone": set(),
-#         "Processing": set(),
-#         "Cooked/Cleaned": set(),
-#         "WG/WGR": set(),
-#         "Dietary Concern": set(),
-#         "Additives": set(),
-#         "Dietary Accommodation": set(),
-#         "Frozen": set(),
-#         "Packaging": set(),
-#         "Commodity": set(),
-#     },
-#     "Meat": {
-#         "Flavor/Cut": {
-#             "brisket",
-#             "breast",
-#             "loin",
-#             "shank",
-#             "skirt",
-#             "steak",
-#             "short rib",
-#             "t-bone",
-#             "thigh",
-#             "wing",
-#             "ham",
-#         },
-#         "Shape": {
-#             "bacon",
-#             "chunk",
-#             "diced",
-#             "fillet",
-#             "ground",
-#             "hot dog",
-#             "meatball",
-#             "nugget",
-#             "pepperoni",
-#             "patty",
-#             "pulled",
-#             "salami",
-#             "strip",
-#             "taco meat",
-#             "tender",
-#             "cut",
-#             "crumble",
-#         },
-#         "Skin": set(),
-#         "Seed/Bone": set(),
-#         "Processing": set(),
-#         "Cooked/Cleaned": set(),
-#         "WG/WGR": set(),
-#         "Dietary Concern": set(),
-#         "Additives": set(),
-#         "Dietary Accommodation": set(),
-#         "Frozen": set(),
-#         "Packaging": set(),
-#         "Commodity": set(),
-#     },
-# }

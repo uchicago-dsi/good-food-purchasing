@@ -1,5 +1,4 @@
 import pandas as pd
-import os
 import argparse
 from ordered_set import OrderedSet
 from pathlib import Path
@@ -20,29 +19,18 @@ from cgfp.config_tags import (
     VEGETABLES,
     MELON_TYPES,
     SKIP_SHAPE,
+    ALL_FLAVORS,
 )
 from cgfp.config_misc_cols import NON_SUBTYPE_TAGS_FPC
 from cgfp.config_pipeline import (
-    RAW_FOLDER,
     CLEAN_FOLDER,
     RUN_FOLDER,
     NORMALIZED_COLUMNS,  # TODO: ...why doesn't this include "Basic Type"?
-    GROUP_COLUMNS,
     COLUMNS_ORDER,
 )
 from cgfp.util import load_to_pd, save_pd_to_csv
-from cgfp.config_pipeline import (
-    RAW_FOLDER,
-    CLEAN_FOLDER,
-    RUN_FOLDER,
-    NORMALIZED_COLUMNS,
-    GROUP_COLUMNS,
-    COLUMNS_ORDER,
-)
 
 tqdm.pandas()
-
-ALL_FLAVORS = FLAVORS | FRUITS
 
 DEFAULT_INPUT_FILE = "CONFIDENTIAL_CGFP bulk data_073123.xlsx"
 DEFAULT_MISC_FILE = "misc.csv"
