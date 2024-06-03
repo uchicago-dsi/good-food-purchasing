@@ -5,9 +5,7 @@ from pathlib import Path
 from collections import defaultdict
 from tqdm import tqdm
 
-from cgfp.config_tags import (
-    TOKEN_MAP_DICT,
-    SKIP_TOKENS,
+from cgfp.constants.tag_sets import (
     FLAVORS,
     FRUITS,
     CHOCOLATE,
@@ -21,11 +19,14 @@ from cgfp.config_tags import (
     SKIP_SHAPE,
     ALL_FLAVORS,
 )
-from cgfp.config_misc_cols import NON_SUBTYPE_TAGS_FPC
-from cgfp.config_pipeline import (
+from cgfp.constants.misc_tags import NON_SUBTYPE_TAGS_FPC
+from cgfp.constants.token_map import TOKEN_MAP_DICT
+from cgfp.constants.skip_tokens import SKIP_TOKENS
+from cgfp.constants.pipeline import (
     CLEAN_FOLDER,
     RUN_FOLDER,
-    NORMALIZED_COLUMNS,  # TODO: ...why doesn't this include "Basic Type"?
+    SUBTYPE_COLUMNS,
+    NORMALIZED_COLUMNS,
     COLUMNS_ORDER,
 )
 from cgfp.util import load_to_pd, save_pd_to_csv
@@ -591,7 +592,8 @@ def clean_name(row):
         # TODO: Create some sort of misc_tags_handler function
         if token in NON_SUBTYPE_TAGS_FPC[food_product_category]["All"]:
             matched = False
-            for col in NORMALIZED_COLUMNS:
+            # Note: Skip "Basic Type" column since it's already set
+            for col in NORMALIZED_COLUMNS[1:]:
                 # TODO: fix the column setup here so we don't have to skip subtype columns
                 if "Sub-Type" in col:
                     continue
@@ -610,9 +612,9 @@ def clean_name(row):
     row = postprocess_data(row)
 
     # Deduplicate column values
-    row_normalized = row[["Basic Type"] + NORMALIZED_COLUMNS]
+    row_normalized = row[NORMALIZED_COLUMNS]
     row_normalized[row_normalized.notna() & row_normalized.duplicated()] = None
-    row[["Basic Type"] + NORMALIZED_COLUMNS] = row_normalized
+    row[NORMALIZED_COLUMNS] = row_normalized
     return row
 
 
@@ -638,12 +640,9 @@ def get_category(subtype):
     return None
 
 
-# TODO: Put this in config
-SUBTYPE_COLUMNS = ["Sub-Type 1", "Sub-Type 2"]
-
-
 def clear_row(row):
-    for col in NORMALIZED_COLUMNS:
+    # Note: Don't clear Basic Type
+    for col in NORMALIZED_COLUMNS[1:]:
         row[col] = None
     row["Sub-Types"] = OrderedSet()
     row["Misc"] = []
@@ -682,9 +681,7 @@ def process_data(df, **options):
     # Save a diff on the "Product Name" column with the edited output
     print("Creating diff file...")
     df_normalized["Normalized Name"] = df_normalized.progress_apply(
-        lambda row: ", ".join(
-            row[["Basic Type"] + NORMALIZED_COLUMNS].dropna().astype(str)
-        ),
+        lambda row: ", ".join(row[NORMALIZED_COLUMNS].dropna().astype(str)),
         axis=1,
     )
     # TODO: do we want more here?

@@ -1,10 +1,6 @@
 from datetime import datetime
 from pathlib import Path
 
-from cgfp.constants.misc_tags import FPC2FPG
-from cgfp.constants.token_map import TOKEN_MAP_DICT
-from cgfp.constants.skip_tokens import SKIP_TOKENS
-
 script_dir = Path(__file__).resolve().parent
 project_root = script_dir.parent.parent
 DATA_FOLDER = project_root / "data"
@@ -28,34 +24,33 @@ GROUP_COLUMNS = [
     "Primary Food Product Category",
 ]
 
-# TODO: Sub type 3?
-# TODO: Why did I exclude basic type from here?
-NORMALIZED_COLUMNS = [
-    "Sub-Type 1",
-    "Sub-Type 2",
-    "Flavor/Cut",
-    "Shape",
-    "Skin",
-    "Seed/Bone",
-    "Processing",
-    "Cooked/Cleaned",
-    "WG/WGR",
-    "Dietary Concern",
-    "Additives",
-    "Dietary Accommodation",
-    "Frozen",
-    "Packaging",
-    "Commodity",
-]
+SUBTYPE_COLUMNS = ["Sub-Type 1", "Sub-Type 2"]
 
-COLUMNS_ORDER = (
-    [
-        "Product Type",
-        "Food Product Group",
-        "Food Product Category",
-        "Primary Food Product Category",
-        "Product Name",
+# TODO: Sub type 3?
+NORMALIZED_COLUMNS = (
+    ["Basic Type"]
+    + SUBTYPE_COLUMNS
+    + [
+        "Flavor/Cut",
+        "Shape",
+        "Skin",
+        "Seed/Bone",
+        "Processing",
+        "Cooked/Cleaned",
+        "WG/WGR",
+        "Dietary Concern",
+        "Additives",
+        "Dietary Accommodation",
+        "Frozen",
+        "Packaging",
+        "Commodity",
     ]
-    + ["Basic Type"]
-    + NORMALIZED_COLUMNS
 )
+
+COLUMNS_ORDER = [
+    "Product Type",
+    "Food Product Group",
+    "Food Product Category",
+    "Primary Food Product Category",
+    "Product Name",
+] + NORMALIZED_COLUMNS
