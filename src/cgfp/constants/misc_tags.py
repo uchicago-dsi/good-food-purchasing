@@ -135,6 +135,11 @@ MISC_COLUMN_TAGS = {
     "Roots & Tubers": {"Processing": {"dehydrated"}},
 }
 
+# Note: Tags are aggregated on the Food Product Category level so we can easily check if a tag
+# is not a subtype. We create a dictionary for allowed tags for each Food Product Category by
+# combining tags that are allowed for all items and tags allowed for the Food Product Group
+# Note: Meals are allowed to have tags from the Primary Food Product Category. This is handled
+# in the name normalization process.
 NON_SUBTYPE_TAGS_FPC = {}
 
 for fpc in FPC2FPG.keys():
@@ -142,9 +147,13 @@ for fpc in FPC2FPG.keys():
     all_tags = set()
     NON_SUBTYPE_TAGS_FPC[fpc] = {}
     for col, tags in MISC_COLUMN_TAGS["All"].items():
+        # Start with tags allowed for all items
         NON_SUBTYPE_TAGS_FPC[fpc][col] = tags
-        fpc_tags = MISC_COLUMN_TAGS.get(fpc, {}).get(col, set())
+        # Add tags for the Food Product Group & Food Product Category
         fpg_tags = MISC_COLUMN_TAGS.get(fpg, {}).get(col, set())
+        fpc_tags = MISC_COLUMN_TAGS.get(fpc, {}).get(col, set())
         NON_SUBTYPE_TAGS_FPC[fpc][col].update(fpc_tags | fpg_tags)
+        # Keep track of all allowed tags for easy checking on whether to save a tag as subtype
         all_tags.update(NON_SUBTYPE_TAGS_FPC[fpc][col])
+    # Update all allowed tags for Food Product Category
     NON_SUBTYPE_TAGS_FPC[fpc]["All"] = all_tags
