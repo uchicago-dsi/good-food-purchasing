@@ -6,8 +6,6 @@ from pathlib import Path
 from collections import defaultdict
 
 from cgfp.config_tags import (
-    # CATEGORY_TAGS,
-    # GROUP_TAGS,
     TOKEN_MAP_DICT,
     SKIP_TOKENS,
     FLAVORS,
@@ -22,9 +20,7 @@ from cgfp.config_tags import (
     MELON_TYPES,
     SKIP_SHAPE,
 )
-
 from cgfp.config_misc_cols import NON_SUBTYPE_TAGS_FPC
-
 from cgfp.config_pipeline import (
     RAW_FOLDER,
     CLEAN_FOLDER,
@@ -33,29 +29,7 @@ from cgfp.config_pipeline import (
     GROUP_COLUMNS,
     COLUMNS_ORDER,
 )
-
-ALL_FLAVORS = FLAVORS | FRUITS
-
 from cgfp.util import load_to_pd, save_pd_to_csv
-
-from cgfp.config_tags import (
-    # # CATEGORY_TAGS,
-    # GROUP_TAGS,
-    TOKEN_MAP_DICT,
-    SKIP_TOKENS,
-    FLAVORS,
-    FRUITS,
-    CHOCOLATE,
-    SHAPE_EXTRAS,
-    SKIP_FLAVORS,
-    FLAVORED_BASIC_TYPES,
-    NUTS,
-    CHEESE_TYPES,
-    VEGETABLES,
-    MELON_TYPES,
-    SKIP_SHAPE,
-)
-
 from cgfp.config_pipeline import (
     RAW_FOLDER,
     CLEAN_FOLDER,
@@ -66,18 +40,6 @@ from cgfp.config_pipeline import (
 )
 
 ALL_FLAVORS = FLAVORS | FRUITS
-
-
-# # TODO: maybe this goes somewhere else
-# def pool_tags(tags_dict):
-#     for top_level in tags_dict.keys():
-#         tags_dict[top_level]["All"] = set.union(*tags_dict[top_level].values())
-#     return tags_dict
-
-
-# GROUP_TAGS = pool_tags(GROUP_TAGS)
-# CATEGORY_TAGS = pool_tags(CATEGORY_TAGS)
-
 
 DEFAULT_INPUT_FILE = "CONFIDENTIAL_CGFP bulk data_073123.xlsx"
 DEFAULT_MISC_FILE = "misc.csv"
