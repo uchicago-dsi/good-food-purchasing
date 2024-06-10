@@ -512,8 +512,11 @@ def process_data(df, **options):
         lambda row: ", ".join(row[NORMALIZED_COLUMNS].dropna().astype(str)),
         axis=1,
     )
-    # TODO: do we want more here? Probably should add "Product Type"
     df_diff = df["Product Name"].compare(df_normalized["Normalized Name"])
+    df_diff["Product Type"] = df["Product Type"]
+    df_diff = df_diff[
+        ["Product Type"] + [col for col in df_diff.columns if col != "Product Type"]
+    ]
     df_diff = df_diff.sort_values(by="self")
 
     # Reset index for future sorting

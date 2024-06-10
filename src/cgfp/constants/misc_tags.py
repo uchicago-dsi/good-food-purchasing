@@ -28,9 +28,7 @@ FPG2FPC = {
         "Bread, Grains & Legumes",
     ],  # "Bread, Grains & Legumes" is used to account for items not belonging to the other categories
     "Beverages": ["Beverages"],
-    "Meals": [
-        "Meals"
-    ],  # TODO: Figure out how to set something up for primary food product category here
+    "Meals": ["Meals"],
     "Condiments & Snacks": ["Condiments & Snacks"],
 }
 
@@ -163,6 +161,7 @@ for fpc in FPC2FPG.keys():
         # Start with tags allowed for all items
         # Note: "whipped" is not allowed for Meals or Meat
         if col == "Processing" and (fpg == "Meals" or fpg == "Meat"):
+            tags = tags.copy()  # Make a copy so we don't modify the original
             tags.remove("whipped")
         NON_SUBTYPE_TAGS_FPC[fpc][col] = tags
         # Add tags for the Food Product Group & Food Product Category
