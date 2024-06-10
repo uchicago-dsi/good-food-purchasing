@@ -72,6 +72,7 @@ BASIC_TYPE_MAPPING = {
     "chicken tender": {"Basic Type": "chicken", "Shape": "cut"},
     "chocolate": {"Basic Type": "candy", "Sub-Types": "chocolate"},
     "chutney": {"Basic Type": "spread", "Sub-Types": "chutney"},
+    "coleslaw": {"Basic Type": "salad", "Sub-Types": "coleslaw"},
     "corn nugget": {
         "Basic Type": "appetizer",
         "Sub-Types": "corn",
@@ -86,6 +87,10 @@ BASIC_TYPE_MAPPING = {
     "turmeric": {"Basic Type": "spice", "Sub-Types": "turmeric"},
     "orange blossom water": {"Basic Type": "water", "Sub-Types": "flavored"},
     "gyro meat": {"Basic Type": "beef", "Sub-Types": ["lamb", "gyro"]},
+    "yogurt alternative": {
+        "Basic Type": "yogurt",
+        "Dietary Accommodation": "non-dairy",
+    },
 }
 
 # Add nuts to the mapping

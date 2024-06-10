@@ -68,6 +68,7 @@ TOKEN_MAP_DICT = {
     "stawberry": "strawberry",
     "sun-dried": "sun dried",
     "tumeric": "turmeric",
+    "yogurt alternertive": "yogurt alternative",
     ## INCONSISTENCIES ##
     "skin-on": "skin on",
     "carrots": "carrot",

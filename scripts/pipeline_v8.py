@@ -291,6 +291,7 @@ def basic_type_handler(row):
     if mapping is None:
         return row
 
+    # Note: This assigns given values to these columns without changing other ones
     for key, value in mapping.items():
         if key != "Sub-Types":
             row[key] = value
