@@ -270,6 +270,15 @@ def token_handler(token, row):
     if sub_type_1 == "pickle" and token == "chip":
         return "cut", row
 
+    if token == "base" and food_product_group == "Beverages":
+        return "mix", row
+
+    if token == "grated" and food_product_group != "Milk & Dairy":
+        return "cut", row
+
+    if token == "string" and basic_type == "cheese":
+        return "ss", row
+
     # Skip outdated tokens from old name normalization format
     # Do this last since some rules override this
     if token in SKIP_TOKENS:

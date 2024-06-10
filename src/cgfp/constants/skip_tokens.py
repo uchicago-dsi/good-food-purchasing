@@ -177,6 +177,8 @@ SKIP_TOKENS = {
     "low carb",
     "low sugar",
     "rbst-free",
+    "flake",
+    "shaved",
     ## MISC SUBTYPES ##
     "4 way",
     "5 spice",

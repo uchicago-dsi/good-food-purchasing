@@ -69,6 +69,7 @@ TOKEN_MAP_DICT = {
     "sun-dried": "sun dried",
     "tumeric": "turmeric",
     "yogurt alternertive": "yogurt alternative",
+    "tobasco": "tabasco",
     ## INCONSISTENCIES ##
     "skin-on": "skin on",
     "carrots": "carrot",
@@ -180,6 +181,7 @@ TOKEN_MAP_DICT = {
     ## PROCESSING ##
     "condensed": "concentrate",
     "crusted": "breaded",
+    "powdered": "powder",
     ## PACKAGING ##
     "bag": "ss",
     "kcup": "ss",
