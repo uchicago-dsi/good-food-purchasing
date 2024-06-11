@@ -28,9 +28,7 @@ FPG2FPC = {
         "Bread, Grains & Legumes",
     ],  # "Bread, Grains & Legumes" is used to account for items not belonging to the other categories
     "Beverages": ["Beverages"],
-    "Meals": [
-        "Meals"
-    ],  # TODO: Figure out how to set something up for primary food product category here
+    "Meals": ["Meals"],
     "Condiments & Snacks": ["Condiments & Snacks"],
 }
 
@@ -46,7 +44,16 @@ MISC_COLUMN_TAGS = {
         "Shape": {"concentrate", "cut", "ground", "jerky"},
         "Skin": set(),
         "Seed/Bone": set(),
-        "Processing": {"battered", "breaded", "dried"},
+        "Processing": {
+            "battered",
+            "breaded",
+            "dried",
+            "in oil",
+            "in water",
+            "puree",
+            "seasoned",
+            "whipped",
+        },
         "Cooked/Cleaned": {"cooked"},
         "WG/WGR": {"whole grain rich"},
         "Dietary Concern": {
@@ -57,8 +64,10 @@ MISC_COLUMN_TAGS = {
             "reduced fat",
             "reduced sodium",
             "reduced sugar",
+            "reduced calorie",
             "salted",
             "unsalted",
+            "no sodium",
         },
         "Additives": {"additives", "no additives", "sweetened"},
         "Dietary Accommodation": {
@@ -86,6 +95,8 @@ MISC_COLUMN_TAGS = {
             "thigh",
             "wing",
             "ham",
+            "round",
+            "butt",
         },
         "Shape": {
             "bacon",
@@ -99,36 +110,36 @@ MISC_COLUMN_TAGS = {
             "salami",
             "crumble",
         },
+        "Skin": {"skin on"},
         "Seed/Bone": {"bone-in"},
         "Processing": {"corned"},
         "Cooked/Cleaned": {"smoked"},
     },
     "Seafood": {
-        "Skin": {"tail on", "shell on"},
+        "Skin": {"tail on", "shell on", "skin on"},
         "Seed/Bone": {"bone-in"},
         "Cooked/Cleaned": {"smoked"},
     },
     "Condiments & Snacks": {
-        "Processing": {"dehydrated", "powder"},
+        "Processing": {"dehydrated", "powder", "in juice"},
         "Seed/Bone": {"pitted"},
         "Dietary Accommodation": {"non-dairy"},
     },
     "Beverages": {
         "Shape": {"thickened"},
+        "Processing": {"powder"},
+        "Flavor/Cut": {"mix"},
         "Dietary Concern": {"decaffeinated", "diet", "caffeinated"},
         "Frozen": {"iced"},
     },
     "Milk & Dairy": {
-        "Processing": {"evaporated"},
+        "Processing": {"evaporated", "powder", "grated"},
         "Dietary Concern": {"1%", "2%"},
         "Dietary Accommodation": {"lactose free"},
     },
-    "Meals": {
-        "Processing": {"dehydrated"}
-    },  # TODO: I'm using "primary food product category" for meals, so which ones are these allowed for?
     ### FOOD PRODUCT CATEGORIES ###
-    "Fruit": {"Seed/Bone": {"pitted"}},
-    "Cheese": {"Processing": {"grated"}},
+    "Fruit": {"Seed/Bone": {"pitted"}, "Processing": {"in juice"}},
+    "Cheese": {"Shape": {"crumble"}},
     "Milk": {"Shape": {"thickened"}},
     "Yogurt": {"Shape": {"thickened"}},
     "Legumes": {"Processing": {"dehydrated"}},
@@ -148,6 +159,10 @@ for fpc in FPC2FPG.keys():
     NON_SUBTYPE_TAGS_FPC[fpc] = {}
     for col, tags in MISC_COLUMN_TAGS["All"].items():
         # Start with tags allowed for all items
+        # Note: "whipped" is not allowed for Meals or Meat
+        if col == "Processing" and (fpg == "Meals" or fpg == "Meat"):
+            tags = tags.copy()  # Make a copy so we don't modify the original
+            tags.remove("whipped")
         NON_SUBTYPE_TAGS_FPC[fpc][col] = tags
         # Add tags for the Food Product Group & Food Product Category
         fpg_tags = MISC_COLUMN_TAGS.get(fpg, {}).get(col, set())

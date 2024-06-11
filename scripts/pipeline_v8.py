@@ -270,6 +270,15 @@ def token_handler(token, row):
     if sub_type_1 == "pickle" and token == "chip":
         return "cut", row
 
+    if token == "base" and food_product_group == "Beverages":
+        return "mix", row
+
+    if token == "grated" and food_product_group != "Milk & Dairy":
+        return "cut", row
+
+    if token == "string" and basic_type == "cheese":
+        return "ss", row
+
     # Skip outdated tokens from old name normalization format
     # Do this last since some rules override this
     if token in SKIP_TOKENS:
@@ -291,6 +300,7 @@ def basic_type_handler(row):
     if mapping is None:
         return row
 
+    # Note: This assigns given values to these columns without changing other ones
     for key, value in mapping.items():
         if key != "Sub-Types":
             row[key] = value
@@ -502,8 +512,11 @@ def process_data(df, **options):
         lambda row: ", ".join(row[NORMALIZED_COLUMNS].dropna().astype(str)),
         axis=1,
     )
-    # TODO: do we want more here? Probably should add "Product Type"
     df_diff = df["Product Name"].compare(df_normalized["Normalized Name"])
+    df_diff["Product Type"] = df["Product Type"]
+    df_diff = df_diff[
+        ["Product Type"] + [col for col in df_diff.columns if col != "Product Type"]
+    ]
     df_diff = df_diff.sort_values(by="self")
 
     # Reset index for future sorting
