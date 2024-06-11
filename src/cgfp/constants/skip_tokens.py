@@ -179,6 +179,7 @@ SKIP_TOKENS = {
     "rbst-free",
     "flake",
     "shaved",
+    "whole",
     ## MISC SUBTYPES ##
     "4 way",
     "5 spice",

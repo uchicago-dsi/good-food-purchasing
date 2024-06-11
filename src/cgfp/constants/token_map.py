@@ -70,6 +70,7 @@ TOKEN_MAP_DICT = {
     "tumeric": "turmeric",
     "yogurt alternertive": "yogurt alternative",
     "tobasco": "tabasco",
+    "chile": "chili",
     ## INCONSISTENCIES ##
     "skin-on": "skin on",
     "carrots": "carrot",
@@ -116,6 +117,7 @@ TOKEN_MAP_DICT = {
     "frito": "fritos",
     "grannysmith": "granny smith",
     "cocoa": "cocoa powder",
+    "beverage": "drink",
     ## COOKED ##
     "au jus": "cooked",
     "charbroiled": "cooked",

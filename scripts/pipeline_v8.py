@@ -224,6 +224,13 @@ def token_handler(token, row):
         row["Processing"] = "seasoned"
         return None, row
 
+    if token == "pulled" and food_product_group in ["Meat", "Meals"]:
+        row["Shape"] = "cut"
+        row["Cooked/Cleaned"] = "cooked"
+        return None, row
+    elif token == "pulled":
+        return None, row
+
     if token == "stick" and food_product_group in ["Produce", "Seafood"]:
         return "cut", row
 
@@ -278,6 +285,21 @@ def token_handler(token, row):
 
     if token == "string" and basic_type == "cheese":
         return "ss", row
+
+    if token in ["no sugar", "no sugar added", "sugar free"]:
+        if "free" in row["Product Type"].lower():
+            # Also: SG/FR,  NO-SUGAR-ADDED, SGRFR, No Sugar Added, NSA, NO SUGAR ADDED, W/SPLENDA, S/F
+            # Juice Smoothie Protein Pina Colada 8/15.2 Fl Non-GMO,USDA Organic, SF, SPRTE ZERO
+            return "sugar free", row
+        else:
+            # TODO:...
+            print(row["Product Type"])
+            return "unsweetened", row
+
+    # if token == "hot dog":
+    #     # TODO: ...
+    #     print(row["Product Type"])
+    #     print(row["Food Product Group"])
 
     # Skip outdated tokens from old name normalization format
     # Do this last since some rules override this
@@ -443,10 +465,10 @@ def clean_name(row):
                 continue
         row = add_subtypes(row, token)  # Unmatched tokens are subtypes
 
-    # Apply subtype rules for specific groups and categories
-    row = handle_subtypes(row)
     # Handle edge cases not captured by other rules
     row = postprocess_data(row)
+    # Apply subtype rules for specific groups and categories
+    row = handle_subtypes(row)
 
     # Deduplicate column values
     row_normalized = row[NORMALIZED_COLUMNS]
@@ -487,6 +509,36 @@ def postprocess_data(row):
         row["Food Product Group"] = "Condiments & Snacks"
         row["Food Product Category"] = "Condiments & Snacks"
         row["Primary Product Category"] = "Condiments & Snacks"
+
+    # Handle "chili" as Basic Type
+    if (
+        row["Basic Type"] == "chili"
+        and row["Food Product Group"] == "Condiments & Snacks"
+    ):
+        row["Basic Type"] = "spice"
+        row = add_subtypes(row, "chili", first=True)
+        return row
+    if row["Basic Type"] == "chili" and row["Food Product Group"] == "Produce":
+        row["Basic Type"] = "pepper"
+        row = add_subtypes(row, "chili", first=True)
+        return row
+
+    # Assume that bologna is made with beef, pork, and chicken so label with "Beef" as
+    # Food Product Category since that has highest climate impact
+    if row["Basic Type"] == "bologna" and "all" in row["Product Type"].lower():
+        row["Basic Type"] = "beef"
+        row = remove_subtypes(row, list(row["Sub-Types"]))
+        row = add_subtypes(row, ["pork", "bologna"])
+        row["Food Product Category"] = "Beef"
+        row["Primary Food Product Category"] = "Beef"
+        return row
+
+    # Roasted chickpeas are Basic Type "snack"
+    # TODO: Should FPC always be Condiments & Snacks? then?
+    if row["Basic Type"] == "chickpea" and "roasted" in row["Product Name"].lower():
+        row["Basic Type"] = "snack"
+        row = add_subtypes(row, "chickpea", first=True)
+        return row
 
     if row["Basic Type"] == "beverage" and row["Sub-Type 1"] == "energy drink":
         row["Basic Type"] = "energy drink"
