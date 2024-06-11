@@ -10,7 +10,7 @@ import torch
 from transformers import DistilBertTokenizerFast
 
 from cgfp.config_training import lower2label
-from cgfp.constants.tag_sets import GROUP_CATEGORY_VALIDATION
+from cgfp.constants.misc_tags import FPG2FPC
 from cgfp.training.models import MultiTaskModel
 
 logger = logging.getLogger("inference_logger")
@@ -71,7 +71,7 @@ def inference(
     # » If one of these pairs doesn't match, just highlight
     # TODO: Add argument here to turn this behavior on and off
     assertion_failed = False
-    if fpc not in GROUP_CATEGORY_VALIDATION[fpg] and assertion:
+    if fpc not in FPG2FPC[fpg] and assertion:
         assertion_failed = True
 
     legible_preds = {}

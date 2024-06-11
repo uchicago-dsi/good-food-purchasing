@@ -1,9 +1,10 @@
 PRODUCT_TYPE_MAPPING = {
     "HAWAIIAN PUNCH CANS": {"Basic Type": "drink", "Sub-Types": ["fruit punch"]},
-    "Concentrate Chipotle S/O": {"Basic Type": "chipotle", "Sub-Types": ["chipotle"]},
+    "Concentrate Chipotle S/O": {"Basic Type": "chipotle", "Shape": "concentrate"},
     "OREGANO AQUARESIN (7.5LB/PL)": {
         "Basic Type": "spice",
-        "Sub-Types": ["oregano", "concentrate"],
+        "Sub-Types": ["oregano"],
+        "Shape": "concentrate",
     },
     "GRAIN, BLEND COUSCOUS TRI-COLOR QUINOA RESEALABLE BAG": {
         "Basic Type": "quinoa",
@@ -64,5 +65,21 @@ PRODUCT_TYPE_MAPPING = {
     "BEAN, GOURMET MADAGASCAR BOURB (4648664)": {
         "Basic Type": "spice",
         "Sub-Types": ["vanilla bean"],
+    },
+    "PATE-PORK PISTACHIO OLYM 6/8 OZ": {
+        "Basic Type": "pate",
+        "Sub-Types": ["pork"],
+    },
+    "PATE-PORK RILLETE OLYM 6/8 OZ": {
+        "Basic Type": "pate",
+        "Sub-Types": ["pork"],
+    },
+    "ORANGE, BLOOD CNCNT FZN": {
+        "Basic Type": "orange",
+        "Shape": ["concentrate"],
+        "Frozen": "frozen",
+    },
+    "GRAIN, WHEAT RED BRRY": {
+        "Basic Type": "wheat berry",
     },
 }
