@@ -4,6 +4,7 @@ import json
 from datetime import datetime
 import argparse
 import yaml
+from pathlib import Path
 
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import accuracy_score, f1_score
@@ -59,8 +60,6 @@ def test_inference(model, tokenizer, prompt, device="cuda:0"):
     pretty_preds = json.dumps(preds_dict, indent=4)
     logging.info(pretty_preds)
 
-### DATA PREP ###
-
 # TODO: Move to trainer file
 def compute_metrics(pred):
     """
@@ -97,20 +96,18 @@ def compute_metrics(pred):
 
 
 if __name__ == "__main__":
-    # TODO: Set up path
+    # TODO: Set up Path
     with open("scripts/config_train.yaml", "r") as file:
         config = yaml.safe_load(file)
 
     # Setup
-    TEXT_FIELD = "Product Type"
-    FREEZE_MLPS = False # TODO: Can prob drop this also eventually
-
-    TWO_COLS = config['config']['two_cols']
+    TEXT_FIELD = config['data']['text_field']
+    FREEZE_MLPS = False  # TODO: Can prob drop this also eventually
+    TWO_COLS = config['config']['two_cols'] # TODO: Maybe get rid of this also...or set up option for which columns to use in config
     SMOKE_TEST = config['config']['smoke_test']
     SAVE_BEST = config['model']['save_best']
     MODEL_NAME = config['model']['model_name']
     FREEZE_MODEL = config['model']['freeze_model']
-
 
     # Logging
     run_name = f"{MODEL_NAME}_{datetime.now().strftime('%Y%m%d_%H%M')}"
@@ -146,7 +143,7 @@ if __name__ == "__main__":
 
     # Hyperparameters
     lr = config['training']['lr']
-    epochs = 20 if SMOKE_TEST else config['training']['epochs']
+    epochs = 5 if SMOKE_TEST else config['training']['epochs']
     train_batch_size = config['training']['train_batch_size']
     eval_batch_size = config['training']['eval_batch_size']
 
@@ -253,32 +250,25 @@ if __name__ == "__main__":
     ### TRAINING ###
 
     logging.info("Instantiating model")
-    # TODO: hacky
-    distilbert_model = DistilBertForSequenceClassification.from_pretrained(
-        "distilbert-base-uncased"
-    )
-    checkpoint = "/net/projects/cgfp/model-files/distilbert-base-uncased_20240426_1655_finetuned_whole_model"
-    model = MultiTaskModel.from_pretrained(checkpoint)
-
+    distilbert_model = DistilBertForSequenceClassification.from_pretrained(MODEL_NAME)
 
     # TODO: Kill this now that we have the counts. Use counts object instead in models.py
-    # num_categories_per_task = [len(v.classes_) for k, v in encoders.items()]
+    num_categories_per_task = [len(v.classes_) for k, v in encoders.items()]
 
-    # TODO: Need to comment this out in order to reload the model
-    # config = MultiTaskConfig(
-    #     num_categories_per_task=num_categories_per_task,
-    #     decoders=decoders,
-    #     columns=LABELS,
-    #     classification=classification,
-    #     fpg_idx=FPG_IDX,
-    #     basic_type_idx=BASIC_TYPE_IDX,
-    #     inference_masks=json.dumps(inference_masks),
-    #     counts=json.dumps(counts),
-    #     loss=loss,
-    #     **distilbert_model.config.to_dict(),
-    # )
-    # model = MultiTaskModel(config)
-    # logging.info("Model instantiated")
+    config = MultiTaskConfig(
+        num_categories_per_task=num_categories_per_task,
+        decoders=decoders,
+        columns=LABELS,
+        classification=classification,
+        fpg_idx=FPG_IDX,
+        basic_type_idx=BASIC_TYPE_IDX,
+        inference_masks=json.dumps(inference_masks),
+        counts=json.dumps(counts),
+        loss=loss,
+        **distilbert_model.config.to_dict(),
+    )
+    model = MultiTaskModel(config)
+    logging.info("Model instantiated")
 
     # TODO: Move this to a separate file
     class SaveBestModelCallback(TrainerCallback):
@@ -331,11 +321,11 @@ if __name__ == "__main__":
                 for name, param in self.logging_params.items():
                     self.log_gradients(name, param)
             return loss
-        
-    # TODO: All of this should be moved into a train() function
-    epochs = 20 # TODO: hack to retrain the classification heads
+
+    RUN_PATH = Path(f"/net/projects/cgfp/checkpoints/{run_name}/")
+    FIRST_RUN_PATH = RUN_PATH / "first_run"
     training_args = TrainingArguments(
-        output_dir=f"/net/projects/cgfp/checkpoints/{run_name}",
+        output_dir=FIRST_RUN_PATH,
         evaluation_strategy="epoch",
         save_strategy="epoch",
         num_train_epochs=epochs,
@@ -351,24 +341,13 @@ if __name__ == "__main__":
     adamW = AdamW(model.parameters(), lr=lr, betas=(0.9, 0.95), eps=1e-5, weight_decay=0.1)
     scheduler = CosineAnnealingWarmRestarts(adamW, T_0=2000, T_mult=1, eta_min=lr*0.1)
 
-    # best_model_metric = "basic_type_accuracy"
-    best_model_metric = "mean_f1_score"
+    best_model_metric = "basic_type_accuracy"
     if SAVE_BEST:
         training_args.load_best_model_at_end = True
         training_args.metric_for_best_model = best_model_metric
         training_args.greater_is_better = True
 
-    # Freeze everything except the classification heads for third round round of training
-    FREEZE_MODEL = True
-    if FREEZE_MODEL:
-        for param in model.parameters():
-            param.requires_grad = False
-
-        for name, head in model.classification_heads.items():
-            for param in head.parameters():
-                param.requires_grad = True
-
-    model.set_attached_heads(LABELS)
+    model.set_attached_heads(["Food Product Group", "Food Product Category", "Basic Type"])
         
     trainer = MultiTaskTrainer(
         model=model,
@@ -380,8 +359,28 @@ if __name__ == "__main__":
         callbacks=[SaveBestModelCallback(best_model_metric)]
     )
 
-    logging.info("Training...")
+    # TODO: Clarify this message...
+    logging.info("Training full model on FPG, FPC & Basic Type...")
     trainer.train()
+
+    # Freeze everything except the classification heads for third round round of training
+    FREEZE_MODEL = True
+    if FREEZE_MODEL:
+        for param in model.parameters():
+            param.requires_grad = False
+
+        for name, head in model.classification_heads.items():
+            for param in head.parameters():
+                param.requires_grad = True
+
+    # TODO: How should I actually load these checkpoints? Set up a function or?
+    # checkpoint = "/net/projects/cgfp/model-files/distilbert-base-uncased_20240426_1655_finetuned_whole_model"
+    # model = MultiTaskModel.from_pretrained(checkpoint)
+    epochs = 20 # TODO: hack to retrain the classification heads
+    best_model_metric = "mean_f1_score"
+
+    # logging.info("Training...")
+    # trainer.train()
 
     logging.info("Training complete")
     logging.info(f"Validation Results: {trainer.evaluate()}")
