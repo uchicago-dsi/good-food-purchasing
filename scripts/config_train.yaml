@@ -1,0 +1,20 @@
+# TODO: Maybe set up Paths, etc for this
+config:
+  smoke_test: true
+  keep_meals: true # TODO: probably just always keep meals, maybe get rid of this
+  two_cols: false # TODO: Can probably get rid of this
+data:
+  train_data_path: "/net/projects/cgfp/data/clean/clean_CONFIDENTIAL_CGFP_bulk_data_073123.csv"
+  eval_data_path: "/net/projects/cgfp/data/clean/combined_eval_set.csv"
+model:
+  model_name: "distilbert-base-uncased"
+  classification: "mlp" # Choices: "mlp", "linear"
+  loss: "cross_entropy" # Choices: "cross_entropy", "focal"
+  save_best: true # TODO: maybe change this to avoid weird double negatives
+  train_attention: false # TODO: do I actually need this? Freezes MLPs and only trains attention
+  freeze_model: false # TODO: clarify args — freezes everythinge except classification heads
+training:
+  lr: 0.001
+  epochs: 80
+  train_batch_size: 32
+  eval_batch_size: 64

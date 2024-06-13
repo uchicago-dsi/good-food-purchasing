@@ -107,7 +107,7 @@ last-errs:
 
 ##### HUGGINGFACE #####
 
-# TODO: update this to take model as an argumentsq
+# TODO: update this to take model as an arguments
 # Usage: make update-dev-model MODEL_DIR=2024-02-05_10-56
 update-dev-model:
 	$(RUNNING)
@@ -117,6 +117,7 @@ update-dev-model:
 	@echo "Committing changes..."
 	cd $(CGFP_DIR)huggingface/cgfp-distilbert/ && git add -u && git commit -m "update dev model" && git push
 
+# TODO: this is probably deprecated...review huggingface saving process
 # Usage: This upgrades the dev model to production
 update-prod-model:
 	$(RUNNING)

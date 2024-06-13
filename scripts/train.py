@@ -3,6 +3,7 @@ import logging
 import json
 from datetime import datetime
 import argparse
+import yaml
 
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import accuracy_score, f1_score
@@ -34,7 +35,7 @@ from cgfp.inference.inference import inference, inference_handler
 from cgfp.training.models import MultiTaskConfig, MultiTaskModel
 from cgfp.config_training import LABELS
 
-def read_data(input_col, labels, data_path, drop_meals=False):
+def read_data(input_col, labels, data_path):
     # Note: polars syntax is different than pandas syntax
     df = pl.read_csv(data_path, infer_schema_length=1, null_values=["NULL"]).lazy()
     for col in [input_col, "Food Product Group", "Food Product Category", "Primary Food Product Category"]:
@@ -42,8 +43,6 @@ def read_data(input_col, labels, data_path, drop_meals=False):
         df = df.filter(pl.col(col).is_not_null())
         new_height = df.collect().shape[0]
         logging.info(f"Excluded {prev_height - new_height} rows due to null values in '{col}'.")
-    if drop_meals:
-        df = df.filter(pl.col("Food Product Group") != "Meals")
     df_cleaned = df.select(input_col, *labels)
     # TODO: This maybe needs to be done to each column? 
     # Make sure every row is correctly encoded as string
@@ -98,42 +97,20 @@ def compute_metrics(pred):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    # Setup args
-    parser.add_argument('--train_data_path', default="/net/projects/cgfp/data/clean/clean_CONFIDENTIAL_CGFP_bulk_data_073123.csv", type=str, help="Path to the training data CSV file.")
-    parser.add_argument('--eval_data_path', default="/net/projects/cgfp/data/clean/combined_eval_set.csv", type=str, help="Path to the evaluation data CSV file.")
-    parser.add_argument('--save_counts', action='store_true', help="Save counts for each category in the training set to an Excel file.")
-    # Config args
-    parser.add_argument('--smoke_test', action='store_true', help="Run in smoke test mode to check basic functionality.")
-    parser.add_argument('--keep_meals', action='store_true', help="Keep Meals items in training and eval datasets")
-    parser.add_argument('--two_cols', action='store_true', help="Train only on food product group and basic type (for debugging)")
-    # TODO: Is default behavior saving final model?
-    parser.add_argument('--dont_save_best', action="store_false", help="Don't save the best model from the training run (saves the last model, I believe)")
-    parser.add_argument('--train_attention', action="store_true", help="Trains all attention heads in the model (keeps MLPs frozen). (Default behavior is training only the classification heads)")
-    # TODO: Sort out the logic for these two args
-    # parser.add_argument('--train_whole_model', action='store_true', help="Train the whole model. (Default behavior is training only the classification heads.)")
-    parser.add_argument('--freeze_model', action='store_true', help="Freeze model other than classification heads. (Default behavior is training the whole model.)")
-    parser.add_argument('--classification', default="mlp", type=str, help="Setup the classification heads. Choices: mlp, linear. Default is mlp")
-    parser.add_argument('--loss', default="cross_entropy", type=str, help="Setup the loss function. Choices: cross_entropy, focal. Default is cross_entropy")
-    # Hyperparameter args
-    parser.add_argument('--lr', default=.001, type=float, help="Learning rate for the Huggingface Trainer")
-    parser.add_argument('--epochs', default=80, type=int, help="Training epochs for the Huggingface Trainer")
-    parser.add_argument('--train_batch_size', default=32, type=int, help="Training batch size for the Huggingface Trainer")
-    parser.add_argument('--eval_batch_size', default=64, type=int, help="Evaluation batch size for the Huggingface Trainer")
-    
-    args = parser.parse_args()
+    # TODO: Set up path
+    with open("scripts/config_train.yaml", "r") as file:
+        config = yaml.safe_load(file)
 
     # Setup
-    MODEL_NAME = "distilbert-base-uncased"
     TEXT_FIELD = "Product Type"
-    SMOKE_TEST = args.smoke_test
-    SAVE_BEST = not args.dont_save_best
-    DROP_MEALS = not args.keep_meals
-    # TODO: Decide on this after setting up correct gradient handling
-    # FREEZE_MODEL = not args.train_whole_model
-    FREEZE_MODEL = args.freeze_model
-    FREEZE_MLPS = args.train_attention
-    SAVE_COUNTS = args.save_counts
+    FREEZE_MLPS = False # TODO: Can prob drop this also eventually
+
+    TWO_COLS = config['config']['two_cols']
+    SMOKE_TEST = config['config']['smoke_test']
+    SAVE_BEST = config['model']['save_best']
+    MODEL_NAME = config['model']['model_name']
+    FREEZE_MODEL = config['model']['freeze_model']
+
 
     # Logging
     run_name = f"{MODEL_NAME}_{datetime.now().strftime('%Y%m%d_%H%M')}"
@@ -157,7 +134,6 @@ if __name__ == "__main__":
     transformers_logger.setLevel(logging.INFO)
     transformers_logger.addHandler(file_handler)
 
-    logging.info(f"DROP_MEALS: {DROP_MEALS}")
     logging.info(f"FREEZE_MODEL: {FREEZE_MODEL}")
     logging.info(f"FREEZE_MLPS: {FREEZE_MLPS}")
 
@@ -165,14 +141,14 @@ if __name__ == "__main__":
         wandb.init(project='cgfp', name=run_name)
 
     # Config
-    classification = args.classification
-    loss = args.loss
-    
+    classification = config['model']['classification']
+    loss = config['model']['loss']
+
     # Hyperparameters
-    lr = args.lr
-    epochs = 20 if SMOKE_TEST else args.epochs
-    train_batch_size = args.train_batch_size # try 8,16,32
-    eval_batch_size = args.eval_batch_size
+    lr = config['training']['lr']
+    epochs = 20 if SMOKE_TEST else config['training']['epochs']
+    train_batch_size = config['training']['train_batch_size']
+    eval_batch_size = config['training']['eval_batch_size']
 
     ### SETUP ###
     logging.info(f"MODEL_PATH : {MODEL_PATH}")
@@ -184,16 +160,19 @@ if __name__ == "__main__":
     logging.info(f"Predicting categorical fields : {LABELS}")
 
     ### DATA PREP ###
-    if args.two_cols:
+    if TWO_COLS:
         LABELS = ["Food Product Group", "Basic Type"]
         logging.info("Training only on Food Product Group & Basic Type")
     # These indeces are used to set up inference filtering
     FPG_IDX = LABELS.index("Food Product Group")
     BASIC_TYPE_IDX = LABELS.index("Basic Type")
-    logging.info(f"Reading training data from path : {args.train_data_path}")
-    df_train = read_data(TEXT_FIELD, LABELS, args.train_data_path, drop_meals=DROP_MEALS)
-    logging.info(f"Reading eval data from path : {args.train_data_path}")
-    df_eval = read_data(TEXT_FIELD, LABELS, args.eval_data_path, drop_meals=DROP_MEALS)
+    TRAIN_DATA_PATH = config['data']['train_data_path']
+    EVAL_DATA_PATH = config['data']['eval_data_path']
+
+    logging.info(f"Reading training data from path : {TRAIN_DATA_PATH}")
+    df_train = read_data(TEXT_FIELD, LABELS, TRAIN_DATA_PATH)
+    logging.info(f"Reading eval data from path : {TRAIN_DATA_PATH}")
+    df_eval = read_data(TEXT_FIELD, LABELS, EVAL_DATA_PATH)
 
     df_combined = pl.concat([df_train, df_eval]) # combine training and eval so we have all valid outputs for evaluation
 
@@ -220,15 +199,6 @@ if __name__ == "__main__":
         full_counts_df = full_counts_df.join(counts_df.collect(), on=column, how='left').fill_null(0)
         counts_sheets[column] = full_counts_df
         counts[column] = full_counts_df['count'].to_list()
-    
-
-    if SAVE_COUNTS:
-        # TODO: do better with this filepath
-        file_path = '/net/projects/cgfp/data/clean/category_counts.xlsx'
-        logging.info(f"Saving counts to Excel: {file_path}")
-        with pd.ExcelWriter(file_path) as writer:
-            for column, df in counts_sheets.items():
-                df.to_pandas().to_excel(writer, sheet_name=column.replace("/", "_"), index=False)
 
     # Create decoders to save to model config
     decoders = []
