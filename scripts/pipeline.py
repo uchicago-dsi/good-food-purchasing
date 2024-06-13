@@ -2,7 +2,7 @@ import pandas as pd
 import os
 import argparse
 
-from cgfp.config_tags import (
+from cgfp.constants.tag_sets import (
     CATEGORY_TAGS,
     GROUP_TAGS,
     TOKEN_MAP_DICT,
@@ -36,10 +36,12 @@ if not os.path.exists(CLEAN_FOLDER + RUN_FOLDER):
 
 
 def clean_df(df):
-    # Cleaning:
-    # - Remove null and short (usually a mistake) Product Types
-    # - Remove null and short (usually a mistake) Product Names
-    # - Remove non-food items
+    """
+    Cleaning:
+    - Remove null and short (usually a mistake) Product Types
+    - Remove null and short (usually a mistake) Product Names
+    - Remove non-food items
+    """
     df = df[
         (df["Product Type"].str.len() >= 3)
         & (df["Product Name"].str.len() >= 3)
@@ -307,6 +309,14 @@ def process_data(df):
     df["Misc"] = None
     df = clean_df(df)
 
+    # Handle any typos or issues with Food Product Category and Primary Food Product Category
+    category_typos = {
+        "Roots & Tuber": "Roots & Tubers",
+    }
+    df["Primary Food Product Category"] = df["Primary Food Product Category"].map(
+        lambda x: category_typos.get(x, x)
+    )
+
     group_tags = pool_tags(GROUP_TAGS)
     category_tags = pool_tags(CATEGORY_TAGS)
 
@@ -370,24 +380,24 @@ def process_data(df):
         & (df_split["Sub-Type 1"].isin(CHEESE_TYPES))
         & (df_split["Sub-Type 2"].isin(CHEESE_TYPES))
     )
-    df_split.loc[multiple_fruits, "Sub Type 1"] = "blend"
-    df_split.loc[multiple_fruits, "Sub Type 2"] = None
+    df_split.loc[multiple_cheeses, "Sub Type 1"] = "blend"
+    df_split.loc[multiple_cheeses, "Sub Type 2"] = None
 
     multiple_veggies = (
         (df_split["Basic Type"] == "vegetable")
         & (df_split["Sub-Type 1"].isin(VEGETABLES))
         & (df_split["Sub-Type 2"].isin(VEGETABLES))
     )
-    df_split.loc[multiple_fruits, "Sub Type 1"] = "blend"
-    df_split.loc[multiple_fruits, "Sub Type 2"] = None
+    df_split.loc[multiple_veggies, "Sub Type 1"] = "blend"
+    df_split.loc[multiple_veggies, "Sub Type 2"] = None
 
     multiple_melon = (
         (df_split["Basic Type"] == "melon")
         & (df_split["Sub-Type 1"].isin(MELON_TYPES))
         & (df_split["Sub-Type 2"].isin(MELON_TYPES))
     )
-    df_split.loc[multiple_fruits, "Sub Type 1"] = "variety"
-    df_split.loc[multiple_fruits, "Sub Type 2"] = None
+    df_split.loc[multiple_melon, "Sub Type 1"] = "variety"
+    df_split.loc[multiple_melon, "Sub Type 2"] = None
 
     # Handle edge cases for mislabeled data
     mask_spice = (df_split["Basic Type"] == "spice") & (
