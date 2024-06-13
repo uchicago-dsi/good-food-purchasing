@@ -115,9 +115,7 @@ if __name__ == "__main__":
     if SMOKE_TEST:
         run_name += "-smoke-test"
         os.environ["WANDB_DISABLED"] = "true"
-    MODEL_PATH = (
-        f"/net/projects/cgfp/model-files/{run_name}"
-    )
+    MODEL_PATH = Path(f"/net/projects/cgfp/model-files/{run_name}")
 
     LOGGING_FOLDER = "logs/"
     LOG_FILE = f"{LOGGING_FOLDER}{run_name}.log"
@@ -252,7 +250,7 @@ if __name__ == "__main__":
     logging.info("Instantiating model")
     distilbert_model = DistilBertForSequenceClassification.from_pretrained(MODEL_NAME)
 
-    # TODO: Kill this now that we have the counts. Use counts object instead in models.py
+    # TODO: Stop using this now that we have the counts. Use counts object instead in models.py
     num_categories_per_task = [len(v.classes_) for k, v in encoders.items()]
 
     config = MultiTaskConfig(
@@ -324,6 +322,12 @@ if __name__ == "__main__":
 
     RUN_PATH = Path(f"/net/projects/cgfp/checkpoints/{run_name}/")
     FIRST_RUN_PATH = RUN_PATH / "first_run"
+    SECOND_RUN_PATH = RUN_PATH / "second_run"
+    THIRD_RUN_PATH = RUN_PATH / "third_run"
+    FIRST_MODEL_PATH = MODEL_PATH / "first_run"
+    SECOND_MODEL_PATH = MODEL_PATH / "second_run"
+    THIRD_MODEL_PATH = MODEL_PATH / "third_run"
+    
     training_args = TrainingArguments(
         output_dir=FIRST_RUN_PATH,
         evaluation_strategy="epoch",
@@ -347,6 +351,7 @@ if __name__ == "__main__":
         training_args.metric_for_best_model = best_model_metric
         training_args.greater_is_better = True
 
+    # TODO: Set this up in config
     model.set_attached_heads(["Food Product Group", "Food Product Category", "Basic Type"])
         
     trainer = MultiTaskTrainer(
@@ -363,32 +368,38 @@ if __name__ == "__main__":
     logging.info("Training full model on FPG, FPC & Basic Type...")
     trainer.train()
 
-    # Freeze everything except the classification heads for third round round of training
-    FREEZE_MODEL = True
-    if FREEZE_MODEL:
-        for param in model.parameters():
-            param.requires_grad = False
-
-        for name, head in model.classification_heads.items():
-            for param in head.parameters():
-                param.requires_grad = True
-
-    # TODO: How should I actually load these checkpoints? Set up a function or?
-    # checkpoint = "/net/projects/cgfp/model-files/distilbert-base-uncased_20240426_1655_finetuned_whole_model"
-    # model = MultiTaskModel.from_pretrained(checkpoint)
-    epochs = 20 # TODO: hack to retrain the classification heads
-    best_model_metric = "mean_f1_score"
-
-    # logging.info("Training...")
-    # trainer.train()
-
     logging.info("Training complete")
     logging.info(f"Validation Results: {trainer.evaluate()}")
 
-    if not SMOKE_TEST:
-        logging.info("Saving the model")
-        model.save_pretrained(MODEL_PATH)
-        tokenizer.save_pretrained(MODEL_PATH)
+    logging.info("Saving the model after the first round of training")
+    model.save_pretrained(FIRST_MODEL_PATH)
+    tokenizer.save_pretrained(FIRST_MODEL_PATH)
+
+    # TODO: I think I need to reload to actually get the best model...
+    model = MultiTaskModel.from_pretrained(FIRST_MODEL_PATH)
+
+    logging.info("Second training step...")
+    training_args.output_dir = SECOND_RUN_PATH
+    training_args.num_train_epochs = 20 if not SMOKE_TEST else 5
+    training_args.metric_for_best_model = "mean_f1_score"
+
+    model.set_attached_heads(LABELS)
+    # Freeze parameters to only train the classification heads
+    for param in model.parameters():
+        param.requires_grad = False
+
+    for name, head in model.classification_heads.items():
+        for param in head.parameters():
+            param.requires_grad = True
+
+    # Note: Need to move this back to the device with our weird training setup
+    trainer.model = model.to(device)
+    trainer.args = training_args
+
+    trainer.train()
+
+    logging.info("Training complete")
+    logging.info(f"Validation Results: {trainer.evaluate()}")
 
     logging.info("Complete!")
 
