@@ -375,14 +375,9 @@ if __name__ == "__main__":
     model.save_pretrained(FIRST_MODEL_PATH)
     tokenizer.save_pretrained(FIRST_MODEL_PATH)
 
+    logging.info("Second training step...")
     # TODO: I think I need to reload to actually get the best model...
     model = MultiTaskModel.from_pretrained(FIRST_MODEL_PATH)
-
-    logging.info("Second training step...")
-    training_args.output_dir = SECOND_RUN_PATH
-    training_args.num_train_epochs = 20 if not SMOKE_TEST else 5
-    training_args.metric_for_best_model = "mean_f1_score"
-
     model.set_attached_heads(LABELS)
     # Freeze parameters to only train the classification heads
     for param in model.parameters():
@@ -392,11 +387,39 @@ if __name__ == "__main__":
         for param in head.parameters():
             param.requires_grad = True
 
+    training_args.output_dir = SECOND_RUN_PATH
+    training_args.num_train_epochs = 20 if not SMOKE_TEST else 5
+    training_args.metric_for_best_model = "mean_f1_score"
+
     # Note: Need to move this back to the device with our weird training setup
     trainer.model = model.to(device)
     trainer.args = training_args
 
     trainer.train()
+    logging.info(f"Validation Results: {trainer.evaluate()}")
+
+    logging.info("Saving the model after the second round of training")
+    model.save_pretrained(SECOND_MODEL_PATH)
+    tokenizer.save_pretrained(SECOND_MODEL_PATH)
+
+    logging.info("Third training step...")
+    model = MultiTaskModel.from_pretrained(SECOND_MODEL_PATH)
+    model.set_attached_heads(LABELS)
+
+    training_args.output_dir = THIRD_RUN_PATH
+    training_args.num_train_epochs = 20 if not SMOKE_TEST else 5
+    training_args.metric_for_best_model = "mean_f1_score"
+
+    # Note: Need to move this back to the device with our weird training setup
+    trainer.model = model.to(device)
+    trainer.args = training_args
+
+    trainer.train()
+    logging.info(f"Validation Results: {trainer.evaluate()}")
+
+    logging.info("Saving the model after the third round of training")
+    model.save_pretrained(THIRD_MODEL_PATH)
+    tokenizer.save_pretrained(THIRD_MODEL_PATH)
 
     logging.info("Training complete")
     logging.info(f"Validation Results: {trainer.evaluate()}")
