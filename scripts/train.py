@@ -103,11 +103,13 @@ if __name__ == "__main__":
     # Setup
     TEXT_FIELD = config['data']['text_field']
     FREEZE_MLPS = False  # TODO: Can prob drop this also eventually
-    TWO_COLS = config['config']['two_cols'] # TODO: Maybe get rid of this also...or set up option for which columns to use in config
     SMOKE_TEST = config['config']['smoke_test']
     SAVE_BEST = config['model']['save_best']
     MODEL_NAME = config['model']['model_name']
     FREEZE_MODEL = config['model']['freeze_model']
+
+    # TODO: Add option for LABELS, etc. in config file
+    # Add "priority fields" to config file
 
     # Logging
     run_name = f"{MODEL_NAME}_{datetime.now().strftime('%Y%m%d_%H%M')}"
@@ -141,7 +143,7 @@ if __name__ == "__main__":
 
     # Hyperparameters
     lr = config['training']['lr']
-    epochs = 5 if SMOKE_TEST else config['training']['epochs']
+    epochs = config['training']['epochs'] if not SMOKE_TEST else 6
     train_batch_size = config['training']['train_batch_size']
     eval_batch_size = config['training']['eval_batch_size']
 
@@ -155,14 +157,12 @@ if __name__ == "__main__":
     logging.info(f"Predicting categorical fields : {LABELS}")
 
     ### DATA PREP ###
-    if TWO_COLS:
-        LABELS = ["Food Product Group", "Basic Type"]
-        logging.info("Training only on Food Product Group & Basic Type")
     # These indeces are used to set up inference filtering
     FPG_IDX = LABELS.index("Food Product Group")
     BASIC_TYPE_IDX = LABELS.index("Basic Type")
-    TRAIN_DATA_PATH = config['data']['train_data_path']
-    EVAL_DATA_PATH = config['data']['eval_data_path']
+    DATA_DIR = Path(config['data']['data_dir'])
+    TRAIN_DATA_PATH = DATA_DIR / config['data']['train_filename']
+    EVAL_DATA_PATH = DATA_DIR / config['data']['eval_filename']
 
     logging.info(f"Reading training data from path : {TRAIN_DATA_PATH}")
     df_train = read_data(TEXT_FIELD, LABELS, TRAIN_DATA_PATH)
@@ -387,13 +387,28 @@ if __name__ == "__main__":
         for param in head.parameters():
             param.requires_grad = True
 
+    adamW = AdamW(model.parameters(), lr=lr, betas=(0.9, 0.95), eps=1e-5, weight_decay=0.1)
+    scheduler = CosineAnnealingWarmRestarts(adamW, T_0=2000, T_mult=1, eta_min=lr*0.1)
+
     training_args.output_dir = SECOND_RUN_PATH
-    training_args.num_train_epochs = 20 if not SMOKE_TEST else 5
+    training_args.num_train_epochs = 20 if not SMOKE_TEST else 6
     training_args.metric_for_best_model = "mean_f1_score"
 
     # Note: Need to move this back to the device with our weird training setup
-    trainer.model = model.to(device)
-    trainer.args = training_args
+    # trainer.model = model.to(device)
+    # trainer.args = training_args
+    # trainer.optimizers = (adamW, scheduler)
+
+    # Note: Need to reinitialize the trainer with the new model (reassigning results in weird behavior)
+    trainer = MultiTaskTrainer(
+        model=model,
+        args=training_args,
+        compute_metrics=compute_metrics,
+        train_dataset=train_dataset,
+        eval_dataset=eval_dataset,
+        optimizers=(adamW, scheduler),  # Pass optimizers here (rather than training_args) for more fine-grained control
+        callbacks=[SaveBestModelCallback(best_model_metric)]
+    )
 
     trainer.train()
     logging.info(f"Validation Results: {trainer.evaluate()}")
@@ -406,13 +421,22 @@ if __name__ == "__main__":
     model = MultiTaskModel.from_pretrained(SECOND_MODEL_PATH)
     model.set_attached_heads(LABELS)
 
+    adamW = AdamW(model.parameters(), lr=lr, betas=(0.9, 0.95), eps=1e-5, weight_decay=0.1)
+    scheduler = CosineAnnealingWarmRestarts(adamW, T_0=2000, T_mult=1, eta_min=lr*0.1)
+
     training_args.output_dir = THIRD_RUN_PATH
-    training_args.num_train_epochs = 20 if not SMOKE_TEST else 5
+    training_args.num_train_epochs = epochs if not SMOKE_TEST else 6
     training_args.metric_for_best_model = "mean_f1_score"
 
-    # Note: Need to move this back to the device with our weird training setup
-    trainer.model = model.to(device)
-    trainer.args = training_args
+    trainer = MultiTaskTrainer(
+        model=model,
+        args=training_args,
+        compute_metrics=compute_metrics,
+        train_dataset=train_dataset,
+        eval_dataset=eval_dataset,
+        optimizers=(adamW, scheduler),  # Pass optimizers here (rather than training_args) for more fine-grained control
+        callbacks=[SaveBestModelCallback(best_model_metric)]
+    )
 
     trainer.train()
     logging.info(f"Validation Results: {trainer.evaluate()}")
