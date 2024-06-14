@@ -11,8 +11,6 @@ model:
   classification: "mlp" # Choices: "mlp", "linear"
   loss: "cross_entropy" # Choices: "cross_entropy", "focal"
   save_best: true
-  train_attention: false # TODO: do I actually need this? Freezes MLPs and only trains attention
-  freeze_model: false # TODO: clarify args — freezes everythinge except classification heads
 training:
   lr: 0.001
   epochs: 80

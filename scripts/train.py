@@ -102,11 +102,9 @@ if __name__ == "__main__":
 
     # Setup
     TEXT_FIELD = config['data']['text_field']
-    FREEZE_MLPS = False  # TODO: Can prob drop this also eventually
     SMOKE_TEST = config['config']['smoke_test']
     SAVE_BEST = config['model']['save_best']
     MODEL_NAME = config['model']['model_name']
-    FREEZE_MODEL = config['model']['freeze_model']
 
     # TODO: Add option for LABELS, etc. in config file
     # Add "priority fields" to config file
@@ -130,9 +128,6 @@ if __name__ == "__main__":
     transformers_logger = logging.getLogger('transformers')
     transformers_logger.setLevel(logging.INFO)
     transformers_logger.addHandler(file_handler)
-
-    logging.info(f"FREEZE_MODEL: {FREEZE_MODEL}")
-    logging.info(f"FREEZE_MLPS: {FREEZE_MLPS}")
 
     if not SMOKE_TEST:
         wandb.init(project='cgfp', name=run_name)
@@ -298,6 +293,7 @@ if __name__ == "__main__":
     class MultiTaskTrainer(Trainer):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
+            # TODO: This won't work if the model isn't distilbert...
             self.logging_params = {
                 "First Attention Layer Q": self.model.distilbert.transformer.layer[0].attention.q_lin.weight,
                 "Last Attention Layer Q": self.model.distilbert.transformer.layer[-1].attention.q_lin.weight,
