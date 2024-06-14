@@ -1,6 +1,6 @@
 # TODO: Maybe set up Paths, etc for this
 config:
-  smoke_test: false
+  smoke_test: true
 data:
   text_field: "Product Type"
   data_dir: "/net/projects/cgfp/data/clean/"

@@ -360,7 +360,7 @@ if __name__ == "__main__":
         compute_metrics=compute_metrics,
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
-        optimizers=(adamW, scheduler), # Pass optimizers here (rather than training_args) for more fine-grained control
+        optimizers=(adamW, scheduler),  # Pass optimizers here (rather than training_args) for more fine-grained control
         callbacks=[SaveBestModelCallback(best_model_metric)]
     )
 
@@ -394,10 +394,7 @@ if __name__ == "__main__":
     training_args.num_train_epochs = 20 if not SMOKE_TEST else 6
     training_args.metric_for_best_model = "mean_f1_score"
 
-    # Note: Need to move this back to the device with our weird training setup
-    # trainer.model = model.to(device)
-    # trainer.args = training_args
-    # trainer.optimizers = (adamW, scheduler)
+    # TODO: best model metric should be passed in here
 
     # Note: Need to reinitialize the trainer with the new model (reassigning results in weird behavior)
     trainer = MultiTaskTrainer(
