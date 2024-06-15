@@ -1,6 +1,7 @@
 # TODO: Maybe set up Paths, etc for this
 config:
-  smoke_test: false
+  smoke_test: true
+  checkpoints_dir: "/net/projects/cgfp/checkpoints/"
 data:
   text_field: "Product Type"
   data_dir: "/net/projects/cgfp/data/clean/"
@@ -8,14 +9,18 @@ data:
   eval_filename: "combined_eval_set.csv"
 model:
   model_name: "distilbert-base-uncased"
+  checkpoint: "/net/projects/cgfp/huggingface/cgfp-distilbert" # null to train the pretrained huggingface model
+  model_dir: "/net/projects/cgfp/model-files/"
   classification: "mlp" # Choices: "mlp", "linear"
   loss: "cross_entropy" # Choices: "cross_entropy", "focal"
   save_best: true
+  freeze_base: true # Freezes the base model and only trains the classification heads
 training:
   lr: 0.001
   epochs: 80
   train_batch_size: 32
   eval_batch_size: 64
+  metric_for_best_model: "mean_f1_score" # Choices: "mean_f1_score", "basic_type_accuracy"
 adamw:
   betas:
     - 0.9

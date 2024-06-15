@@ -106,16 +106,13 @@ if __name__ == "__main__":
     SAVE_BEST = config['model']['save_best']
     MODEL_NAME = config['model']['model_name']
 
-    # TODO: Add option for LABELS, etc. in config file
-    # Add "priority fields" to config file
-
     # Logging
     run_name = f"{MODEL_NAME}_{datetime.now().strftime('%Y%m%d_%H%M')}"
 
     if SMOKE_TEST:
         run_name += "-smoke-test"
         os.environ["WANDB_DISABLED"] = "true"
-    MODEL_PATH = Path(f"/net/projects/cgfp/model-files/{run_name}")
+    MODEL_SAVE_PATH = Path(config['model']['model_dir']) / run_name
 
     LOGGING_FOLDER = "logs/"
     LOG_FILE = f"{LOGGING_FOLDER}{run_name}.log"
@@ -143,7 +140,7 @@ if __name__ == "__main__":
     eval_batch_size = config['training']['eval_batch_size']
 
     ### SETUP ###
-    logging.info(f"MODEL_PATH : {MODEL_PATH}")
+    logging.info(f"MODEL_PATH : {MODEL_SAVE_PATH}")
     logging.info("Starting")
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
     logging.info(f"Training with device : {device}")
@@ -243,24 +240,46 @@ if __name__ == "__main__":
     ### TRAINING ###
 
     logging.info("Instantiating model")
-    distilbert_model = DistilBertForSequenceClassification.from_pretrained(MODEL_NAME)
+    checkpoint = config['model']['checkpoint']
+    FREEZE_BASE = config['model']['freeze_base']
+    MODEL_SAVE_PATH = MODEL_SAVE_PATH / run_name
 
-    # TODO: Stop using this now that we have the counts. Use counts object instead in models.py
-    num_categories_per_task = [len(v.classes_) for k, v in encoders.items()]
+    if checkpoint is None:
+        distilbert_model = DistilBertForSequenceClassification.from_pretrained(MODEL_NAME)
 
-    config = MultiTaskConfig(
-        num_categories_per_task=num_categories_per_task,
-        decoders=decoders,
-        columns=LABELS,
-        classification=classification,
-        fpg_idx=FPG_IDX,
-        basic_type_idx=BASIC_TYPE_IDX,
-        inference_masks=json.dumps(inference_masks),
-        counts=json.dumps(counts),
-        loss=loss,
-        **distilbert_model.config.to_dict(),
-    )
-    model = MultiTaskModel(config)
+        # TODO: Stop using this now that we have the counts. Use counts object instead in models.py
+        num_categories_per_task = [len(v.classes_) for k, v in encoders.items()]
+
+        multi_task_config = MultiTaskConfig(
+            num_categories_per_task=num_categories_per_task,
+            decoders=decoders,
+            columns=LABELS,
+            classification=classification,
+            fpg_idx=FPG_IDX,
+            basic_type_idx=BASIC_TYPE_IDX,
+            inference_masks=json.dumps(inference_masks),
+            counts=json.dumps(counts),
+            loss=loss,
+            **distilbert_model.config.to_dict(),
+        )
+        model = MultiTaskModel(multi_task_config)
+    else:
+        # TODO: Can I update the config with the encoders and counts for new data?
+        model = MultiTaskModel.from_pretrained(checkpoint)
+
+    if FREEZE_BASE:
+        # Freeze all parameters
+        for param in model.parameters():
+            param.requires_grad = False
+
+        # Unfreeze the classification heads
+        for name, head in model.classification_heads.items():
+            for param in head.parameters():
+                param.requires_grad = True
+
+    # TODO: Add something to config to set this
+    model.set_attached_heads(LABELS)
+
     logging.info("Model instantiated")
 
     # TODO: Move this to a separate file
@@ -316,18 +335,13 @@ if __name__ == "__main__":
                     self.log_gradients(name, param)
             return loss
 
-    RUN_PATH = Path(f"/net/projects/cgfp/checkpoints/{run_name}/")
-    FIRST_RUN_PATH = RUN_PATH / "first_run"
-    SECOND_RUN_PATH = RUN_PATH / "second_run"
-    THIRD_RUN_PATH = RUN_PATH / "third_run"
-    FIRST_MODEL_PATH = MODEL_PATH / "first_run"
-    SECOND_MODEL_PATH = MODEL_PATH / "second_run"
-    THIRD_MODEL_PATH = MODEL_PATH / "third_run"
+    CHECKPOINTS_DIR = Path(config['config']['checkpoints_dir'])
+    RUN_PATH = CHECKPOINTS_DIR / run_name
 
-    best_model_metric = "basic_type_accuracy"
+    metric_for_best_model = config['training']['metric_for_best_model'] 
     
     training_args = TrainingArguments(
-        output_dir=FIRST_RUN_PATH,
+        output_dir=RUN_PATH,
         evaluation_strategy="epoch",
         save_strategy="epoch",
         num_train_epochs=epochs,
@@ -337,7 +351,7 @@ if __name__ == "__main__":
         max_grad_norm=1.0,
         save_total_limit=2,
         load_best_model_at_end=True,
-        metric_for_best_model=best_model_metric,
+        metric_for_best_model=metric_for_best_model,
         greater_is_better=True,
         report_to="wandb" if not SMOKE_TEST else None
     )
@@ -345,9 +359,6 @@ if __name__ == "__main__":
     # TODO: Add adam config (and scheduler?) to config file
     adamW = AdamW(model.parameters(), lr=lr, betas=(0.9, 0.95), eps=1e-5, weight_decay=0.1)
     scheduler = CosineAnnealingWarmRestarts(adamW, T_0=2000, T_mult=1, eta_min=lr*0.1)
-
-    # TODO: Set these up in config
-    model.set_attached_heads(["Food Product Group", "Food Product Category", "Basic Type"])
         
     trainer = MultiTaskTrainer(
         model=model,
@@ -356,91 +367,19 @@ if __name__ == "__main__":
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
         optimizers=(adamW, scheduler),  # Pass optimizers here (rather than training_args) for more fine-grained control
-        callbacks=[SaveBestModelCallback(best_model_metric)]
+        callbacks=[SaveBestModelCallback(metric_for_best_model)]
     )
 
-    # TODO: Clarify this message...
-    logging.info("Training full model on FPG, FPC & Basic Type...")
+    logging.info("Training...")
     trainer.train()
 
     logging.info("Training complete")
     logging.info(f"Validation Results: {trainer.evaluate()}")
 
-    logging.info("Saving the model after the first round of training")
-    model.save_pretrained(FIRST_MODEL_PATH)
-    tokenizer.save_pretrained(FIRST_MODEL_PATH)
-
-    logging.info("Second training step...")
-    # TODO: I think I need to reload to actually get the best model...
-    model = MultiTaskModel.from_pretrained(FIRST_MODEL_PATH)
-    model.set_attached_heads(LABELS)
-    # Freeze parameters to only train the classification heads
-    for param in model.parameters():
-        param.requires_grad = False
-
-    for name, head in model.classification_heads.items():
-        for param in head.parameters():
-            param.requires_grad = True
-
-    adamW = AdamW(model.parameters(), lr=lr, betas=(0.9, 0.95), eps=1e-5, weight_decay=0.1)
-    scheduler = CosineAnnealingWarmRestarts(adamW, T_0=2000, T_mult=1, eta_min=lr*0.1)
-
-    training_args.output_dir = SECOND_RUN_PATH
-    training_args.num_train_epochs = 20 if not SMOKE_TEST else 6
-    training_args.metric_for_best_model = "mean_f1_score"
-
-    # TODO: best model metric should be passed in here
-
-    # Note: Need to reinitialize the trainer with the new model (reassigning results in weird behavior)
-    trainer = MultiTaskTrainer(
-        model=model,
-        args=training_args,
-        compute_metrics=compute_metrics,
-        train_dataset=train_dataset,
-        eval_dataset=eval_dataset,
-        optimizers=(adamW, scheduler),  # Pass optimizers here (rather than training_args) for more fine-grained control
-        callbacks=[SaveBestModelCallback(best_model_metric)]
-    )
-
-    trainer.train()
-    logging.info(f"Validation Results: {trainer.evaluate()}")
-
-    logging.info("Saving the model after the second round of training")
-    model.save_pretrained(SECOND_MODEL_PATH)
-    tokenizer.save_pretrained(SECOND_MODEL_PATH)
-
-    logging.info("Third training step...")
-    model = MultiTaskModel.from_pretrained(SECOND_MODEL_PATH)
-    model.set_attached_heads(LABELS)
-
-    adamW = AdamW(model.parameters(), lr=lr, betas=(0.9, 0.95), eps=1e-5, weight_decay=0.1)
-    scheduler = CosineAnnealingWarmRestarts(adamW, T_0=2000, T_mult=1, eta_min=lr*0.1)
-
-    training_args.output_dir = THIRD_RUN_PATH
-    training_args.num_train_epochs = epochs if not SMOKE_TEST else 6
-    training_args.metric_for_best_model = "mean_f1_score"
-
-    trainer = MultiTaskTrainer(
-        model=model,
-        args=training_args,
-        compute_metrics=compute_metrics,
-        train_dataset=train_dataset,
-        eval_dataset=eval_dataset,
-        optimizers=(adamW, scheduler),  # Pass optimizers here (rather than training_args) for more fine-grained control
-        callbacks=[SaveBestModelCallback(best_model_metric)]
-    )
-
-    trainer.train()
-    logging.info(f"Validation Results: {trainer.evaluate()}")
-
-    logging.info("Saving the model after the third round of training")
-    model.save_pretrained(THIRD_MODEL_PATH)
-    tokenizer.save_pretrained(THIRD_MODEL_PATH)
-
-    logging.info("Training complete")
-    logging.info(f"Validation Results: {trainer.evaluate()}")
-
-    logging.info("Complete!")
+    # TODO: Include path
+    logging.info("Saving the model...")
+    model.save_pretrained(MODEL_SAVE_PATH)
+    tokenizer.save_pretrained(MODEL_SAVE_PATH)
 
     prompt = "frozen peas and carrots"
     test_inference(model, tokenizer, prompt, device)
