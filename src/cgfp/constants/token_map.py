@@ -20,6 +20,8 @@ TOKEN_MAP_DICT = {
     "collard green": "collard greens",
     "freekah": "freekeh",
     "grean pea": "green pea",
+    "grean bean": "green bean",
+    "green brean": "green bean",
     "grit": "grits",
     "jicima": "jicama",
     "lemon grass": "lemongrass",
@@ -116,6 +118,7 @@ TOKEN_MAP_DICT = {
     "frito": "fritos",
     "grannysmith": "granny smith",
     "cocoa": "cocoa powder",
+    "grapes": "grape",
     ## COOKED ##
     "au jus": "cooked",
     "charbroiled": "cooked",
