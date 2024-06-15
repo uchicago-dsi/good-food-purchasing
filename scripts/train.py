@@ -244,11 +244,12 @@ if __name__ == "__main__":
     FREEZE_BASE = config['model']['freeze_base']
     MODEL_SAVE_PATH = MODEL_SAVE_PATH / run_name
 
+
+    # TODO: Stop using this now that we have the counts. Use counts object instead in models.py
+    num_categories_per_task = [len(v.classes_) for k, v in encoders.items()]
+
     if checkpoint is None:
         distilbert_model = DistilBertForSequenceClassification.from_pretrained(MODEL_NAME)
-
-        # TODO: Stop using this now that we have the counts. Use counts object instead in models.py
-        num_categories_per_task = [len(v.classes_) for k, v in encoders.items()]
 
         multi_task_config = MultiTaskConfig(
             num_categories_per_task=num_categories_per_task,
@@ -264,8 +265,14 @@ if __name__ == "__main__":
         )
         model = MultiTaskModel(multi_task_config)
     else:
-        # TODO: Can I update the config with the encoders and counts for new data?
         model = MultiTaskModel.from_pretrained(checkpoint)
+        model.decoders = decoders
+        model.num_categories_per_task = num_categories_per_task
+        # Note: inference masks are finicky due to the way they are saved in the config
+        model.inference_masks = {key: torch.tensor(value) for key, value in inference_masks.items()}
+        model.counts = json.dumps(counts)
+        model.initialize_classification_heads()
+
 
     if FREEZE_BASE:
         # Freeze all parameters

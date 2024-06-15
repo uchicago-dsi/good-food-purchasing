@@ -13,7 +13,7 @@ model:
   model_dir: "/net/projects/cgfp/model-files/"
   classification: "mlp" # Choices: "mlp", "linear"
   loss: "cross_entropy" # Choices: "cross_entropy", "focal"
-  save_best: true
+  save_best: true # Model saving strategy
   freeze_base: true # Freezes the base model and only trains the classification heads
 training:
   lr: 0.001

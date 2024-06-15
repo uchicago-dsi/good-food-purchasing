@@ -87,6 +87,7 @@ class MultiTaskModel(PreTrainedModel):
 
     def __init__(self, config, *args, **kwargs):
         super().__init__(config)
+        self.config = config
         self.distilbert = DistilBertModel(config)
         self.num_categories_per_task = config.num_categories_per_task
         self.decoders = config.decoders
@@ -99,6 +100,7 @@ class MultiTaskModel(PreTrainedModel):
         self.counts = json.loads(config.counts)
         self.losses = []
         # TODO: maybe this isn't actually right...can I reattach some other way?
+        # TODO: Do I even need this?
         self.detach_heads = config.detach_heads
 
         if self.loss == "focal":
@@ -112,14 +114,17 @@ class MultiTaskModel(PreTrainedModel):
             for task, counts in self.counts.items():
                 self.losses.append(nn.CrossEntropyLoss())
 
+        self.initialize_classification_heads()
+
+    def initialize_classification_heads(self):
         # TODO: Name the classification heads based on the task
         if self.classification == "mlp":
             self.classification_heads = nn.ModuleDict({
                 task_name: nn.Sequential(
-                    nn.Linear(config.dim, config.dim // 2),
+                    nn.Linear(self.config.dim, self.config.dim // 2),
                     nn.ReLU(),
-                    nn.Dropout(config.seq_classif_dropout),
-                    nn.Linear(config.dim // 2, num_categories),
+                    nn.Dropout(self.config.seq_classif_dropout),
+                    nn.Linear(self.config.dim // 2, num_categories),
                 ) for task_name, num_categories in zip(self.columns, self.num_categories_per_task)
             })
         elif self.classification == "linear":
