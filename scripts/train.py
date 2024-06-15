@@ -274,9 +274,9 @@ if __name__ == "__main__":
             logging.info(f"### EPOCH: {int(state.epoch)} ###")
             # Note: "eval_" is prepended to the keys in metrics
             current_metric = metrics["eval_" + self.best_model_metric]
+            pretty_metrics = json.dumps(metrics, indent=4)
+            logging.info(pretty_metrics)
             if state.epoch % 5 == 0 or current_metric > self.best_metric:
-                pretty_metrics = json.dumps(metrics, indent=4)
-                logging.info(pretty_metrics)
                 prompt = "frozen peas and carrots"
                 test_inference(model, tokenizer, prompt, device)
             if current_metric > self.best_metric:
@@ -323,6 +323,8 @@ if __name__ == "__main__":
     FIRST_MODEL_PATH = MODEL_PATH / "first_run"
     SECOND_MODEL_PATH = MODEL_PATH / "second_run"
     THIRD_MODEL_PATH = MODEL_PATH / "third_run"
+
+    best_model_metric = "basic_type_accuracy"
     
     training_args = TrainingArguments(
         output_dir=FIRST_RUN_PATH,
@@ -334,6 +336,9 @@ if __name__ == "__main__":
         warmup_steps=100,
         max_grad_norm=1.0,
         save_total_limit=2,
+        load_best_model_at_end=True,
+        metric_for_best_model=best_model_metric,
+        greater_is_better=True,
         report_to="wandb" if not SMOKE_TEST else None
     )
 
@@ -341,13 +346,7 @@ if __name__ == "__main__":
     adamW = AdamW(model.parameters(), lr=lr, betas=(0.9, 0.95), eps=1e-5, weight_decay=0.1)
     scheduler = CosineAnnealingWarmRestarts(adamW, T_0=2000, T_mult=1, eta_min=lr*0.1)
 
-    best_model_metric = "basic_type_accuracy"
-    if SAVE_BEST:
-        training_args.load_best_model_at_end = True
-        training_args.metric_for_best_model = best_model_metric
-        training_args.greater_is_better = True
-
-    # TODO: Set this up in config
+    # TODO: Set these up in config
     model.set_attached_heads(["Food Product Group", "Food Product Category", "Basic Type"])
         
     trainer = MultiTaskTrainer(
