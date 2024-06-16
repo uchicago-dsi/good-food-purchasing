@@ -19,8 +19,8 @@ logger.setLevel(logging.INFO)
 
 def prediction_to_string(model, scores, idx):
     max_idx = torch.argmax(scores[idx])
-    # model.decoders is a tuple of column name and actual decoding dictionary
-    _, decoder = model.decoders[idx]
+    # decoders are a tuple of column name and actual decoding dictionary
+    _, decoder = model.config.decoders[idx]
     return decoder[str(max_idx.item())]
 
 
@@ -44,16 +44,16 @@ def inference(
     softmaxed_scores = [torch.softmax(logits, dim=1) for logits in outputs.logits]
 
     # get predicted food product group & predicted food product category
-    fpg = prediction_to_string(model, softmaxed_scores, model.fpg_idx)
+    fpg = prediction_to_string(model, softmaxed_scores, model.config.fpg_idx)
     # TODO: This is fragile. Maybe change config to have a mapping of each column to index
     # TODO: This whole thing breaks if you have different columns that you're using...fix at some point
-    fpc = prediction_to_string(model, softmaxed_scores, model.fpg_idx + 1)
+    fpc = prediction_to_string(model, softmaxed_scores, model.config.fpg_idx + 1)
 
     inference_mask = model.inference_masks[fpg].to(device)
 
     # actually mask the basic type scores
-    softmaxed_scores[model.basic_type_idx] = (
-        inference_mask * softmaxed_scores[model.basic_type_idx]
+    softmaxed_scores[model.config.basic_type_idx] = (
+        inference_mask * softmaxed_scores[model.config.basic_type_idx]
     )
 
     # get the score for each task
@@ -75,7 +75,7 @@ def inference(
         assertion_failed = True
 
     legible_preds = {}
-    for item, score in zip(model.decoders, scores):
+    for item, score in zip(model.config.decoders, scores):
         col, decoder = item
         prob, idx = score
 

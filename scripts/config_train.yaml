@@ -1,0 +1,38 @@
+# TODO: Maybe set up Paths, etc for this
+config:
+  smoke_test: false
+  checkpoints_dir: "/net/projects/cgfp/checkpoints/"
+data:
+  text_field: "Product Type"
+  data_dir: "/net/projects/cgfp/data/clean/"
+  train_filename: "new_clean_CONFIDENTIAL_CGFP_bulk_data_073123.csv"
+  eval_filename: "combined_eval_set.csv"
+  test_filename: "TestData_11.22.23.xlsx"
+  # TODO: Add test string (ie "frozen peas and carrots")
+model:
+  model_name: "distilbert-base-uncased"
+  # checkpoint: "/net/projects/cgfp/huggingface/cgfp-distilbert" # null to train the pretrained huggingface model
+  checkpoint: null
+  model_dir: "/net/projects/cgfp/model-files/"
+  classification: "mlp" # Choices: "mlp", "linear"
+  loss: "cross_entropy" # Choices: "cross_entropy", "focal" (Note: focal loss doesn't work well...)
+  save_best: true # Model saving strategy. If set to false, saves last model.
+  freeze_base: true # Freezes the base model and only trains the classification heads
+  reset_classification_heads: true # Renitializes the classification heads
+  attached_heads: null # If null, attaches all heads. If not null, attaches only the specified heads
+training:
+  lr: 0.001
+  epochs: 20 # Recommended: 80 for full model training, 20 for classification head training
+  train_batch_size: 32
+  eval_batch_size: 64
+  metric_for_best_model: "mean_f1_score" # Choices: "mean_f1_score", "basic_type_accuracy"
+adamw:
+  betas:
+    - 0.9
+    - 0.95
+  eps: 1e-5 # epsilon, prevents division by zero
+  weight_decay: 0.01
+scheduler: # CosineAnnealingWarmRestarts
+  T_0: 2000 # Number of iterations before first restart
+  T_mult: 1 # Multiplicative factor by which to increase T after each restart
+  eta_min_constant: .1 # Minimum learning rate constant

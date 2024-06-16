@@ -1,3 +1,5 @@
+# TODO: All this stuff should be moved to a config folder
+
 from datetime import datetime
 from pathlib import Path
 

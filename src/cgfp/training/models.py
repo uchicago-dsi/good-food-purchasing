@@ -64,6 +64,7 @@ class MultiTaskConfig(DistilBertConfig):
         basic_type_idx=2,
         inference_masks=None,
         loss="focal",
+        detach_heads=True,
         **kwargs
     ):
         super().__init__(**kwargs)
@@ -71,11 +72,13 @@ class MultiTaskConfig(DistilBertConfig):
         self.decoders = decoders
         self.columns = columns
         self.classification = classification  # choices are "linear" or "mlp"
-        self.fpg_idx = fpg_idx
+        # TODO: can maybe get these indexes from the columns
+        self.fpg_idx = fpg_idx # TODO
         self.basic_type_idx=basic_type_idx
         self.inference_masks=inference_masks
         self.loss=loss
         self.counts=counts
+        # self.detach_heads=detach_heads
 
 
 class MultiTaskModel(PreTrainedModel):
@@ -83,19 +86,41 @@ class MultiTaskModel(PreTrainedModel):
 
     def __init__(self, config, *args, **kwargs):
         super().__init__(config)
+        self.config = config
         self.distilbert = DistilBertModel(config)
-        self.num_categories_per_task = config.num_categories_per_task
-        self.decoders = config.decoders
-        self.columns = config.columns
-        self.classification = config.classification
-        self.fpg_idx = config.fpg_idx  # index for the food product group task
-        self.basic_type_idx = config.basic_type_idx
-        self.inference_masks = {key: torch.tensor(value) for key, value in json.loads(config.inference_masks).items()}
-        self.loss = config.loss
-        self.counts = json.loads(config.counts)
-        self.losses = []
 
-        if self.loss == "focal":
+        # Note: Need to store inference masks and counts as JSON in config, so need to initialize them
+        self.initialize_inference_masks()
+        self.initialize_counts()
+
+        self.initialize_classification_heads()
+        self.initialize_losses()
+        self.set_attached_heads(self.config.columns)
+
+
+    def initialize_classification_heads(self):
+        # TODO: Name the classification heads based on the task
+        if self.config.classification == "mlp":
+            self.classification_heads = nn.ModuleDict({
+                task_name: nn.Sequential(
+                    nn.Linear(self.config.dim, self.config.dim // 2),
+                    nn.ReLU(),
+                    nn.Dropout(self.config.seq_classif_dropout),
+                    nn.Linear(self.config.dim // 2, num_categories),
+                ) for task_name, num_categories in zip(self.config.columns, self.config.num_categories_per_task)
+            })
+        elif self.config.classification == "linear":
+            self.classification_heads = nn.ModuleDict({
+                task_name: nn.Sequential(
+                    nn.Linear(self.config.dim, num_categories),
+                    nn.Dropout(self.config.seq_classif_dropout),
+                ) for task_name, num_categories in zip(self.config.columns, self.config.num_categories_per_task)
+            })
+
+    def initialize_losses(self):
+        self.losses = []
+        if self.config.loss == "focal":
+        # TODO: Results here are unstable/bad — probably not actually correct
             for task, counts in self.counts.items():
                 counts = torch.tensor(counts, dtype=torch.float)
                 total = counts.sum()
@@ -106,23 +131,17 @@ class MultiTaskModel(PreTrainedModel):
             for task, counts in self.counts.items():
                 self.losses.append(nn.CrossEntropyLoss())
 
-        # TODO: Name the classification heads based on the task
-        if self.classification == "mlp":
-            self.classification_heads = nn.ModuleDict({
-                task_name: nn.Sequential(
-                    nn.Linear(config.dim, config.dim // 2),
-                    nn.ReLU(),
-                    nn.Dropout(config.seq_classif_dropout),
-                    nn.Linear(config.dim // 2, num_categories),
-                ) for task_name, num_categories in zip(self.columns, self.num_categories_per_task)
-            })
-        elif self.classification == "linear":
-            self.classification_heads = nn.ModuleDict({
-                task_name: nn.Sequential(
-                    nn.Linear(config.dim, num_categories),
-                    nn.Dropout(config.seq_classif_dropout),
-                ) for task_name, num_categories in zip(self.columns, self.num_categories_per_task)
-            })
+    def initialize_inference_masks(self):
+        self.inference_masks = {key: torch.tensor(value) for key, value in json.loads(self.config.inference_masks).items()}
+
+    def initialize_counts(self):
+        self.counts = json.loads(self.config.counts)
+
+    def set_attached_heads(self, heads_to_attach):
+        """Set which heads should have their inputs attached to the computation graph. Allows for controlling the finetuning of the model."""
+        if not all(head in self.classification_heads for head in heads_to_attach):
+            raise ValueError("One or more specified heads do not exist in the model.")
+        self.attached_heads = heads_to_attach
 
     def forward(
         self,
@@ -148,15 +167,14 @@ class MultiTaskModel(PreTrainedModel):
 
         # TODO: write actual documentation of what's happening here if this works
         logits = []
-        important_losses = []
-        unfreeze_heads = ["Food Product Group", "Food Product Category", "Basic Type"]
+        # TODO: uh....how should I actually do this?
+        # unfreeze_heads = ["Food Product Group", "Food Product Category", "Basic Type"]
         for i, item in enumerate(self.classification_heads.items()):
             head, classifier = item
-            if head not in unfreeze_heads:
+            if head not in self.attached_heads:
                 logits.append(classifier(pooled_output.detach()))
             else:
                 logits.append(classifier(pooled_output))
-                important_losses.append(i)
 
         loss = None
         losses = []
