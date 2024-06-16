@@ -268,16 +268,24 @@ if __name__ == "__main__":
         )
         model = MultiTaskModel(multi_task_config)
     else:
-        model = MultiTaskModel.from_pretrained(checkpoint)
+        # Note: ignore_mismatched_sizes since we are often loading from checkpoints with different numbers of categories
+        model = MultiTaskModel.from_pretrained(checkpoint, ignore_mismatched_sizes=True)
+
+        # Note: If the data has changed, we need to update the model config
         model.config.decoders = decoders
         model.config.num_categories_per_task = num_categories_per_task
-        # Note: inference masks are finicky due to the way they are saved in the config
-        model.config.inference_masks = {key: torch.tensor(value) for key, value in inference_masks.items()}
+
+        # Note: inference masks and counts are finicky due to the way they are saved in the config
+        # Need to save them as JSON and initialize them in the model
+        model.config.inference_masks = json.dumps(inference_masks)
         model.config.counts = json.dumps(counts)
+        model.initialize_inference_masks()
+        model.initialize_counts()
+
+    model.save_pretrained(MODEL_SAVE_PATH)
 
     if RESET_CLASSIFICATION_HEADS:
         model.initialize_classification_heads()
-
 
     if FREEZE_BASE:
         # Freeze all parameters
@@ -402,6 +410,7 @@ if __name__ == "__main__":
     # if SMOKE_TEST:
     #     FILENAME = "smoke_test_" + FILENAME
     INPUT_COLUMN = "Product Type"
+    # TODO: Fix this...maybe need to update inference handler also
     DATA_DIR = "/net/projects/cgfp/data/raw/"
 
     INPUT_PATH = DATA_DIR + FILENAME

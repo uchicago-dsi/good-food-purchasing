@@ -95,6 +95,7 @@ class MultiTaskModel(PreTrainedModel):
 
         self.initialize_classification_heads()
         self.initialize_losses()
+        self.set_attached_heads(self.config.columns)
 
 
     def initialize_classification_heads(self):
