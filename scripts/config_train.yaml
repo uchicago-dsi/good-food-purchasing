@@ -12,12 +12,13 @@ model:
   checkpoint: "/net/projects/cgfp/huggingface/cgfp-distilbert" # null to train the pretrained huggingface model
   model_dir: "/net/projects/cgfp/model-files/"
   classification: "mlp" # Choices: "mlp", "linear"
-  loss: "cross_entropy" # Choices: "cross_entropy", "focal"
-  save_best: true # Model saving strategy
+  loss: "cross_entropy" # Choices: "cross_entropy", "focal" (Note: focal loss doesn't work well...)
+  save_best: true # Model saving strategy. If set to false, saves last model.
   freeze_base: true # Freezes the base model and only trains the classification heads
+  reset_classification_heads: true # Renitializes the classification heads
 training:
   lr: 0.001
-  epochs: 80
+  epochs: 20 # Recommended: 80 for full model training, 20 for classification head training
   train_batch_size: 32
   eval_batch_size: 64
   metric_for_best_model: "mean_f1_score" # Choices: "mean_f1_score", "basic_type_accuracy"

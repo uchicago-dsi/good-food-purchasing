@@ -10,6 +10,7 @@ TOKEN_MAP_DICT = {
     "siced": "sliced",
     "apple golden delicious": "apple",
     "apple. Gala": "apple",
+    "apple. gala": "apple",
     "bicsuit": "biscuit",
     "brussel": "brussels sprout",
     "brussel spout": "brussels sprout",
@@ -72,6 +73,9 @@ TOKEN_MAP_DICT = {
     "tumeric": "turmeric",
     "yogurt alternertive": "yogurt alternative",
     "tobasco": "tabasco",
+    "burrio": "burrito",
+    "raddicchio": "radicchio",
+    # TODO: red ti leaf
     ## INCONSISTENCIES ##
     "skin-on": "skin on",
     "carrots": "carrot",
@@ -119,6 +123,8 @@ TOKEN_MAP_DICT = {
     "grannysmith": "granny smith",
     "cocoa": "cocoa powder",
     "grapes": "grape",
+    "entree": "entrée",
+    # TODO: "chile relleno" vs "chili relleno" vs "relleno chile"
     ## COOKED ##
     "au jus": "cooked",
     "charbroiled": "cooked",

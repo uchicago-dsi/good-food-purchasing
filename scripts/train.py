@@ -105,6 +105,7 @@ if __name__ == "__main__":
     SMOKE_TEST = config['config']['smoke_test']
     SAVE_BEST = config['model']['save_best']
     MODEL_NAME = config['model']['model_name']
+    RESET_CLASSIFICATION_HEADS = config['model']['reset_classification_heads']
 
     # Logging
     run_name = f"{MODEL_NAME}_{datetime.now().strftime('%Y%m%d_%H%M')}"
@@ -271,6 +272,8 @@ if __name__ == "__main__":
         # Note: inference masks are finicky due to the way they are saved in the config
         model.inference_masks = {key: torch.tensor(value) for key, value in inference_masks.items()}
         model.counts = json.dumps(counts)
+
+    if RESET_CLASSIFICATION_HEADS:
         model.initialize_classification_heads()
 
 
