@@ -118,7 +118,7 @@ if __name__ == "__main__":
     MODEL_SAVE_PATH = Path(config['model']['model_dir']) / run_name
 
     LOGGING_DIR = SCRIPT_DIR.parent / "logs/"
-    LOG_FILE = f"{LOGGING_DIR}{run_name}.log"
+    LOG_FILE = LOGGING_DIR / f"{run_name}.log"
     logging.basicConfig(level=logging.INFO)
     formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s')
     file_handler = logging.FileHandler(LOG_FILE)
