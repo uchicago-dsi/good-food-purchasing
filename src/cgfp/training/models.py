@@ -64,6 +64,7 @@ class MultiTaskConfig(DistilBertConfig):
         basic_type_idx=2,
         inference_masks=None,
         loss="focal",
+        detach_heads=True,
         **kwargs
     ):
         super().__init__(**kwargs)
@@ -76,13 +77,17 @@ class MultiTaskConfig(DistilBertConfig):
         self.inference_masks=inference_masks
         self.loss=loss
         self.counts=counts
+        self.detach_heads=detach_heads
 
 
 class MultiTaskModel(PreTrainedModel):
     config_class = MultiTaskConfig
 
+    # TODO: add a setter for detach_heads and use that to run the model with heads reattached
+
     def __init__(self, config, *args, **kwargs):
         super().__init__(config)
+        self.config = config
         self.distilbert = DistilBertModel(config)
         self.num_categories_per_task = config.num_categories_per_task
         self.decoders = config.decoders
@@ -94,6 +99,9 @@ class MultiTaskModel(PreTrainedModel):
         self.loss = config.loss
         self.counts = json.loads(config.counts)
         self.losses = []
+        # TODO: maybe this isn't actually right...can I reattach some other way?
+        # TODO: Do I even need this?
+        self.detach_heads = config.detach_heads
 
         if self.loss == "focal":
             for task, counts in self.counts.items():
@@ -106,14 +114,17 @@ class MultiTaskModel(PreTrainedModel):
             for task, counts in self.counts.items():
                 self.losses.append(nn.CrossEntropyLoss())
 
+        self.initialize_classification_heads()
+
+    def initialize_classification_heads(self):
         # TODO: Name the classification heads based on the task
         if self.classification == "mlp":
             self.classification_heads = nn.ModuleDict({
                 task_name: nn.Sequential(
-                    nn.Linear(config.dim, config.dim // 2),
+                    nn.Linear(self.config.dim, self.config.dim // 2),
                     nn.ReLU(),
-                    nn.Dropout(config.seq_classif_dropout),
-                    nn.Linear(config.dim // 2, num_categories),
+                    nn.Dropout(self.config.seq_classif_dropout),
+                    nn.Linear(self.config.dim // 2, num_categories),
                 ) for task_name, num_categories in zip(self.columns, self.num_categories_per_task)
             })
         elif self.classification == "linear":
@@ -123,6 +134,12 @@ class MultiTaskModel(PreTrainedModel):
                     nn.Dropout(config.seq_classif_dropout),
                 ) for task_name, num_categories in zip(self.columns, self.num_categories_per_task)
             })
+
+    def set_attached_heads(self, heads_to_attach):
+        """Set which heads should have their inputs attached to the computation graph. Allows for controlling the finetuning of the model."""
+        if not all(head in self.classification_heads for head in heads_to_attach):
+            raise ValueError("One or more specified heads do not exist in the model.")
+        self.attached_heads = heads_to_attach
 
     def forward(
         self,
@@ -148,15 +165,14 @@ class MultiTaskModel(PreTrainedModel):
 
         # TODO: write actual documentation of what's happening here if this works
         logits = []
-        important_losses = []
-        unfreeze_heads = ["Food Product Group", "Food Product Category", "Basic Type"]
+        # TODO: uh....how should I actually do this?
+        # unfreeze_heads = ["Food Product Group", "Food Product Category", "Basic Type"]
         for i, item in enumerate(self.classification_heads.items()):
             head, classifier = item
-            if head not in unfreeze_heads:
+            if head not in self.attached_heads:
                 logits.append(classifier(pooled_output.detach()))
             else:
                 logits.append(classifier(pooled_output))
-                important_losses.append(i)
 
         loss = None
         losses = []
