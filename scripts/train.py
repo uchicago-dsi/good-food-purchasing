@@ -36,6 +36,9 @@ from cgfp.inference.inference import inference, inference_handler
 from cgfp.training.models import MultiTaskConfig, MultiTaskModel
 from cgfp.config_training import LABELS
 
+SCRIPT_DIR = Path(__file__).resolve().parent
+
+
 def read_data(input_col, labels, data_path):
     # Note: polars syntax is different than pandas syntax
     df = pl.read_csv(data_path, infer_schema_length=1, null_values=["NULL"]).lazy()
@@ -96,8 +99,7 @@ def compute_metrics(pred):
 
 
 if __name__ == "__main__":
-    # TODO: Set up Path
-    with open("scripts/config_train.yaml", "r") as file:
+    with open(SCRIPT_DIR / "config_train.yaml", "r") as file:
         config = yaml.safe_load(file)
 
     # Setup
@@ -115,8 +117,8 @@ if __name__ == "__main__":
         os.environ["WANDB_DISABLED"] = "true"
     MODEL_SAVE_PATH = Path(config['model']['model_dir']) / run_name
 
-    LOGGING_FOLDER = "logs/"
-    LOG_FILE = f"{LOGGING_FOLDER}{run_name}.log"
+    LOGGING_DIR = SCRIPT_DIR.parent / "logs/"
+    LOG_FILE = f"{LOGGING_DIR}{run_name}.log"
     logging.basicConfig(level=logging.INFO)
     formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s')
     file_handler = logging.FileHandler(LOG_FILE)
@@ -267,11 +269,11 @@ if __name__ == "__main__":
         model = MultiTaskModel(multi_task_config)
     else:
         model = MultiTaskModel.from_pretrained(checkpoint)
-        model.decoders = decoders
-        model.num_categories_per_task = num_categories_per_task
+        model.config.decoders = decoders
+        model.config.num_categories_per_task = num_categories_per_task
         # Note: inference masks are finicky due to the way they are saved in the config
-        model.inference_masks = {key: torch.tensor(value) for key, value in inference_masks.items()}
-        model.counts = json.dumps(counts)
+        model.config.inference_masks = {key: torch.tensor(value) for key, value in inference_masks.items()}
+        model.config.counts = json.dumps(counts)
 
     if RESET_CLASSIFICATION_HEADS:
         model.initialize_classification_heads()
