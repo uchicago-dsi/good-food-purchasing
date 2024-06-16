@@ -108,6 +108,7 @@ if __name__ == "__main__":
     SAVE_BEST = config['model']['save_best']
     MODEL_NAME = config['model']['model_name']
     RESET_CLASSIFICATION_HEADS = config['model']['reset_classification_heads']
+    ATTACHED_HEADS = config['model']['attached_heads']
 
     # Logging
     run_name = f"{MODEL_NAME}_{datetime.now().strftime('%Y%m%d_%H%M')}"
@@ -287,6 +288,11 @@ if __name__ == "__main__":
     if RESET_CLASSIFICATION_HEADS:
         model.initialize_classification_heads()
 
+    if ATTACHED_HEADS is not None:
+        model.set_attached_heads(ATTACHED_HEADS)
+    else:
+        model.set_attached_heads(LABELS)
+
     if FREEZE_BASE:
         # Freeze all parameters
         for param in model.parameters():
@@ -296,9 +302,6 @@ if __name__ == "__main__":
         for name, head in model.classification_heads.items():
             for param in head.parameters():
                 param.requires_grad = True
-
-    # TODO: Add something to config to set this
-    model.set_attached_heads(LABELS)
 
     logging.info("Model instantiated")
 
