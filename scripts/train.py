@@ -168,6 +168,7 @@ if __name__ == "__main__":
     else:
         wandb.init(project='cgfp', name=RUN_NAME)
 
+    # TODO: This still behaves oddly with slurm, etc...
     logging.basicConfig(level=logging.INFO)
     formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s')
     file_handler = logging.FileHandler(LOG_FILE)
@@ -193,11 +194,11 @@ if __name__ == "__main__":
     logging.info(f"Reading eval data from path : {TRAIN_DATA_PATH}")
     df_eval = read_data(TEXT_FIELD, LABELS, EVAL_DATA_PATH)
 
-    df = pl.concat([df_train, df_eval]) # combine training and eval so we have all valid outputs for evaluation
+    df_combined = pl.concat([df_train, df_eval]) # combine training and eval so we have all valid outputs for evaluation
 
-    encoders, counts = get_encoders(df)
+    encoders, counts = get_encoders(df_combined)
     decoders = get_decoders(encoders)
-    inference_masks = get_inference_masks(df, encoders)
+    inference_masks = get_inference_masks(df_combined, encoders)
 
     logging.info("Preparing dataset")
     train_dataset = Dataset.from_pandas(df_train.collect().to_pandas())
