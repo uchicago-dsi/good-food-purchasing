@@ -11,8 +11,8 @@ data:
   # TODO: Add test string (ie "frozen peas and carrots")
 model:
   model_name: "distilbert-base-uncased"
-  # checkpoint: "/net/projects/cgfp/huggingface/cgfp-distilbert" # null to train the pretrained huggingface model
-  checkpoint: null
+  checkpoint: "/net/projects/cgfp/huggingface/cgfp-distilbert" # null to train the pretrained huggingface model
+  # checkpoint: null
   model_dir: "/net/projects/cgfp/model-files/"
   classification: "mlp" # Choices: "mlp", "linear"
   loss: "cross_entropy" # Choices: "cross_entropy", "focal" (Note: focal loss doesn't work well...)

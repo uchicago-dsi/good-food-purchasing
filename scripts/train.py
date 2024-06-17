@@ -230,15 +230,15 @@ if __name__ == "__main__":
     ### MODEL SETUP ###
     logging.info("Instantiating model")
 
-    # TODO: Stop using this now that we have the counts. Use counts object instead in models.py
-    num_categories_per_task = [len(v.classes_) for k, v in encoders.items()]
+    # # TODO: Stop using this now that we have the counts. Use counts object instead in models.py
+    # num_categories_per_task = [len(v.classes_) for k, v in encoders.items()]
+    # breakpoint()
 
     if checkpoint is None:
         # If no specified checkpoint, use pretrained Huggingface model
         distilbert_model = DistilBertForSequenceClassification.from_pretrained(MODEL_NAME)
 
         multi_task_config = MultiTaskConfig(
-            num_categories_per_task=num_categories_per_task,
             decoders=decoders,
             columns=LABELS,
             classification=classification,
@@ -256,7 +256,6 @@ if __name__ == "__main__":
 
         # Note: If the data has changed, we need to update the model config
         model.config.decoders = decoders
-        model.config.num_categories_per_task = num_categories_per_task
 
         # Note: inference masks and counts are finicky due to the way they are saved in the config
         # Need to save them as JSON and initialize them in the model
