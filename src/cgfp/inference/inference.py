@@ -3,18 +3,25 @@ import os
 import logging
 import numpy as np
 import argparse
+import json
 
 import torch
 
-# from transformers import AutoTokenizer
 from transformers import DistilBertTokenizerFast
 
-from cgfp.config_training import lower2label
-from cgfp.constants.misc_tags import FPG2FPC
+from cgfp.constants.training_constants import lower2label
+from cgfp.constants.tokens.misc_tags import FPG2FPC
 from cgfp.training.models import MultiTaskModel
 
 logger = logging.getLogger("inference_logger")
 logger.setLevel(logging.INFO)
+
+def test_inference(model, tokenizer, prompt, device="cuda:0"):
+    normalized_name = inference(model, tokenizer, prompt, device, combine_name=True)
+    logging.info(f"Example output for 'frozen peas and carrots': {normalized_name}")
+    preds_dict = inference(model, tokenizer, prompt, device)
+    pretty_preds = json.dumps(preds_dict, indent=4)
+    logging.info(pretty_preds)
 
 
 def prediction_to_string(model, scores, idx):

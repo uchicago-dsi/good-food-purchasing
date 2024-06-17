@@ -97,9 +97,7 @@ class MultiTaskModel(PreTrainedModel):
         self.initialize_losses()
         self.set_attached_heads(self.config.columns)
 
-
     def initialize_classification_heads(self):
-        # TODO: Name the classification heads based on the task
         if self.config.classification == "mlp":
             self.classification_heads = nn.ModuleDict({
                 task_name: nn.Sequential(
@@ -120,7 +118,7 @@ class MultiTaskModel(PreTrainedModel):
     def initialize_losses(self):
         self.losses = []
         if self.config.loss == "focal":
-        # TODO: Results here are unstable/bad — probably not actually correct
+            # TODO: Results here are unstable/bad — probably not actually correct
             for task, counts in self.counts.items():
                 counts = torch.tensor(counts, dtype=torch.float)
                 total = counts.sum()
