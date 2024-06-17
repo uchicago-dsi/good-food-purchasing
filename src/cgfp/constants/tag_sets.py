@@ -176,7 +176,7 @@ CHEESE_TYPES = {
     "white cheddar",
 }
 
-MELON_TYPES = {"cantaloupe", "honeydew", "watermelon"}
+MELON_TYPES = {"cantaloupe", "honeydew", "watermelon", "galia"}
 
 SUBTYPE_REPLACEMENT_MAPPING = {
     "fruit": "fruit",

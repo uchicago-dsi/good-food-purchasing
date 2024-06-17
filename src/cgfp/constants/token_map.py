@@ -1,6 +1,8 @@
 # TODO: Maybe I should pull out some of the common mappings like "cut" and include some sort of set membership check
 TOKEN_MAP_DICT = {
     ## TYPOS ##
+    "granualted": "granulated",
+    "furikaki": "furikake",
     "fettuccini": "fettuccine",
     "fettucine": "fettuccine",
     "fettucini": "fettuccine",
@@ -207,6 +209,16 @@ TOKEN_MAP_DICT = {
     "flamebroiled": "cooked",
     ## FLAVORED ##
     "clear blue raspberry": "flavored",
+    "frost riptide": "flavored",
+    "garden salsa": "flavored",
+    "garden vegetable": "flavored",
+    "garlic parmesan": "flavored",
+    "garlic roasted and herb": "flavored",
+    "ginger lemon": "flavored",
+    "ginger peach": "flavored",
+    "glacier cherry": "flavored",
+    "glacier freeze": "flavored",
+    "glacier ice": "flavored",
     ## PROCESSING ##
     "condensed": "concentrate",
     "crusted": "breaded",
@@ -246,4 +258,5 @@ TOKEN_MAP_DICT = {
     "french honey": "french",
     "french red": "french",
     "fresco rancher": "queso fresco",
+    "garlic pepper steak": "garlic pepper",
 }
