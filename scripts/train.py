@@ -108,11 +108,20 @@ if __name__ == "__main__":
 
     SMOKE_TEST = config['config']['smoke_test']
 
-    # Data configuration
-    TEXT_FIELD = config['data']['text_field']
+    # Data configuration    
     DATA_DIR = Path(config['data']['data_dir'])
-    TRAIN_DATA_PATH = DATA_DIR / config['data']['train_filename']
-    EVAL_DATA_PATH = DATA_DIR / config['data']['eval_filename']
+    CLEAN_DIR = DATA_DIR / "clean"
+    RAW_DIR = DATA_DIR / "raw"
+    TEST_DIR = DATA_DIR / "test"
+    os.makedirs(CLEAN_DIR, exist_ok=True)
+    os.makedirs(RAW_DIR, exist_ok=True)
+    os.makedirs(TEST_DIR, exist_ok=True)
+
+    TRAIN_DATA_PATH = CLEAN_DIR / config['data']['train_filename']
+    EVAL_DATA_PATH = CLEAN_DIR / config['data']['eval_filename']
+    TEST_DATA_PATH = RAW_DIR / config['data']['test_filename']
+
+    TEXT_FIELD = config['data']['text_field']
 
     # Model configuration
     SAVE_BEST = config['model']['save_best']
@@ -148,7 +157,6 @@ if __name__ == "__main__":
     CHECKPOINTS_DIR = Path(config['config']['checkpoints_dir'])
     RUN_PATH = CHECKPOINTS_DIR / RUN_NAME
     LOGGING_DIR = SCRIPT_DIR.parent / "logs/"
-
 
     # Logging configuration
     LOG_FILE = LOGGING_DIR / f"{RUN_NAME}.log"
@@ -319,33 +327,21 @@ if __name__ == "__main__":
     tokenizer.save_pretrained(MODEL_SAVE_PATH)
 
     ### EVAL & MODEL SAVING ###
-    eval_prompt = "frozen peas and carrots"
     test_inference(model, tokenizer, eval_prompt, device)
-
-    # TODO: Fix this for smoke_test 
-    # » the logic of changing the output file is actually kinda tricky, need to go through inference setup
-    FILENAME = "TestData_11.22.23.xlsx"
-    # if SMOKE_TEST:
-    #     FILENAME = "smoke_test_" + FILENAME
-    INPUT_COLUMN = "Product Type"
-
-    # TODO: Fix this...maybe need to update inference handler also
-    DATA_DIR = "/net/projects/cgfp/data/raw/"
-
-    INPUT_PATH = DATA_DIR + FILENAME
 
     output_sheet = inference_handler(
         model,
         tokenizer,
-        input_path=INPUT_PATH,
-        data_dir=DATA_DIR,
+        input_path=TEST_DATA_PATH,
+        save_dir=DATA_DIR,
         device=device,
         sheet_name=0,
-        input_column="Product Type",
+        input_column=TEXT_FIELD,
         highlight=False,
         confidence_score=False,
         raw_results=False,
         assertion=False,
+        save_output=not SMOKE_TEST
     )
     with pd.option_context('display.max_columns', None):
-        logging.info(output_sheet.head(1))
+        logging.info(output_sheet.head(2))

@@ -143,9 +143,10 @@ def inference_handler(
     input_path,
     input_column,
     output_filename=None,
-    data_dir="/content",
+    save_dir="/content",
     device=None,
     sheet_name=0,
+    save_output=True,
     highlight=False,
     confidence_score=False,
     threshold=0.85,
@@ -180,8 +181,9 @@ def inference_handler(
     results = results.replace("None", pd.NA)
 
     if raw_results:
-        save_output(results, input_path, data_dir)
-        return
+        if save_output:
+            save_output(results, input_path, save_dir)
+        return results
 
     # Add all columns to results to match name normalization format
     # Assumes that the input dataframe is in the expected name normalization format
@@ -220,7 +222,8 @@ def inference_handler(
     if output_filename is None:
         output_filename = input_path
 
-    save_output(df_formatted, output_filename, data_dir)
+    if save_output:
+        save_output(df_formatted, output_filename, save_dir)
     return df_formatted
 
 
@@ -255,16 +258,16 @@ if __name__ == "__main__":
     RAW_RESULTS = False  # saves the raw model results rather than the formatted normalized name results
     ASSERTION = False
 
+    # TODO: Put in constants or config file
     INPUT_COLUMN = "Product Type"
     DATA_DIR = "/net/projects/cgfp/data/raw/"
-
     INPUT_PATH = DATA_DIR + FILENAME
 
     inference_handler(
         model,
         tokenizer,
         input_path=INPUT_PATH,
-        data_dir=DATA_DIR,
+        save_dir=DATA_DIR,
         device=device,
         sheet_name=SHEET_NUMBER,
         input_column=INPUT_COLUMN,
