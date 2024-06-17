@@ -6,7 +6,6 @@ import yaml
 from pathlib import Path
 
 from sklearn.preprocessing import LabelEncoder
-from sklearn.metrics import accuracy_score, f1_score
 import polars as pl
 import numpy as np
 import pandas as pd
@@ -14,8 +13,6 @@ import pandas as pd
 from typing import Dict, Union, Any
 
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 
@@ -83,6 +80,16 @@ if __name__ == "__main__":
     epochs = config['training']['epochs'] if not SMOKE_TEST else 6
     train_batch_size = config['training']['train_batch_size']
     eval_batch_size = config['training']['eval_batch_size']
+
+    eval_prompt = config['training']['eval_prompt']
+
+    betas = tuple(config['adamw']['betas'])
+    eps = float(config['adamw']['eps'])  # Note: scientific notation, so convert to float
+    weight_decay = config['adamw']['weight_decay']
+
+    T_0 = config['scheduler']['T_0']
+    T_mult = config['scheduler']['T_mult']
+    eta_min_constant = config['scheduler']['eta_min_constant']
 
     # Directory configuration
     RUN_NAME = f"{MODEL_NAME}_{datetime.now().strftime('%Y%m%d_%H%M')}"
@@ -278,9 +285,8 @@ if __name__ == "__main__":
         report_to="wandb" if not SMOKE_TEST else None
     )
 
-    # TODO: Add adam config (and scheduler?) to config file
-    adamW = AdamW(model.parameters(), lr=lr, betas=(0.9, 0.95), eps=1e-5, weight_decay=0.1)
-    scheduler = CosineAnnealingWarmRestarts(adamW, T_0=2000, T_mult=1, eta_min=lr*0.1)
+    adamW = AdamW(model.parameters(), lr=lr, betas=betas, eps=eps, weight_decay=weight_decay)
+    scheduler = CosineAnnealingWarmRestarts(adamW, T_0=T_0, T_mult=T_mult, eta_min=lr*eta_min_constant)
         
     trainer = MultiTaskTrainer(
         model=model,
@@ -289,7 +295,7 @@ if __name__ == "__main__":
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
         optimizers=(adamW, scheduler),  # Pass optimizers here (rather than training_args) for more fine-grained control
-        callbacks=[SaveBestModelCallback(model, tokenizer, device, metric_for_best_model)]
+        callbacks=[SaveBestModelCallback(model, tokenizer, device, metric_for_best_model, eval_prompt)]
     )
 
     logging.info("Training...")
@@ -301,8 +307,9 @@ if __name__ == "__main__":
     model.save_pretrained(MODEL_SAVE_PATH)
     tokenizer.save_pretrained(MODEL_SAVE_PATH)
 
-    prompt = "frozen peas and carrots"
-    test_inference(model, tokenizer, prompt, device)
+    ### EVAL & MODEL SAVING ###
+    eval_prompt = "frozen peas and carrots"
+    test_inference(model, tokenizer, eval_prompt, device)
 
     # TODO: Fix this for smoke_test 
     # » the logic of changing the output file is actually kinda tricky, need to go through inference setup

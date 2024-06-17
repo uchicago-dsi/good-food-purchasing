@@ -42,13 +42,14 @@ def compute_metrics(pred, basic_type_idx=BASIC_TYPE_IDX):
 
 
 class SaveBestModelCallback(TrainerCallback):
-    def __init__(self, model, tokenizer, device, best_model_metric):
+    def __init__(self, model, tokenizer, device, best_model_metric, eval_prompt):
         self.model = model
         self.tokenizer = tokenizer
         self.device = device
         self.best_metric = -float('inf')
         self.best_model_metric = best_model_metric
         self.best_epoch = None
+        self.eval_prompt = eval_prompt
 
     def on_evaluate(self, args, state, control, metrics=None, **kwargs):
         logging.info(f"### EPOCH: {int(state.epoch)} ###")

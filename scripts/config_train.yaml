@@ -26,6 +26,7 @@ training:
   train_batch_size: 32
   eval_batch_size: 64
   metric_for_best_model: "mean_f1_score" # Choices: "mean_f1_score", "basic_type_accuracy"
+  eval_prompt: "frozen peas and carrots"
 adamw:
   betas:
     - 0.9
