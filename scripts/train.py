@@ -3,6 +3,8 @@ import logging
 import json
 from datetime import datetime
 import argparse
+import yaml
+from pathlib import Path
 
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import accuracy_score, f1_score
@@ -34,7 +36,10 @@ from cgfp.inference.inference import inference, inference_handler
 from cgfp.training.models import MultiTaskConfig, MultiTaskModel
 from cgfp.config_training import LABELS
 
-def read_data(input_col, labels, data_path, drop_meals=False):
+SCRIPT_DIR = Path(__file__).resolve().parent
+
+
+def read_data(input_col, labels, data_path):
     # Note: polars syntax is different than pandas syntax
     df = pl.read_csv(data_path, infer_schema_length=1, null_values=["NULL"]).lazy()
     for col in [input_col, "Food Product Group", "Food Product Category", "Primary Food Product Category"]:
@@ -42,8 +47,6 @@ def read_data(input_col, labels, data_path, drop_meals=False):
         df = df.filter(pl.col(col).is_not_null())
         new_height = df.collect().shape[0]
         logging.info(f"Excluded {prev_height - new_height} rows due to null values in '{col}'.")
-    if drop_meals:
-        df = df.filter(pl.col("Food Product Group") != "Meals")
     df_cleaned = df.select(input_col, *labels)
     # TODO: This maybe needs to be done to each column? 
     # Make sure every row is correctly encoded as string
@@ -60,8 +63,7 @@ def test_inference(model, tokenizer, prompt, device="cuda:0"):
     pretty_preds = json.dumps(preds_dict, indent=4)
     logging.info(pretty_preds)
 
-### DATA PREP ###
-
+# TODO: Move to trainer file
 def compute_metrics(pred):
     """
     Extract the predictions and labels for each task
@@ -97,42 +99,16 @@ def compute_metrics(pred):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    # Setup args
-    parser.add_argument('--train_data_path', default="/net/projects/cgfp/data/clean/clean_CONFIDENTIAL_CGFP_bulk_data_073123.csv", type=str, help="Path to the training data CSV file.")
-    parser.add_argument('--eval_data_path', default="/net/projects/cgfp/data/clean/combined_eval_set.csv", type=str, help="Path to the evaluation data CSV file.")
-    parser.add_argument('--save_counts', action='store_true', help="Save counts for each category in the training set to an Excel file.")
-    # Config args
-    parser.add_argument('--smoke_test', action='store_true', help="Run in smoke test mode to check basic functionality.")
-    parser.add_argument('--keep_meals', action='store_true', help="Keep Meals items in training and eval datasets")
-    parser.add_argument('--two_cols', action='store_true', help="Train only on food product group and basic type (for debugging)")
-    # TODO: Is default behavior saving final model?
-    parser.add_argument('--dont_save_best', action="store_false", help="Don't save the best model from the training run (saves the last model, I believe)")
-    parser.add_argument('--train_attention', action="store_true", help="Trains all attention heads in the model (keeps MLPs frozen). (Default behavior is training only the classification heads)")
-    # TODO: Sort out the logic for these two args
-    # parser.add_argument('--train_whole_model', action='store_true', help="Train the whole model. (Default behavior is training only the classification heads.)")
-    parser.add_argument('--freeze_model', action='store_true', help="Freeze model other than classification heads. (Default behavior is training the whole model.)")
-    parser.add_argument('--classification', default="mlp", type=str, help="Setup the classification heads. Choices: mlp, linear. Default is mlp")
-    parser.add_argument('--loss', default="cross_entropy", type=str, help="Setup the loss function. Choices: cross_entropy, focal. Default is cross_entropy")
-    # Hyperparameter args
-    parser.add_argument('--lr', default=.001, type=float, help="Learning rate for the Huggingface Trainer")
-    parser.add_argument('--epochs', default=80, type=int, help="Training epochs for the Huggingface Trainer")
-    parser.add_argument('--train_batch_size', default=32, type=int, help="Training batch size for the Huggingface Trainer")
-    parser.add_argument('--eval_batch_size', default=64, type=int, help="Evaluation batch size for the Huggingface Trainer")
-    
-    args = parser.parse_args()
+    with open(SCRIPT_DIR / "config_train.yaml", "r") as file:
+        config = yaml.safe_load(file)
 
     # Setup
-    MODEL_NAME = "distilbert-base-uncased"
-    TEXT_FIELD = "Product Type"
-    SMOKE_TEST = args.smoke_test
-    SAVE_BEST = not args.dont_save_best
-    DROP_MEALS = not args.keep_meals
-    # TODO: Decide on this after setting up correct gradient handling
-    # FREEZE_MODEL = not args.train_whole_model
-    FREEZE_MODEL = args.freeze_model
-    FREEZE_MLPS = args.train_attention
-    SAVE_COUNTS = args.save_counts
+    TEXT_FIELD = config['data']['text_field']
+    SMOKE_TEST = config['config']['smoke_test']
+    SAVE_BEST = config['model']['save_best']
+    MODEL_NAME = config['model']['model_name']
+    RESET_CLASSIFICATION_HEADS = config['model']['reset_classification_heads']
+    ATTACHED_HEADS = config['model']['attached_heads']
 
     # Logging
     run_name = f"{MODEL_NAME}_{datetime.now().strftime('%Y%m%d_%H%M')}"
@@ -140,12 +116,10 @@ if __name__ == "__main__":
     if SMOKE_TEST:
         run_name += "-smoke-test"
         os.environ["WANDB_DISABLED"] = "true"
-    MODEL_PATH = (
-        f"/net/projects/cgfp/model-files/{run_name}"
-    )
+    MODEL_SAVE_PATH = Path(config['model']['model_dir']) / run_name
 
-    LOGGING_FOLDER = "logs/"
-    LOG_FILE = f"{LOGGING_FOLDER}{run_name}.log"
+    LOGGING_DIR = SCRIPT_DIR.parent / "logs/"
+    LOG_FILE = LOGGING_DIR / f"{run_name}.log"
     logging.basicConfig(level=logging.INFO)
     formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s')
     file_handler = logging.FileHandler(LOG_FILE)
@@ -156,25 +130,21 @@ if __name__ == "__main__":
     transformers_logger.setLevel(logging.INFO)
     transformers_logger.addHandler(file_handler)
 
-    logging.info(f"DROP_MEALS: {DROP_MEALS}")
-    logging.info(f"FREEZE_MODEL: {FREEZE_MODEL}")
-    logging.info(f"FREEZE_MLPS: {FREEZE_MLPS}")
-
     if not SMOKE_TEST:
         wandb.init(project='cgfp', name=run_name)
 
     # Config
-    classification = args.classification
-    loss = args.loss
-    
+    classification = config['model']['classification']
+    loss = config['model']['loss']
+
     # Hyperparameters
-    lr = args.lr
-    epochs = 20 if SMOKE_TEST else args.epochs
-    train_batch_size = args.train_batch_size # try 8,16,32
-    eval_batch_size = args.eval_batch_size
+    lr = config['training']['lr']
+    epochs = config['training']['epochs'] if not SMOKE_TEST else 6
+    train_batch_size = config['training']['train_batch_size']
+    eval_batch_size = config['training']['eval_batch_size']
 
     ### SETUP ###
-    logging.info(f"MODEL_PATH : {MODEL_PATH}")
+    logging.info(f"MODEL_PATH : {MODEL_SAVE_PATH}")
     logging.info("Starting")
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
     logging.info(f"Training with device : {device}")
@@ -183,16 +153,17 @@ if __name__ == "__main__":
     logging.info(f"Predicting categorical fields : {LABELS}")
 
     ### DATA PREP ###
-    if args.two_cols:
-        LABELS = ["Food Product Group", "Basic Type"]
-        logging.info("Training only on Food Product Group & Basic Type")
     # These indeces are used to set up inference filtering
     FPG_IDX = LABELS.index("Food Product Group")
     BASIC_TYPE_IDX = LABELS.index("Basic Type")
-    logging.info(f"Reading training data from path : {args.train_data_path}")
-    df_train = read_data(TEXT_FIELD, LABELS, args.train_data_path, drop_meals=DROP_MEALS)
-    logging.info(f"Reading eval data from path : {args.train_data_path}")
-    df_eval = read_data(TEXT_FIELD, LABELS, args.eval_data_path, drop_meals=DROP_MEALS)
+    DATA_DIR = Path(config['data']['data_dir'])
+    TRAIN_DATA_PATH = DATA_DIR / config['data']['train_filename']
+    EVAL_DATA_PATH = DATA_DIR / config['data']['eval_filename']
+
+    logging.info(f"Reading training data from path : {TRAIN_DATA_PATH}")
+    df_train = read_data(TEXT_FIELD, LABELS, TRAIN_DATA_PATH)
+    logging.info(f"Reading eval data from path : {TRAIN_DATA_PATH}")
+    df_eval = read_data(TEXT_FIELD, LABELS, EVAL_DATA_PATH)
 
     df_combined = pl.concat([df_train, df_eval]) # combine training and eval so we have all valid outputs for evaluation
 
@@ -219,15 +190,6 @@ if __name__ == "__main__":
         full_counts_df = full_counts_df.join(counts_df.collect(), on=column, how='left').fill_null(0)
         counts_sheets[column] = full_counts_df
         counts[column] = full_counts_df['count'].to_list()
-    
-
-    if SAVE_COUNTS:
-        # TODO: do better with this filepath
-        file_path = '/net/projects/cgfp/data/clean/category_counts.xlsx'
-        logging.info(f"Saving counts to Excel: {file_path}")
-        with pd.ExcelWriter(file_path) as writer:
-            for column, df in counts_sheets.items():
-                df.to_pandas().to_excel(writer, sheet_name=column.replace("/", "_"), index=False)
 
     # Create decoders to save to model config
     decoders = []
@@ -282,27 +244,68 @@ if __name__ == "__main__":
     ### TRAINING ###
 
     logging.info("Instantiating model")
-    distilbert_model = DistilBertForSequenceClassification.from_pretrained(
-        "distilbert-base-uncased"
-    )
+    checkpoint = config['model']['checkpoint']
+    FREEZE_BASE = config['model']['freeze_base']
+    MODEL_SAVE_PATH = MODEL_SAVE_PATH / run_name
 
-    # TODO: Kill this now that we have the counts. Use counts object instead in models.py
+
+    # TODO: Stop using this now that we have the counts. Use counts object instead in models.py
     num_categories_per_task = [len(v.classes_) for k, v in encoders.items()]
-    config = MultiTaskConfig(
-        num_categories_per_task=num_categories_per_task,
-        decoders=decoders,
-        columns=LABELS,
-        classification=classification,
-        fpg_idx=FPG_IDX,
-        basic_type_idx=BASIC_TYPE_IDX,
-        inference_masks=json.dumps(inference_masks),
-        counts=json.dumps(counts),
-        loss=loss,
-        **distilbert_model.config.to_dict(),
-    )
-    model = MultiTaskModel(config)
+
+    if checkpoint is None:
+        distilbert_model = DistilBertForSequenceClassification.from_pretrained(MODEL_NAME)
+
+        multi_task_config = MultiTaskConfig(
+            num_categories_per_task=num_categories_per_task,
+            decoders=decoders,
+            columns=LABELS,
+            classification=classification,
+            fpg_idx=FPG_IDX,
+            basic_type_idx=BASIC_TYPE_IDX,
+            inference_masks=json.dumps(inference_masks),
+            counts=json.dumps(counts),
+            loss=loss,
+            **distilbert_model.config.to_dict(),
+        )
+        model = MultiTaskModel(multi_task_config)
+    else:
+        # Note: ignore_mismatched_sizes since we are often loading from checkpoints with different numbers of categories
+        model = MultiTaskModel.from_pretrained(checkpoint, ignore_mismatched_sizes=True)
+
+        # Note: If the data has changed, we need to update the model config
+        model.config.decoders = decoders
+        model.config.num_categories_per_task = num_categories_per_task
+
+        # Note: inference masks and counts are finicky due to the way they are saved in the config
+        # Need to save them as JSON and initialize them in the model
+        model.config.inference_masks = json.dumps(inference_masks)
+        model.config.counts = json.dumps(counts)
+        model.initialize_inference_masks()
+        model.initialize_counts()
+
+    model.save_pretrained(MODEL_SAVE_PATH)
+
+    if RESET_CLASSIFICATION_HEADS:
+        model.initialize_classification_heads()
+
+    if ATTACHED_HEADS is not None:
+        model.set_attached_heads(ATTACHED_HEADS)
+    else:
+        model.set_attached_heads(LABELS)
+
+    if FREEZE_BASE:
+        # Freeze all parameters
+        for param in model.parameters():
+            param.requires_grad = False
+
+        # Unfreeze the classification heads
+        for name, head in model.classification_heads.items():
+            for param in head.parameters():
+                param.requires_grad = True
+
     logging.info("Model instantiated")
 
+    # TODO: Move this to a separate file
     class SaveBestModelCallback(TrainerCallback):
         def __init__(self, best_model_metric):
             self.best_metric = -float('inf')
@@ -313,9 +316,9 @@ if __name__ == "__main__":
             logging.info(f"### EPOCH: {int(state.epoch)} ###")
             # Note: "eval_" is prepended to the keys in metrics
             current_metric = metrics["eval_" + self.best_model_metric]
+            pretty_metrics = json.dumps(metrics, indent=4)
+            logging.info(pretty_metrics)
             if state.epoch % 5 == 0 or current_metric > self.best_metric:
-                pretty_metrics = json.dumps(metrics, indent=4)
-                logging.info(pretty_metrics)
                 prompt = "frozen peas and carrots"
                 test_inference(model, tokenizer, prompt, device)
             if current_metric > self.best_metric:
@@ -328,37 +331,17 @@ if __name__ == "__main__":
                 logging.info(f"The best model was saved from epoch: {self.best_epoch}")
                 logging.info(f"The best result was {self.best_model_metric}: {self.best_metric}")
 
-    training_args = TrainingArguments(
-        output_dir="/net/projects/cgfp/checkpoints",
-        evaluation_strategy="epoch",
-        save_strategy="epoch",
-        num_train_epochs=epochs,
-        per_device_train_batch_size=train_batch_size,
-        per_device_eval_batch_size=eval_batch_size,
-        warmup_steps=100,
-        max_grad_norm=1.0,
-        report_to="wandb" if not SMOKE_TEST else None
-    )
-
-    best_model_metric = "basic_type_accuracy"
-    if SAVE_BEST:
-        training_args.load_best_model_at_end = True
-        training_args.metric_for_best_model = best_model_metric # TODO: Or accuracy? Maybe should be basic type accuracy?
-        training_args.greater_is_better = True
-
-    # TODO: Add adam config (and scheduler?) to config file
-    adamW = AdamW(model.parameters(), lr=lr, betas=(0.9, 0.95), eps=1e-5, weight_decay=0.1)
-    scheduler = CosineAnnealingWarmRestarts(adamW, T_0=2000, T_mult=1, eta_min=lr*0.1)
-
+    # TODO: Move this to a separate file also
     class MultiTaskTrainer(Trainer):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
+            # TODO: This won't work if the model isn't distilbert...
             self.logging_params = {
-                "First Attention Layer Q": model.distilbert.transformer.layer[0].attention.q_lin.weight,
-                "Last Attention Layer Q": model.distilbert.transformer.layer[-1].attention.q_lin.weight,
-                "Basic Type Classification Head": model.classification_heads['Basic Type'][0].weight,
-                "Food Product Group Classification Head": model.classification_heads['Food Product Group'][0].weight,
-                "Sub-Type 1 Classification Head": model.classification_heads['Sub-Type 1'][0].weight,
+                "First Attention Layer Q": self.model.distilbert.transformer.layer[0].attention.q_lin.weight,
+                "Last Attention Layer Q": self.model.distilbert.transformer.layer[-1].attention.q_lin.weight,
+                "Basic Type Classification Head": self.model.classification_heads['Basic Type'][0].weight,
+                "Food Product Group Classification Head": self.model.classification_heads['Food Product Group'][0].weight,
+                "Sub-Type 1 Classification Head": self.model.classification_heads['Sub-Type 1'][0].weight,
             }
 
         def log_gradients(self, name, param):
@@ -375,14 +358,39 @@ if __name__ == "__main__":
                     self.log_gradients(name, param)
             return loss
 
+    CHECKPOINTS_DIR = Path(config['config']['checkpoints_dir'])
+    RUN_PATH = CHECKPOINTS_DIR / run_name
+
+    metric_for_best_model = config['training']['metric_for_best_model'] 
+    
+    training_args = TrainingArguments(
+        output_dir=RUN_PATH,
+        evaluation_strategy="epoch",
+        save_strategy="epoch",
+        num_train_epochs=epochs,
+        per_device_train_batch_size=train_batch_size,
+        per_device_eval_batch_size=eval_batch_size,
+        warmup_steps=100,
+        max_grad_norm=1.0,
+        save_total_limit=2,
+        load_best_model_at_end=True,
+        metric_for_best_model=metric_for_best_model,
+        greater_is_better=True,
+        report_to="wandb" if not SMOKE_TEST else None
+    )
+
+    # TODO: Add adam config (and scheduler?) to config file
+    adamW = AdamW(model.parameters(), lr=lr, betas=(0.9, 0.95), eps=1e-5, weight_decay=0.1)
+    scheduler = CosineAnnealingWarmRestarts(adamW, T_0=2000, T_mult=1, eta_min=lr*0.1)
+        
     trainer = MultiTaskTrainer(
         model=model,
         args=training_args,
         compute_metrics=compute_metrics,
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
-        optimizers=(adamW, scheduler), # Pass optimizers here (rather than training_args) for more fine-grained control
-        callbacks=[SaveBestModelCallback(best_model_metric)]
+        optimizers=(adamW, scheduler),  # Pass optimizers here (rather than training_args) for more fine-grained control
+        callbacks=[SaveBestModelCallback(metric_for_best_model)]
     )
 
     logging.info("Training...")
@@ -391,12 +399,10 @@ if __name__ == "__main__":
     logging.info("Training complete")
     logging.info(f"Validation Results: {trainer.evaluate()}")
 
-    if not SMOKE_TEST:
-        logging.info("Saving the model")
-        model.save_pretrained(MODEL_PATH)
-        tokenizer.save_pretrained(MODEL_PATH)
-
-    logging.info("Complete!")
+    # TODO: Include path
+    logging.info("Saving the model...")
+    model.save_pretrained(MODEL_SAVE_PATH)
+    tokenizer.save_pretrained(MODEL_SAVE_PATH)
 
     prompt = "frozen peas and carrots"
     test_inference(model, tokenizer, prompt, device)
@@ -407,6 +413,7 @@ if __name__ == "__main__":
     # if SMOKE_TEST:
     #     FILENAME = "smoke_test_" + FILENAME
     INPUT_COLUMN = "Product Type"
+    # TODO: Fix this...maybe need to update inference handler also
     DATA_DIR = "/net/projects/cgfp/data/raw/"
 
     INPUT_PATH = DATA_DIR + FILENAME
