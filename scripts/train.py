@@ -231,10 +231,6 @@ if __name__ == "__main__":
     ### MODEL SETUP ###
     logging.info("Instantiating model")
 
-    # # TODO: Stop using this now that we have the counts. Use counts object instead in models.py
-    # num_categories_per_task = [len(v.classes_) for k, v in encoders.items()]
-    # breakpoint()
-
     if checkpoint is None:
         # If no specified checkpoint, use pretrained Huggingface model
         distilbert_model = DistilBertForSequenceClassification.from_pretrained(MODEL_NAME)
@@ -264,8 +260,6 @@ if __name__ == "__main__":
         model.config.counts = json.dumps(counts)
         model.initialize_inference_masks()
         model.initialize_counts()
-
-    model.save_pretrained(MODEL_SAVE_PATH)
 
     if RESET_CLASSIFICATION_HEADS:
         model.initialize_classification_heads()
