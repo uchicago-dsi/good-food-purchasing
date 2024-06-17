@@ -102,6 +102,21 @@ def get_inference_masks(df, encoders):
     return inference_masks
 
 
+def tokenize(batch):
+    tokenized_inputs = tokenizer(
+        batch[TEXT_FIELD], padding="max_length", truncation=True, max_length=100
+    )
+    tokenized_inputs["labels"] = [
+        encoders[label].transform([batch[label]]) for label in LABELS
+    ]
+    return tokenized_inputs
+
+
+# def tokenize_dataset(dataset, tokenizer):
+#     dataset = dataset.map(lambda batch: tokenize(batch, tokenizer), batched=True)
+#     dataset.set_format("torch", columns=["input_ids", "attention_mask", "labels"])
+#     return dataset
+
 if __name__ == "__main__":
     with open(SCRIPT_DIR / "config_train.yaml", "r") as file:
         config = yaml.safe_load(file)
@@ -201,24 +216,14 @@ if __name__ == "__main__":
     inference_masks = get_inference_masks(df_combined, encoders)
 
     logging.info("Preparing dataset")
+    tokenizer = DistilBertTokenizerFast.from_pretrained(MODEL_NAME)
+
     train_dataset = Dataset.from_pandas(df_train.collect().to_pandas())
     eval_dataset = Dataset.from_pandas(df_eval.collect().to_pandas())
 
     if SMOKE_TEST:
         train_dataset = train_dataset.select(range(1000))
 
-    tokenizer = DistilBertTokenizerFast.from_pretrained(MODEL_NAME)
-
-    def tokenize(batch):
-        tokenized_inputs = tokenizer(
-            batch[TEXT_FIELD], padding="max_length", truncation=True, max_length=100
-        )
-        tokenized_inputs["labels"] = [
-            encoders[label].transform([batch[label]]) for label in LABELS
-        ]
-        return tokenized_inputs
-
-    # TODO: Put tokenizing the dataset in a function
     train_dataset = train_dataset.map(tokenize)
     eval_dataset = eval_dataset.map(tokenize)
 
