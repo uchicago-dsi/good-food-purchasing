@@ -153,6 +153,8 @@ if __name__ == "__main__":
 
     # Directory configuration
     RUN_NAME = f"{MODEL_NAME}_{datetime.now().strftime('%Y%m%d_%H%M')}"
+    if SMOKE_TEST:
+        RUN_NAME += "-smoke-test"
     MODEL_SAVE_PATH = Path(config['model']['model_dir']) / RUN_NAME
     CHECKPOINTS_DIR = Path(config['config']['checkpoints_dir'])
     RUN_PATH = CHECKPOINTS_DIR / RUN_NAME
@@ -162,7 +164,6 @@ if __name__ == "__main__":
     LOG_FILE = LOGGING_DIR / f"{RUN_NAME}.log"
 
     if SMOKE_TEST:
-        RUN_NAME += "-smoke-test"
         os.environ["WANDB_DISABLED"] = "true"
     else:
         wandb.init(project='cgfp', name=RUN_NAME)
