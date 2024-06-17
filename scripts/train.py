@@ -51,6 +51,57 @@ def read_data(input_col, labels, data_path):
     return df_cleaned
 
 
+def get_encoders(df, labels=LABELS):
+    encoders = {}
+    counts = {}
+    for column in labels:
+        # Create encoders (including all labels from training and eval sets)
+        # Note: sort this so that the order is consistent
+        unique_categories = df.select(column).unique().sort(column).collect().to_numpy().ravel()
+        encoder = LabelEncoder()
+        encoder.fit(unique_categories)
+        encoders[column] = encoder
+
+        # Get counts for each category in the training set for focal loss
+        counts_df = df_train.group_by(column).agg(pl.len().alias('count')).sort(column)
+
+        logging.info(f"Categories for {column}")
+        with pl.Config(tbl_rows=-1):
+            logging.info(counts_df.collect())
+
+        # Fill 0s for categories that aren't in the training set
+        full_counts_df = pl.DataFrame({column: unique_categories})
+        full_counts_df = full_counts_df.join(counts_df.collect(), on=column, how='left').fill_null(0)
+        counts[column] = full_counts_df['count'].to_list()
+    return encoders, counts
+
+
+def get_decoders(encoders):
+    # Create decoders to save to model config
+    decoders = []
+    for col, encoder in encoders.items():
+        # Note: Huggingface is picky with config.json...a list of tuples works
+        decoding_dict = {
+            f"{index}": label for index, label in enumerate(encoder.classes_)
+        }
+        decoders.append((col, decoding_dict))
+    return decoders
+
+
+def get_inference_masks(df, encoders):
+    # Save valid basic types for each food product group
+    inference_masks = {}
+    basic_types = df.select("Basic Type").unique().collect()['Basic Type'].to_list()
+    for fpg in df.select('Food Product Group').unique().collect()['Food Product Group']:
+        # Note: polars syntax is different than pandas
+        valid_basic_types = df.filter(pl.col("Food Product Group") == fpg).select("Basic Type").unique().collect()['Basic Type'].to_list()
+        basic_type_indeces = encoders['Basic Type'].transform(valid_basic_types)
+        mask = np.zeros(len(basic_types))
+        mask[basic_type_indeces] = 1
+        inference_masks[fpg] = mask.tolist()
+    return inference_masks
+
+
 if __name__ == "__main__":
     with open(SCRIPT_DIR / "config_train.yaml", "r") as file:
         config = yaml.safe_load(file)
@@ -96,16 +147,17 @@ if __name__ == "__main__":
     MODEL_SAVE_PATH = Path(config['model']['model_dir']) / RUN_NAME
     CHECKPOINTS_DIR = Path(config['config']['checkpoints_dir'])
     RUN_PATH = CHECKPOINTS_DIR / RUN_NAME
+    LOGGING_DIR = SCRIPT_DIR.parent / "logs/"
+
 
     # Logging configuration
+    LOG_FILE = LOGGING_DIR / f"{RUN_NAME}.log"
+
     if SMOKE_TEST:
         RUN_NAME += "-smoke-test"
         os.environ["WANDB_DISABLED"] = "true"
     else:
         wandb.init(project='cgfp', name=RUN_NAME)
-
-    LOGGING_DIR = SCRIPT_DIR.parent / "logs/"
-    LOG_FILE = LOGGING_DIR / f"{RUN_NAME}.log"
 
     logging.basicConfig(level=logging.INFO)
     formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s')
@@ -132,52 +184,11 @@ if __name__ == "__main__":
     logging.info(f"Reading eval data from path : {TRAIN_DATA_PATH}")
     df_eval = read_data(TEXT_FIELD, LABELS, EVAL_DATA_PATH)
 
-    df_combined = pl.concat([df_train, df_eval]) # combine training and eval so we have all valid outputs for evaluation
+    df = pl.concat([df_train, df_eval]) # combine training and eval so we have all valid outputs for evaluation
 
-    # TODO: Put this in a function
-    encoders = {}
-    counts = {}
-    counts_sheets = {}
-    for column in LABELS:
-        # Create encoders (including all labels from training and eval sets)
-        # Note: sort this so that the order is consistent
-        unique_categories = df_combined.select(column).unique().sort(column).collect().to_numpy().ravel()
-        encoder = LabelEncoder()
-        encoder.fit(unique_categories)
-        encoders[column] = encoder
-
-        # Get counts for each category in the training set for focal loss
-        counts_df = df_train.group_by(column).agg(pl.len().alias('count')).sort(column)
-
-        logging.info(f"Categories for {column}")
-        with pl.Config(tbl_rows=-1):
-            logging.info(counts_df.collect())
-
-        # Fill 0s for categories that aren't in the training set
-        full_counts_df = pl.DataFrame({column: unique_categories})
-        full_counts_df = full_counts_df.join(counts_df.collect(), on=column, how='left').fill_null(0)
-        counts_sheets[column] = full_counts_df
-        counts[column] = full_counts_df['count'].to_list()
-
-    # Create decoders to save to model config
-    decoders = []
-    for col, encoder in encoders.items():
-        # Note: Huggingface is picky with config.json...a list of tuples works
-        decoding_dict = {
-            f"{index}": label for index, label in enumerate(encoder.classes_)
-        }
-        decoders.append((col, decoding_dict))
-
-    # Save valid basic types for each food product group
-    inference_masks = {}
-    basic_types = df_combined.select("Basic Type").unique().collect()['Basic Type'].to_list()
-    for fpg in df_combined.select('Food Product Group').unique().collect()['Food Product Group']:
-        # Note: polars syntax is different than pandas
-        valid_basic_types = df_combined.filter(pl.col("Food Product Group") == fpg).select("Basic Type").unique().collect()['Basic Type'].to_list()
-        basic_type_indeces = encoders['Basic Type'].transform(valid_basic_types)
-        mask = np.zeros(len(basic_types))
-        mask[basic_type_indeces] = 1
-        inference_masks[fpg] = mask.tolist()
+    encoders, counts = get_encoders(df)
+    decoders = get_decoders(encoders)
+    inference_masks = get_inference_masks(df, encoders)
 
     logging.info("Preparing dataset")
     train_dataset = Dataset.from_pandas(df_train.collect().to_pandas())
