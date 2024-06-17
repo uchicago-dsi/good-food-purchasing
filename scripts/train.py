@@ -112,11 +112,6 @@ def tokenize(batch):
     return tokenized_inputs
 
 
-# def tokenize_dataset(dataset, tokenizer):
-#     dataset = dataset.map(lambda batch: tokenize(batch, tokenizer), batched=True)
-#     dataset.set_format("torch", columns=["input_ids", "attention_mask", "labels"])
-#     return dataset
-
 if __name__ == "__main__":
     with open(SCRIPT_DIR / "config_train.yaml", "r") as file:
         config = yaml.safe_load(file)
@@ -344,4 +339,4 @@ if __name__ == "__main__":
         save_output=not SMOKE_TEST
     )
     with pd.option_context('display.max_columns', None):
-        logging.info(output_sheet.head(2))
+        logging.info(output_sheet.head(1))
