@@ -1,6 +1,10 @@
 # TODO: Maybe I should pull out some of the common mappings like "cut" and include some sort of set membership check
 TOKEN_MAP_DICT = {
     ## TYPOS ##
+    "fettuccini": "fettuccine",
+    "fettucine": "fettuccine",
+    "fettucini": "fettuccine",
+    "early gray": "earl grey",
     "whole grain rich  rich": "whole grain rich",
     "orchiette": "orecchiette",
     "campanelli": "campanelle",
@@ -75,6 +79,10 @@ TOKEN_MAP_DICT = {
     "tobasco": "tabasco",
     "burrio": "burrito",
     "raddicchio": "radicchio",
+    "chcolate": "chocolate",
+    "decaffienated": "decaffeinated",
+    "decaffinated": "decaffeinated",
+    "decafienated": "decaffeinated",
     # TODO: red ti leaf
     ## INCONSISTENCIES ##
     "skin-on": "skin on",
@@ -132,6 +140,10 @@ TOKEN_MAP_DICT = {
     "charbroiled": "cooked",
     "oil roasted": "cooked",
     "roast": "cooked",
+    "autumn roasted": "cooked",
+    "blanched": "cooked",
+    "char-broiled": "cooked",
+    "charbroiled": "cooked",
     ## RENAME ##
     "aprium": "pluot",
     "banana pepper": "pepper",
@@ -145,7 +157,7 @@ TOKEN_MAP_DICT = {
     "cracker meal": "breadcrumb",
     "hasu": "lotus root",
     "satsuma": "mandarin",
-    "white rice": "rice",
+    "white rice": "rice","
     ## CUT ##
     "sliced": "cut",
     "diced": "cut",
@@ -173,6 +185,9 @@ TOKEN_MAP_DICT = {
     "strip": "cut",
     "stripe": "cut",
     "tender": "cut",
+    "airline breast": "cut",
+    "deli sliced": "cut",
+    "fillet diced": "cut",
     ## WHOLE GRAIN ##
     "whole wheat": "whole grain rich",
     "whole grain": "whole grain rich",
@@ -188,7 +203,10 @@ TOKEN_MAP_DICT = {
     "broiled": "cooked",
     "parfried": "cooked",
     "blackened": "cooked",
+    "flame broiled": "cooked",
+    "flamebroiled": "cooked",
     ## FLAVORED ##
+    "clear blue raspberry": "flavored",
     ## PROCESSING ##
     "condensed": "concentrate",
     "crusted": "breaded",
@@ -210,4 +228,22 @@ TOKEN_MAP_DICT = {
     ## DIETARY CONCERN ##
     "less sodium": "low sodium",
     "less salt": "low sodium",
+    ## CAFFEINE ##
+    "decaf": "decaffeinated",
+    ## SUB-TYPE INCONSISTENCIES ##
+    "ancho chile powder": "ancho chile",
+    "apple oatmeal": "oatmeal",
+    "apple pie": "pie",
+    "blackeye pea": "pea",
+    "cheese filled": "cheese",
+    "chicken fried": "fried",
+    "chili ancho": "ancho chile",
+    "cracker sandwich": "cracker",
+    "earl gray": "earl grey",
+    "egg white": "egg",
+    "french catalina": "catalina",
+    "french cut": "cut",
+    "french honey": "french",
+    "french red": "french",
+    "fresco rancher": "queso fresco",
 }
