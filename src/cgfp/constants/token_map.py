@@ -44,8 +44,8 @@ TOKEN_MAP_DICT = {
     "tostado shell": "tostada",
     "chery": "cherry",
     "grean": "green",
-    "green chile": "green chili",
-    "guajillo chile": "guajillo chili",
+    "green chili": "green chile",
+    "guajillo chili": "guajillo chile",
     "habenero": "habanero",
     "hambuger": "hamburger",
     "harvarti": "havarti",
@@ -76,7 +76,6 @@ TOKEN_MAP_DICT = {
     "burrio": "burrito",
     "raddicchio": "radicchio",
     # TODO: red ti leaf
-    "chile": "chili",
     ## INCONSISTENCIES ##
     "skin-on": "skin on",
     "carrots": "carrot",
@@ -125,7 +124,8 @@ TOKEN_MAP_DICT = {
     "cocoa": "cocoa powder",
     "grapes": "grape",
     "entree": "entrée",
-    # TODO: "chile relleno" vs "chili relleno" vs "relleno chile"
+    "chili relleno": "chile relleno",
+    "relleno chile": "chile relleno",
     "beverage": "drink",
     ## COOKED ##
     "au jus": "cooked",

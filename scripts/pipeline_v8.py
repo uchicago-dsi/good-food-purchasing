@@ -286,21 +286,6 @@ def token_handler(token, row):
     if token == "string" and basic_type == "cheese":
         return "ss", row
 
-    if token in ["no sugar", "no sugar added", "sugar free"]:
-        if "free" in row["Product Type"].lower():
-            # Also: SG/FR,  NO-SUGAR-ADDED, SGRFR, No Sugar Added, NSA, NO SUGAR ADDED, W/SPLENDA, S/F
-            # Juice Smoothie Protein Pina Colada 8/15.2 Fl Non-GMO,USDA Organic, SF, SPRTE ZERO
-            return "sugar free", row
-        else:
-            # TODO:...
-            print(row["Product Type"])
-            return "unsweetened", row
-
-    # if token == "hot dog":
-    #     # TODO: ...
-    #     print(row["Product Type"])
-    #     print(row["Food Product Group"])
-
     # Skip outdated tokens from old name normalization format
     # Do this last since some rules override this
     if token in SKIP_TOKENS:

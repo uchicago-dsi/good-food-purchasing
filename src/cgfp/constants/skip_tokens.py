@@ -180,6 +180,10 @@ SKIP_TOKENS = {
     "flake",
     "shaved",
     "whole",
+    "no sugar",
+    "no sugar added",
+    "sugar free",
+    "link",
     ## MISC SUBTYPES ##
     "4 way",
     "5 spice",
