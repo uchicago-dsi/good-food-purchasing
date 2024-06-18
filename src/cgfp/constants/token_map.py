@@ -1,6 +1,7 @@
 # TODO: Maybe I should pull out some of the common mappings like "cut" and include some sort of set membership check
 TOKEN_MAP_DICT = {
     ## TYPOS ##
+    "gerkin": "gherkin",
     "rapsberry": "raspberry",
     "granualted": "granulated",
     "furikaki": "furikake",
@@ -17,7 +18,7 @@ TOKEN_MAP_DICT = {
     "siced": "sliced",
     "apple golden delicious": "apple",
     "apple. Gala": "apple",
-    "apple. gala": "apple",
+    "apple. gala": "apple",  # TODO: apple type is allowed so handle these differently
     "bicsuit": "biscuit",
     "brussel": "brussels sprout",
     "brussel spout": "brussels sprout",

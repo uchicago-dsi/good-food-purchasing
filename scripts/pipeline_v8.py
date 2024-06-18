@@ -20,6 +20,8 @@ from cgfp.constants.tag_sets import (
     SUBTYPE_REPLACEMENT_MAPPING,
     CORN_CERAL,
     WHEAT_CEREAL,
+    OAT_CEREAL,
+    FRUIT_SNACKS,
 )
 from cgfp.constants.pipeline import (
     RUN_FOLDER,
@@ -377,16 +379,14 @@ def subtype_handler(row, token):
 
     if token == "apple juice":
         row["Basic Type"] = "juice"
-        row = add_subtypes(row, "apple", first=True)
-        return None, row
+        return "apple", row
 
     if token == "applesauce" and row["Basic Type"] != "baby food":
         return None, row
 
     if token == "cheez-it":
         row["Basic Type"] = "cracker"
-        row = add_subtypes(row, "cheese", first=True)
-        return None, row
+        return "cheese", row
 
     if token == "earl grey" and row["Food Product Category"] != "Beverages":
         return "flavored", row
@@ -405,11 +405,39 @@ def subtype_handler(row, token):
     if token == "fruit and vegetable" and row["Food Product Group"] == "Beverages":
         return "fruit punch", row
 
+    if token == "fruit medley" and row["Basic Type"] == "juice":
+        return "blend", row
+
+    if token == "fruit bar":
+        row["Basic Type"] = "popsicle"
+        return "fruit", row
+
+    if token == "funnel cake" and row["Basic Type"] == "dessert":
+        return "cake", row
+
+    if token == "gherkin":
+        row["Basic Type"] = "condiment"
+        return "pickle", row
+
+    if token == "gravy master":
+        row["Basic Type"] = "sauce"
+        return "browning", row
+
+    if token in FRUIT_SNACKS:
+        row["Basic Type"] = "fruit snack"
+        return None, row
+
+    # Note: these all have "cereal" as basic type so convert subtype to the grain
     if token in WHEAT_CEREAL:
         return "wheat", row
 
     if token in CORN_CERAL:
         return "corn", row
+
+    if token in OAT_CEREAL:
+        return "oat", row
+
+    return token, row
 
 
 def postprocess_subtypes(row):
@@ -494,8 +522,9 @@ def clean_name(row):
             if matched:
                 continue
         # Unmatched tokens are subtypes
-        row = subtype_handler(row, token)  # handles subtype edge cases
-        row = add_subtypes(row, token)
+        token, row = subtype_handler(row, token)  # handles subtype edge cases
+        if token is not None:
+            row = add_subtypes(row, token)
 
     # Handle edge cases not captured by other rules
     row = postprocess_data(row)

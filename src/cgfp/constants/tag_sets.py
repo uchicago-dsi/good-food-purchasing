@@ -68,6 +68,9 @@ FLAVORS = {
     "mint",
     ## SNACKS ##
     "chocolate",
+    ### TODO: What should I do with the other subtypes, etc?
+    # Should I migrate those from the token map or?
+    "glacier freeze",
 }
 
 # Note: fruits are separated since there is separate logic for "fruit, blend"
@@ -228,4 +231,15 @@ WHEAT_CEREAL = {
     "frosted spooners",
     "frosted wheat",
     "frosted wheats",
+    "fruit whirls",
+}
+
+OAT_CEREAL = {"fruity cheerios"}
+
+FRUIT_SNACKS = {
+    "fruit roll up",
+    "fruit roll-up",
+    "fruit rolls",
+    "fruit rollup",
+    "fruit snack",
 }
