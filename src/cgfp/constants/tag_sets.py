@@ -190,6 +190,7 @@ NUTS = {"almond", "cashew", "pecan", "pistachio"}
 
 CHEESE_TYPES = {
     "cheddar",
+    "cheddar cheese",
     "monterey jack",
     "mozzarella",
     "jack",
@@ -213,3 +214,18 @@ SUBTYPE_REPLACEMENT_MAPPING = {
 ### MISC ###
 # TODO: is this ok?
 CHOCOLATE = {"dark chocolate", "chocolate covered"}
+
+CORN_CERAL = {
+    "frosted corn flakes",
+    "frosted flake",
+    "frosted flakes",
+}
+WHEAT_CEREAL = {
+    "frosted mini spooner",
+    "frosted mini spooners",
+    "frosted mini wheat",
+    "frosted mini wheats",
+    "frosted spooners",
+    "frosted wheat",
+    "frosted wheats",
+}

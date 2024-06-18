@@ -350,4 +350,7 @@ SKIP_TOKENS = {
     "gingerbread",
     "gingersnap",
     "granulated",
+    "alegria",
+    "cotton",
+    "devil's food",
 }

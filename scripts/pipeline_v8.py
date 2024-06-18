@@ -18,6 +18,8 @@ from cgfp.constants.tag_sets import (
     SKIP_SHAPE,
     ALL_FLAVORS,
     SUBTYPE_REPLACEMENT_MAPPING,
+    CORN_CERAL,
+    WHEAT_CEREAL,
 )
 from cgfp.constants.pipeline import (
     RUN_FOLDER,
@@ -367,7 +369,50 @@ def update_subtypes(row):
     return row
 
 
-def handle_subtypes(row):
+def subtype_handler(row, token):
+    if token == "2% lactose free":
+        row["Dietary Accommodation"] = "lactose free"
+        row["Dietary Concern"] = "2%"
+        return None, row
+
+    if token == "apple juice":
+        row["Basic Type"] = "juice"
+        row = add_subtypes(row, "apple", first=True)
+        return None, row
+
+    if token == "applesauce" and row["Basic Type"] != "baby food":
+        return None, row
+
+    if token == "cheez-it":
+        row["Basic Type"] = "cracker"
+        row = add_subtypes(row, "cheese", first=True)
+        return None, row
+
+    if token == "earl grey" and row["Food Product Category"] != "Beverages":
+        return "flavored", row
+
+    # TODO: Maybe move the other subtype rules here?
+    if token == "french toast bread":
+        row["Basic Type"] = "french toast"
+        return None, row
+
+    if token == "fried onion":
+        row["Basic Type"] = "topping"
+        # TODO: Wait should "fried" be in one of the processing cols?
+        row = add_subtypes(row, ["onion", "fried"], first=True)
+        return None, row
+
+    if token == "fruit and vegetable" and row["Food Product Group"] == "Beverages":
+        return "fruit punch", row
+
+    if token in WHEAT_CEREAL:
+        return "wheat", row
+
+    if token in CORN_CERAL:
+        return "corn", row
+
+
+def postprocess_subtypes(row):
     # TODO: Make this robust to subtype changes, change to subtype 3, etc.
     # Count occurrences of each category
     category_counts = {}
@@ -448,12 +493,14 @@ def clean_name(row):
                     break
             if matched:
                 continue
-        row = add_subtypes(row, token)  # Unmatched tokens are subtypes
+        # Unmatched tokens are subtypes
+        row = subtype_handler(row, token)  # handles subtype edge cases
+        row = add_subtypes(row, token)
 
     # Handle edge cases not captured by other rules
     row = postprocess_data(row)
     # Apply subtype rules for specific groups and categories
-    row = handle_subtypes(row)
+    row = postprocess_subtypes(row)
 
     # Deduplicate column values
     row_normalized = row[NORMALIZED_COLUMNS]

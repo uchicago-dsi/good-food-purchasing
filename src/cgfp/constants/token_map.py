@@ -23,6 +23,8 @@ TOKEN_MAP_DICT = {
     "brussel spout": "brussels sprout",
     "brussel sprout": "brussels sprout",
     "bulghur": "bulgur",
+    "bulgar": "bulgur",
+    "bulgar wheat": "bulgur",
     "cabbabe": "cabbage",
     "collard": "collard greens",
     "collard green": "collard greens",
@@ -88,6 +90,9 @@ TOKEN_MAP_DICT = {
     "decafienated": "decaffeinated",
     # TODO: red ti leaf
     ## INCONSISTENCIES ##
+    "cheeks": "cheek",
+    "cheez it": "cheez-it",
+    "cheez-its": "cheez-it",
     "non-fat": "nonfat",  # TODO: which do we want to do? Make sure to change the misc tags
     "skin-on": "skin on",
     "carrots": "carrot",
