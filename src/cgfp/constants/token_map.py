@@ -1,6 +1,7 @@
 # TODO: Maybe I should pull out some of the common mappings like "cut" and include some sort of set membership check
 TOKEN_MAP_DICT = {
     ## TYPOS ##
+    "rapsberry": "raspberry",
     "granualted": "granulated",
     "furikaki": "furikake",
     "fettuccini": "fettuccine",
@@ -87,6 +88,7 @@ TOKEN_MAP_DICT = {
     "decafienated": "decaffeinated",
     # TODO: red ti leaf
     ## INCONSISTENCIES ##
+    "non-fat": "nonfat",  # TODO: which do we want to do? Make sure to change the misc tags
     "skin-on": "skin on",
     "carrots": "carrot",
     "gluten-free": "gluten free",
@@ -159,7 +161,7 @@ TOKEN_MAP_DICT = {
     "cracker meal": "breadcrumb",
     "hasu": "lotus root",
     "satsuma": "mandarin",
-    "white rice": "rice","
+    "white rice": "rice",
     ## CUT ##
     "sliced": "cut",
     "diced": "cut",
@@ -219,6 +221,7 @@ TOKEN_MAP_DICT = {
     "glacier cherry": "flavored",
     "glacier freeze": "flavored",
     "glacier ice": "flavored",
+    "blueberry vanilla": "flavored",
     ## PROCESSING ##
     "condensed": "concentrate",
     "crusted": "breaded",

@@ -90,6 +90,10 @@ FRUITS = {
     "pear",
     "watermelon",
     "watermelon strawberry",
+    "coconut",
+    "grapefruit",
+    "mango",
+    "blackberry",
 }
 
 ALL_FLAVORS = FLAVORS | FRUITS
@@ -131,6 +135,9 @@ FLAVORED_BASIC_TYPES = {
     "mix",
 }
 
+# TODO: This ends up incorrect since it has two flavors
+#  YOGURT ASSORTED RASPBERRY/PEACH L/F G/F	yogurt, rapsberry, peach, low fat	yogurt, rapsberry, flavored, low fat
+
 ### SHAPE ###
 # TODO: Document the logic here
 
@@ -159,7 +166,25 @@ SHAPE_EXTRAS = {
 
 
 # TODO: Maybe dynamically generate fruits and vegetables
-VEGETABLES = {"produce", "carrot", "cauliflower", "carrot", "pea", "celery", "broccoli"}
+VEGETABLES = {
+    "produce",
+    "carrot",
+    "cauliflower",
+    "carrot",
+    "pea",
+    "celery",
+    "broccoli",
+    "pepper",
+    "onion",
+    "green bean",
+    "wax bean",
+}
+
+# TODO: make sure this ends up correct PEAS AND CARROTS. FROZEN,  APPROX 2-1/2 LB. PKG.	vegetable, blend, pea, carrot, frozen	vegetable, blend, pea, frozen
+# TODO: The issue may actually be the "vegetable blend"  basic type?
+
+# TODO: edamame?
+# VEG BLEND EDAMAME SUCCOTASH	vegetable, blend, edamame, succotash	vegetable, blend, edamame
 
 NUTS = {"almond", "cashew", "pecan", "pistachio"}
 

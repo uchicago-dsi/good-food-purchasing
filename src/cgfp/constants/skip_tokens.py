@@ -27,7 +27,7 @@ SKIP_TOKENS = {
     "bailey's vanilla cream",
     ## FLAVORS (BUT DON'T TAG AS FLAVORED) ##
     "honey wheat",
-    "salted caramel",
+    "salted caramel",  # TODO: why not? salted caramel is a flavor for yogurt
     ## BONELESS ##
     "boneless",
     ## CEREAL TYPES ##
@@ -53,7 +53,7 @@ SKIP_TOKENS = {
     "yellow",
     "green",
     "gold",
-    "white",
+    "white",  # TODO: What about white wine? White vinegar?
     "blue",
     "black",
     "brown",
