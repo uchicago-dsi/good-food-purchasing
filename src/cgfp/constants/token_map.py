@@ -1,6 +1,9 @@
 # TODO: Maybe I should pull out some of the common mappings like "cut" and include some sort of set membership check
 TOKEN_MAP_DICT = {
     ## TYPOS ##
+    "cheedar": "cheddar",
+    "carribean": "caribbean",
+    "cardamon": "cardamom",
     "gerkin": "gherkin",
     "rapsberry": "raspberry",
     "granualted": "granulated",
@@ -178,6 +181,7 @@ TOKEN_MAP_DICT = {
     "julienne": "cut",
     "julienned": "cut",
     "quartered": "cut",
+    "quarter": "cut",
     "cubed": "cut",
     "chunk": "cut",
     "trimmed": "cut",

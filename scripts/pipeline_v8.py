@@ -30,6 +30,7 @@ from cgfp.constants.pipeline import (
     NON_SUBTYPE_COLUMNS,
     NORMALIZED_COLUMNS,
     COLUMNS_ORDER,
+    ADDITIONAL_COLUMNS,
 )
 from cgfp.constants.misc_tags import NON_SUBTYPE_TAGS_FPC
 from cgfp.constants.token_map import TOKEN_MAP_DICT
@@ -43,6 +44,9 @@ tqdm.pandas()
 DEFAULT_INPUT_FILE = "CONFIDENTIAL_CGFP bulk data_073123.xlsx"
 DEFAULT_MISC_FILE = "misc.csv"
 CLEAN_FILE_PREFIX = "clean_"
+
+# TODO: Set up a config or something
+SMOKE_TEST = False
 
 
 def create_parser():
@@ -74,9 +78,12 @@ def clean_df(df):
     - Remove null and short (usually a mistake) Product Types
     - Remove null and short (usually a mistake) Product Names
     - Remove non-food items
+
+
+
     """
     # TODO: Do we ever use "Primary Food Product Group?
-    df = df[GROUP_COLUMNS].copy()
+    df = df[ADDITIONAL_COLUMNS + GROUP_COLUMNS].copy()
 
     # Add normalized name columns
     df[NORMALIZED_COLUMNS + ["Misc"]] = None
@@ -427,7 +434,7 @@ def subtype_handler(row, token):
         row["Basic Type"] = "fruit snack"
         return None, row
 
-    # Note: these all have "cereal" as basic type so convert subtype to the grain
+    # Note: these all have "cereal" as basic type so convert subtype to grain type
     if token in WHEAT_CEREAL:
         return "wheat", row
 
@@ -610,7 +617,11 @@ def postprocess_data(row):
     return row
 
 
-def process_data(df, **options):
+# TODO: Set up smoke test in config
+def process_data(df, smoke_test=SMOKE_TEST, **options):
+    if smoke_test:
+        df = df.head(1000)
+
     # Filter missing data and non-food items, handle typos in Category and Group columns
     df = clean_df(df)
 
@@ -665,10 +676,15 @@ def process_data(df, **options):
         "Sub-Type 2",
     ]
 
+    df_scoring = df_normalized.drop(columns=["Product Name"]).rename(
+        columns={"Normalized Name": "Product Name"}
+    )
+    df_scoring = df_scoring[ADDITIONAL_COLUMNS + COLUMNS_ORDER]
+
     df_normalized = df_normalized[COLUMNS_ORDER].sort_values(by=TAGS_SORT_ORDER)
 
     # return processed assets to main
-    return df_normalized, misc, df_diff
+    return df_normalized, misc, df_diff, df_scoring
 
 
 def main(argv):
@@ -680,7 +696,7 @@ def main(argv):
     # processing
     print("Loading data...")
     df_loaded = load_to_pd(**options)
-    df_processed, misc, df_diff = process_data(df_loaded, **options)
+    df_processed, misc, df_diff, df_scoring = process_data(df_loaded, **options)
 
     # output
     # TODO: I...don't get this
@@ -693,6 +709,11 @@ def main(argv):
         output_file="misc.csv",
     )
 
+    # Save file for new scoring platform
+    scoring_file = RUN_FOLDER / "scoring.csv"
+    df_scoring.to_csv(scoring_file, index=False)
+
+    # Save diff file
     diff_file = RUN_FOLDER / "normalized_name_diff.csv"
     df_diff.to_csv(diff_file, index=False)
 
