@@ -1,4 +1,4 @@
-from cgfp.constants.tag_sets import NUTS
+from cgfp.constants.tokens.tag_sets import NUTS
 
 BASIC_TYPE_MAPPING = {
     "sea salt": {"Basic Type": "salt"},

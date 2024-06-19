@@ -4,7 +4,7 @@ from ordered_set import OrderedSet
 from collections import defaultdict
 from tqdm import tqdm
 
-from cgfp.constants.tag_sets import (
+from cgfp.constants.tokens.tag_sets import (
     FLAVORS,
     FRUITS,
     CHOCOLATE,
@@ -23,7 +23,7 @@ from cgfp.constants.tag_sets import (
     OAT_CEREAL,
     FRUIT_SNACKS,
 )
-from cgfp.constants.pipeline import (
+from cgfp.constants.pipeline_constants import (
     RUN_FOLDER,
     GROUP_COLUMNS,
     SUBTYPE_COLUMNS,
@@ -32,11 +32,11 @@ from cgfp.constants.pipeline import (
     COLUMNS_ORDER,
     ADDITIONAL_COLUMNS,
 )
-from cgfp.constants.misc_tags import NON_SUBTYPE_TAGS_FPC
-from cgfp.constants.token_map import TOKEN_MAP_DICT
-from cgfp.constants.skip_tokens import SKIP_TOKENS
-from cgfp.constants.product_type_mapping import PRODUCT_TYPE_MAPPING
-from cgfp.constants.basic_type_mapping import BASIC_TYPE_MAPPING
+from cgfp.constants.tokens.misc_tags import NON_SUBTYPE_TAGS_FPC
+from cgfp.constants.tokens.token_map import TOKEN_MAP_DICT
+from cgfp.constants.tokens.skip_tokens import SKIP_TOKENS
+from cgfp.constants.tokens.product_type_mapping import PRODUCT_TYPE_MAPPING
+from cgfp.constants.tokens.basic_type_mapping import BASIC_TYPE_MAPPING
 from cgfp.util import load_to_pd, save_pd_to_csv
 
 tqdm.pandas()
