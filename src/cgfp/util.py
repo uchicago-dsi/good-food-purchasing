@@ -49,6 +49,7 @@ def save_pd_to_csv(
     run_folder_path.mkdir(parents=True, exist_ok=True)
 
     clean_file_path = run_folder_path / output_file
+    clean_file_path = Path(str(clean_file_path).replace(" ", "_"))
     if do_write_output:
         df.to_csv(clean_file_path, index=False)
 

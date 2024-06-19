@@ -68,6 +68,9 @@ FLAVORS = {
     "mint",
     ## SNACKS ##
     "chocolate",
+    ### TODO: What should I do with the other subtypes, etc?
+    # Should I migrate those from the token map or?
+    "glacier freeze",
 }
 
 # Note: fruits are separated since there is separate logic for "fruit, blend"
@@ -90,6 +93,10 @@ FRUITS = {
     "pear",
     "watermelon",
     "watermelon strawberry",
+    "coconut",
+    "grapefruit",
+    "mango",
+    "blackberry",
 }
 
 ALL_FLAVORS = FLAVORS | FRUITS
@@ -131,6 +138,9 @@ FLAVORED_BASIC_TYPES = {
     "mix",
 }
 
+# TODO: This ends up incorrect since it has two flavors
+#  YOGURT ASSORTED RASPBERRY/PEACH L/F G/F	yogurt, rapsberry, peach, low fat	yogurt, rapsberry, flavored, low fat
+
 ### SHAPE ###
 # TODO: Document the logic here
 
@@ -159,12 +169,31 @@ SHAPE_EXTRAS = {
 
 
 # TODO: Maybe dynamically generate fruits and vegetables
-VEGETABLES = {"produce", "carrot", "cauliflower", "carrot", "pea", "celery", "broccoli"}
+VEGETABLES = {
+    "produce",
+    "carrot",
+    "cauliflower",
+    "carrot",
+    "pea",
+    "celery",
+    "broccoli",
+    "pepper",
+    "onion",
+    "green bean",
+    "wax bean",
+}
+
+# TODO: make sure this ends up correct PEAS AND CARROTS. FROZEN,  APPROX 2-1/2 LB. PKG.	vegetable, blend, pea, carrot, frozen	vegetable, blend, pea, frozen
+# TODO: The issue may actually be the "vegetable blend"  basic type?
+
+# TODO: edamame?
+# VEG BLEND EDAMAME SUCCOTASH	vegetable, blend, edamame, succotash	vegetable, blend, edamame
 
 NUTS = {"almond", "cashew", "pecan", "pistachio"}
 
 CHEESE_TYPES = {
     "cheddar",
+    "cheddar cheese",
     "monterey jack",
     "mozzarella",
     "jack",
@@ -176,7 +205,7 @@ CHEESE_TYPES = {
     "white cheddar",
 }
 
-MELON_TYPES = {"cantaloupe", "honeydew", "watermelon"}
+MELON_TYPES = {"cantaloupe", "honeydew", "watermelon", "galia"}
 
 SUBTYPE_REPLACEMENT_MAPPING = {
     "fruit": "fruit",
@@ -188,3 +217,29 @@ SUBTYPE_REPLACEMENT_MAPPING = {
 ### MISC ###
 # TODO: is this ok?
 CHOCOLATE = {"dark chocolate", "chocolate covered"}
+
+CORN_CERAL = {
+    "frosted corn flakes",
+    "frosted flake",
+    "frosted flakes",
+}
+WHEAT_CEREAL = {
+    "frosted mini spooner",
+    "frosted mini spooners",
+    "frosted mini wheat",
+    "frosted mini wheats",
+    "frosted spooners",
+    "frosted wheat",
+    "frosted wheats",
+    "fruit whirls",
+}
+
+OAT_CEREAL = {"fruity cheerios"}
+
+FRUIT_SNACKS = {
+    "fruit roll up",
+    "fruit roll-up",
+    "fruit rolls",
+    "fruit rollup",
+    "fruit snack",
+}
