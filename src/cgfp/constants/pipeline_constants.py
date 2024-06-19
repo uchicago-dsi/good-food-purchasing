@@ -24,6 +24,14 @@ GROUP_COLUMNS = [
     "Primary Food Product Category",
 ]
 
+ADDITIONAL_COLUMNS = [
+    "Unique Id",
+    "Origin Detail",
+    # Note: We don't have these in all datasets, but it would be good to include them if we did
+    # "Vendor",
+    # "Distributor",
+]
+
 # TODO: Sub type 3?
 SUBTYPE_COLUMNS = ["Sub-Type 1", "Sub-Type 2"]
 NON_SUBTYPE_COLUMNS = [
