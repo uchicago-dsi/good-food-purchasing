@@ -7,10 +7,6 @@ import torch.nn.functional as F
 # from collections import OrderedDict
 
 from transformers import (
-    # DistilBertForSequenceClassification,
-    # DistilBertTokenizerFast,
-    # TrainingArguments,
-    # Trainer,
     PreTrainedModel,
     DistilBertConfig,
     DistilBertModel,
