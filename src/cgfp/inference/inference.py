@@ -146,7 +146,7 @@ def inference_handler(
     save_dir="/content",
     device=None,
     sheet_name=0,
-    save_output=True,
+    save=True,
     highlight=False,
     confidence_score=False,
     threshold=0.85,
@@ -181,7 +181,7 @@ def inference_handler(
     results = results.replace("None", pd.NA)
 
     if raw_results:
-        if save_output:
+        if save:
             save_output(results, input_path, save_dir)
         return results
 
@@ -222,7 +222,7 @@ def inference_handler(
     if output_filename is None:
         output_filename = input_path
 
-    if save_output:
+    if save:
         save_output(df_formatted, output_filename, save_dir)
     return df_formatted
 
