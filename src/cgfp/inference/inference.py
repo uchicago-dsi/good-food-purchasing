@@ -3,18 +3,25 @@ import os
 import logging
 import numpy as np
 import argparse
+import json
 
 import torch
 
-# from transformers import AutoTokenizer
 from transformers import DistilBertTokenizerFast
 
-from cgfp.config_training import lower2label
-from cgfp.constants.misc_tags import FPG2FPC
+from cgfp.constants.training_constants import lower2label
+from cgfp.constants.tokens.misc_tags import FPG2FPC
 from cgfp.training.models import MultiTaskModel
 
 logger = logging.getLogger("inference_logger")
 logger.setLevel(logging.INFO)
+
+def test_inference(model, tokenizer, prompt, device="cuda:0"):
+    normalized_name = inference(model, tokenizer, prompt, device, combine_name=True)
+    logging.info(f"Example output for 'frozen peas and carrots': {normalized_name}")
+    preds_dict = inference(model, tokenizer, prompt, device)
+    pretty_preds = json.dumps(preds_dict, indent=4)
+    logging.info(pretty_preds)
 
 
 def prediction_to_string(model, scores, idx):
@@ -136,9 +143,10 @@ def inference_handler(
     input_path,
     input_column,
     output_filename=None,
-    data_dir="/content",
+    save_dir="/content",
     device=None,
     sheet_name=0,
+    save=True,
     highlight=False,
     confidence_score=False,
     threshold=0.85,
@@ -173,8 +181,9 @@ def inference_handler(
     results = results.replace("None", pd.NA)
 
     if raw_results:
-        save_output(results, input_path, data_dir)
-        return
+        if save:
+            save_output(results, input_path, save_dir)
+        return results
 
     # Add all columns to results to match name normalization format
     # Assumes that the input dataframe is in the expected name normalization format
@@ -213,7 +222,8 @@ def inference_handler(
     if output_filename is None:
         output_filename = input_path
 
-    save_output(df_formatted, output_filename, data_dir)
+    if save:
+        save_output(df_formatted, output_filename, save_dir)
     return df_formatted
 
 
@@ -248,16 +258,16 @@ if __name__ == "__main__":
     RAW_RESULTS = False  # saves the raw model results rather than the formatted normalized name results
     ASSERTION = False
 
+    # TODO: Put in constants or config file
     INPUT_COLUMN = "Product Type"
     DATA_DIR = "/net/projects/cgfp/data/raw/"
-
     INPUT_PATH = DATA_DIR + FILENAME
 
     inference_handler(
         model,
         tokenizer,
         input_path=INPUT_PATH,
-        data_dir=DATA_DIR,
+        save_dir=DATA_DIR,
         device=device,
         sheet_name=SHEET_NUMBER,
         input_column=INPUT_COLUMN,

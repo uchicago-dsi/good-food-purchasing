@@ -4,7 +4,7 @@ from ordered_set import OrderedSet
 from collections import defaultdict
 from tqdm import tqdm
 
-from cgfp.constants.tag_sets import (
+from cgfp.constants.tokens.tag_sets import (
     FLAVORS,
     FRUITS,
     CHOCOLATE,
@@ -18,20 +18,25 @@ from cgfp.constants.tag_sets import (
     SKIP_SHAPE,
     ALL_FLAVORS,
     SUBTYPE_REPLACEMENT_MAPPING,
+    CORN_CERAL,
+    WHEAT_CEREAL,
+    OAT_CEREAL,
+    FRUIT_SNACKS,
 )
-from cgfp.constants.pipeline import (
+from cgfp.constants.pipeline_constants import (
     RUN_FOLDER,
     GROUP_COLUMNS,
     SUBTYPE_COLUMNS,
     NON_SUBTYPE_COLUMNS,
     NORMALIZED_COLUMNS,
     COLUMNS_ORDER,
+    ADDITIONAL_COLUMNS,
 )
-from cgfp.constants.misc_tags import NON_SUBTYPE_TAGS_FPC
-from cgfp.constants.token_map import TOKEN_MAP_DICT
-from cgfp.constants.skip_tokens import SKIP_TOKENS
-from cgfp.constants.product_type_mapping import PRODUCT_TYPE_MAPPING
-from cgfp.constants.basic_type_mapping import BASIC_TYPE_MAPPING
+from cgfp.constants.tokens.misc_tags import NON_SUBTYPE_TAGS_FPC
+from cgfp.constants.tokens.token_map import TOKEN_MAP_DICT
+from cgfp.constants.tokens.skip_tokens import SKIP_TOKENS
+from cgfp.constants.tokens.product_type_mapping import PRODUCT_TYPE_MAPPING
+from cgfp.constants.tokens.basic_type_mapping import BASIC_TYPE_MAPPING
 from cgfp.util import load_to_pd, save_pd_to_csv
 
 tqdm.pandas()
@@ -39,6 +44,9 @@ tqdm.pandas()
 DEFAULT_INPUT_FILE = "CONFIDENTIAL_CGFP bulk data_073123.xlsx"
 DEFAULT_MISC_FILE = "misc.csv"
 CLEAN_FILE_PREFIX = "clean_"
+
+# TODO: Set up a config or something
+SMOKE_TEST = False
 
 
 def create_parser():
@@ -70,9 +78,12 @@ def clean_df(df):
     - Remove null and short (usually a mistake) Product Types
     - Remove null and short (usually a mistake) Product Names
     - Remove non-food items
+
+
+
     """
     # TODO: Do we ever use "Primary Food Product Group?
-    df = df[GROUP_COLUMNS].copy()
+    df = df[ADDITIONAL_COLUMNS + GROUP_COLUMNS].copy()
 
     # Add normalized name columns
     df[NORMALIZED_COLUMNS + ["Misc"]] = None
@@ -224,6 +235,13 @@ def token_handler(token, row):
         row["Processing"] = "seasoned"
         return None, row
 
+    if token == "pulled" and food_product_group in ["Meat", "Meals"]:
+        row["Shape"] = "cut"
+        row["Cooked/Cleaned"] = "cooked"
+        return None, row
+    elif token == "pulled":
+        return None, row
+
     if token == "stick" and food_product_group in ["Produce", "Seafood"]:
         return "cut", row
 
@@ -360,7 +378,76 @@ def update_subtypes(row):
     return row
 
 
-def handle_subtypes(row):
+def subtype_handler(row, token):
+    if token == "2% lactose free":
+        row["Dietary Accommodation"] = "lactose free"
+        row["Dietary Concern"] = "2%"
+        return None, row
+
+    if token == "apple juice":
+        row["Basic Type"] = "juice"
+        return "apple", row
+
+    if token == "applesauce" and row["Basic Type"] != "baby food":
+        return None, row
+
+    if token == "cheez-it":
+        row["Basic Type"] = "cracker"
+        return "cheese", row
+
+    if token == "earl grey" and row["Food Product Category"] != "Beverages":
+        return "flavored", row
+
+    # TODO: Maybe move the other subtype rules here?
+    if token == "french toast bread":
+        row["Basic Type"] = "french toast"
+        return None, row
+
+    if token == "fried onion":
+        row["Basic Type"] = "topping"
+        # TODO: Wait should "fried" be in one of the processing cols?
+        row = add_subtypes(row, ["onion", "fried"], first=True)
+        return None, row
+
+    if token == "fruit and vegetable" and row["Food Product Group"] == "Beverages":
+        return "fruit punch", row
+
+    if token == "fruit medley" and row["Basic Type"] == "juice":
+        return "blend", row
+
+    if token == "fruit bar":
+        row["Basic Type"] = "popsicle"
+        return "fruit", row
+
+    if token == "funnel cake" and row["Basic Type"] == "dessert":
+        return "cake", row
+
+    if token == "gherkin":
+        row["Basic Type"] = "condiment"
+        return "pickle", row
+
+    if token == "gravy master":
+        row["Basic Type"] = "sauce"
+        return "browning", row
+
+    if token in FRUIT_SNACKS:
+        row["Basic Type"] = "fruit snack"
+        return None, row
+
+    # Note: these all have "cereal" as basic type so convert subtype to grain type
+    if token in WHEAT_CEREAL:
+        return "wheat", row
+
+    if token in CORN_CERAL:
+        return "corn", row
+
+    if token in OAT_CEREAL:
+        return "oat", row
+
+    return token, row
+
+
+def postprocess_subtypes(row):
     # TODO: Make this robust to subtype changes, change to subtype 3, etc.
     # Count occurrences of each category
     category_counts = {}
@@ -441,12 +528,15 @@ def clean_name(row):
                     break
             if matched:
                 continue
-        row = add_subtypes(row, token)  # Unmatched tokens are subtypes
+        # Unmatched tokens are subtypes
+        token, row = subtype_handler(row, token)  # handles subtype edge cases
+        if token is not None:
+            row = add_subtypes(row, token)
 
-    # Apply subtype rules for specific groups and categories
-    row = handle_subtypes(row)
     # Handle edge cases not captured by other rules
     row = postprocess_data(row)
+    # Apply subtype rules for specific groups and categories
+    row = postprocess_subtypes(row)
 
     # Deduplicate column values
     row_normalized = row[NORMALIZED_COLUMNS]
@@ -488,6 +578,36 @@ def postprocess_data(row):
         row["Food Product Category"] = "Condiments & Snacks"
         row["Primary Product Category"] = "Condiments & Snacks"
 
+    # Handle "chili" as Basic Type
+    if (
+        row["Basic Type"] == "chili"
+        and row["Food Product Group"] == "Condiments & Snacks"
+    ):
+        row["Basic Type"] = "spice"
+        row = add_subtypes(row, "chili", first=True)
+        return row
+    if row["Basic Type"] == "chili" and row["Food Product Group"] == "Produce":
+        row["Basic Type"] = "pepper"
+        row = add_subtypes(row, "chili", first=True)
+        return row
+
+    # Assume that bologna is made with beef, pork, and chicken so label with "Beef" as
+    # Food Product Category since that has highest climate impact
+    if row["Basic Type"] == "bologna" and "all" in row["Product Type"].lower():
+        row["Basic Type"] = "beef"
+        row = remove_subtypes(row, list(row["Sub-Types"]))
+        row = add_subtypes(row, ["pork", "bologna"])
+        row["Food Product Category"] = "Beef"
+        row["Primary Food Product Category"] = "Beef"
+        return row
+
+    # Roasted chickpeas are Basic Type "snack"
+    # TODO: Should FPC always be Condiments & Snacks? then?
+    if row["Basic Type"] == "chickpea" and "roasted" in row["Product Name"].lower():
+        row["Basic Type"] = "snack"
+        row = add_subtypes(row, "chickpea", first=True)
+        return row
+
     if row["Basic Type"] == "beverage" and row["Sub-Type 1"] == "energy drink":
         row["Basic Type"] = "energy drink"
         # Note: Subtypes are finicky so we need to actually remove them with the remove_subtypes function
@@ -497,7 +617,11 @@ def postprocess_data(row):
     return row
 
 
-def process_data(df, **options):
+# TODO: Set up smoke test in config
+def process_data(df, smoke_test=SMOKE_TEST, **options):
+    if smoke_test:
+        df = df.head(1000)
+
     # Filter missing data and non-food items, handle typos in Category and Group columns
     df = clean_df(df)
 
@@ -552,10 +676,15 @@ def process_data(df, **options):
         "Sub-Type 2",
     ]
 
+    df_scoring = df_normalized.drop(columns=["Product Name"]).rename(
+        columns={"Normalized Name": "Product Name"}
+    )
+    df_scoring = df_scoring[ADDITIONAL_COLUMNS + COLUMNS_ORDER]
+
     df_normalized = df_normalized[COLUMNS_ORDER].sort_values(by=TAGS_SORT_ORDER)
 
     # return processed assets to main
-    return df_normalized, misc, df_diff
+    return df_normalized, misc, df_diff, df_scoring
 
 
 def main(argv):
@@ -567,7 +696,7 @@ def main(argv):
     # processing
     print("Loading data...")
     df_loaded = load_to_pd(**options)
-    df_processed, misc, df_diff = process_data(df_loaded, **options)
+    df_processed, misc, df_diff, df_scoring = process_data(df_loaded, **options)
 
     # output
     # TODO: I...don't get this
@@ -580,6 +709,11 @@ def main(argv):
         output_file="misc.csv",
     )
 
+    # Save file for new scoring platform
+    scoring_file = RUN_FOLDER / "scoring.csv"
+    df_scoring.to_csv(scoring_file, index=False)
+
+    # Save diff file
     diff_file = RUN_FOLDER / "normalized_name_diff.csv"
     df_diff.to_csv(diff_file, index=False)
 

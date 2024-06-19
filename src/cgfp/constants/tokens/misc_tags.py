@@ -68,8 +68,9 @@ MISC_COLUMN_TAGS = {
             "salted",
             "unsalted",
             "no sodium",
+            "sugar free",
         },
-        "Additives": {"additives", "no additives", "sweetened"},
+        "Additives": {"additives", "no additives", "sweetened", "unsweetened"},
         "Dietary Accommodation": {
             "gluten free",
             "halal",
@@ -109,6 +110,7 @@ MISC_COLUMN_TAGS = {
             "patty",
             "salami",
             "crumble",
+            "hot dog",
         },
         "Skin": {"skin on"},
         "Seed/Bone": {"bone-in"},
@@ -127,7 +129,6 @@ MISC_COLUMN_TAGS = {
     },
     "Beverages": {
         "Shape": {"thickened"},
-        "Processing": {"powder"},
         "Flavor/Cut": {"mix"},
         "Dietary Concern": {"decaffeinated", "diet", "caffeinated"},
         "Frozen": {"iced"},

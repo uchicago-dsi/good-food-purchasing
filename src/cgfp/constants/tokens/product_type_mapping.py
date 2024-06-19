@@ -82,4 +82,9 @@ PRODUCT_TYPE_MAPPING = {
     "GRAIN, WHEAT RED BRRY": {
         "Basic Type": "wheat berry",
     },
+    "BENEFIT BRFST BAR OAT/RSN IW": {
+        "Basic Type": "bar",
+        "Sub-Types": ["oat"],
+        "Packaging": "ss",
+    },
 }

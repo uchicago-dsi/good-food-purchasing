@@ -7,15 +7,13 @@ import torch.nn.functional as F
 # from collections import OrderedDict
 
 from transformers import (
-    # DistilBertForSequenceClassification,
-    # DistilBertTokenizerFast,
-    # TrainingArguments,
-    # Trainer,
     PreTrainedModel,
     DistilBertConfig,
     DistilBertModel,
 )
 from transformers.modeling_outputs import SequenceClassifierOutput
+
+from cgfp.constants.training_constants import BASIC_TYPE_IDX, FPG_IDX
 
 # TODO: Clean this up
 class FocalLoss(nn.Module):
@@ -56,29 +54,27 @@ class MultiTaskConfig(DistilBertConfig):
     def __init__(
         self,
         classification="linear",
-        num_categories_per_task=None,
         decoders=None,
         columns=None,
         counts=None,
-        fpg_idx=0,
-        basic_type_idx=2,
+        fpg_idx=FPG_IDX,
+        basic_type_idx=BASIC_TYPE_IDX,
         inference_masks=None,
-        loss="focal",
-        detach_heads=True,
+        loss="cross_entropy",
         **kwargs
     ):
         super().__init__(**kwargs)
-        self.num_categories_per_task = num_categories_per_task
         self.decoders = decoders
         self.columns = columns
         self.classification = classification  # choices are "linear" or "mlp"
+        self.loss = loss
+        self.counts = counts
+        # self.num_categories_per_task = [len(v) for v in json.loads(self.counts).values()]
+
         # TODO: can maybe get these indexes from the columns
-        self.fpg_idx = fpg_idx # TODO
-        self.basic_type_idx=basic_type_idx
-        self.inference_masks=inference_masks
-        self.loss=loss
-        self.counts=counts
-        # self.detach_heads=detach_heads
+        self.fpg_idx = fpg_idx
+        self.basic_type_idx = basic_type_idx
+        self.inference_masks = inference_masks
 
 
 class MultiTaskModel(PreTrainedModel):
@@ -97,9 +93,7 @@ class MultiTaskModel(PreTrainedModel):
         self.initialize_losses()
         self.set_attached_heads(self.config.columns)
 
-
     def initialize_classification_heads(self):
-        # TODO: Name the classification heads based on the task
         if self.config.classification == "mlp":
             self.classification_heads = nn.ModuleDict({
                 task_name: nn.Sequential(
@@ -107,20 +101,20 @@ class MultiTaskModel(PreTrainedModel):
                     nn.ReLU(),
                     nn.Dropout(self.config.seq_classif_dropout),
                     nn.Linear(self.config.dim // 2, num_categories),
-                ) for task_name, num_categories in zip(self.config.columns, self.config.num_categories_per_task)
+                ) for task_name, num_categories in zip(self.config.columns, self.num_categories_per_task)
             })
         elif self.config.classification == "linear":
             self.classification_heads = nn.ModuleDict({
                 task_name: nn.Sequential(
                     nn.Linear(self.config.dim, num_categories),
                     nn.Dropout(self.config.seq_classif_dropout),
-                ) for task_name, num_categories in zip(self.config.columns, self.config.num_categories_per_task)
+                ) for task_name, num_categories in zip(self.config.columns, self.num_categories_per_task)
             })
 
     def initialize_losses(self):
         self.losses = []
         if self.config.loss == "focal":
-        # TODO: Results here are unstable/bad — probably not actually correct
+            # TODO: Results here are unstable/bad — probably not actually correct
             for task, counts in self.counts.items():
                 counts = torch.tensor(counts, dtype=torch.float)
                 total = counts.sum()
@@ -136,6 +130,7 @@ class MultiTaskModel(PreTrainedModel):
 
     def initialize_counts(self):
         self.counts = json.loads(self.config.counts)
+        self.num_categories_per_task = [len(v) for k, v in self.counts.items()]
 
     def set_attached_heads(self, heads_to_attach):
         """Set which heads should have their inputs attached to the computation graph. Allows for controlling the finetuning of the model."""
