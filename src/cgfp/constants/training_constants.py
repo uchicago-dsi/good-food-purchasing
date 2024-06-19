@@ -23,6 +23,10 @@ LABELS = [
     "Commodity",
 ]
 
+# These indeces are used to set up inference filtering
+FPG_IDX = LABELS.index("Food Product Group")
+BASIC_TYPE_IDX = LABELS.index("Basic Type")
+
 COMPLETE_LABELS = ["Product Type", "Center Product ID"] + LABELS
 
 lower2label = {label.lower(): label for label in COMPLETE_LABELS}
