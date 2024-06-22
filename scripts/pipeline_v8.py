@@ -637,6 +637,10 @@ def process_data(df, smoke_test=SMOKE_TEST, **options):
         lambda row: ", ".join(row[NORMALIZED_COLUMNS].dropna().astype(str)),
         axis=1,
     )
+    df_normalized["Sub-Types"] = df_normalized["Sub-Types"].apply(
+        lambda x: str(list(x))
+    )
+
     df_diff = df["Product Name"].compare(df_normalized["Normalized Name"])
     df_diff["Product Type"] = df["Product Type"]
     df_diff = df_diff[
@@ -682,7 +686,9 @@ def process_data(df, smoke_test=SMOKE_TEST, **options):
     )
     df_scoring = df_scoring[ADDITIONAL_COLUMNS + COLUMNS_ORDER]
 
-    df_normalized = df_normalized[COLUMNS_ORDER].sort_values(by=TAGS_SORT_ORDER)
+    df_normalized = df_normalized[COLUMNS_ORDER + ["Sub-Types"]].sort_values(
+        by=TAGS_SORT_ORDER
+    )
 
     # return processed assets to main
     return df_normalized, misc, df_diff, df_scoring
