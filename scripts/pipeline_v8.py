@@ -378,6 +378,7 @@ def update_subtypes(row):
     return row
 
 
+# TODO: Set this up like basic_type_handler with a mapping dictionary
 def subtype_handler(row, token):
     if token == "2% lactose free":
         row["Dietary Accommodation"] = "lactose free"
