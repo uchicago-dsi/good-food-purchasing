@@ -4,6 +4,7 @@ import json
 from datetime import datetime
 import yaml
 from pathlib import Path
+import ast
 
 from sklearn.preprocessing import LabelEncoder
 import polars as pl
@@ -33,6 +34,7 @@ from cgfp.constants.training_constants import LABELS, BASIC_TYPE_IDX, FPG_IDX
 SCRIPT_DIR = Path(__file__).resolve().parent
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
+
 def read_data(input_col, labels, data_path):
     # Note: polars syntax is different than pandas syntax
     df = pl.read_csv(data_path, infer_schema_length=1, null_values=["NULL"]).lazy()
@@ -41,7 +43,22 @@ def read_data(input_col, labels, data_path):
         df = df.filter(pl.col(col).is_not_null())
         new_height = df.collect().shape[0]
         logging.info(f"Excluded {prev_height - new_height} rows due to null values in '{col}'.")
+
+    # Handle "Sub-Types" — may not always be in dataset
+    if "Sub-Types" not in df.collect().columns:
+        sub_type_cols = [col for col in df.columns if "Sub-Type" in col]
+        if sub_type_cols:
+            df = df.with_columns(
+                pl.concat_list(sub_type_cols).alias("Sub-Types")
+            )
+
     df_cleaned = df.select(input_col, *labels)
+        
+    # Convert 'Sub-Types' from string back to list
+    def str_to_list(s):
+        return ast.literal_eval(s) if s else []
+    df_cleaned = df_cleaned.with_columns(pl.col("Sub-Types").apply(str_to_list))
+
     # TODO: This maybe needs to be done to each column? 
     # Make sure every row is correctly encoded as string
     df_cleaned = df_cleaned.with_columns(pl.col(input_col).cast(pl.Utf8))
