@@ -73,13 +73,18 @@ def get_encoders(df, labels=LABELS):
     counts = {}
     for column in labels:
         # Create encoders (including all labels from training and eval sets)
-        # Note: sort this so that the order is consistent
-        unique_categories = df.select(column).unique().sort(column).collect().to_numpy().ravel()
+        if column == "Sub-Types":
+            # Flatten the list of subtypes and find unique items
+            unique_categories = df.select(pl.col(column).arr.explode()).unique().sort(column).collect().to_numpy().ravel()
+        else:
+            # Note: this is sorted this so that the order is consistent
+            unique_categories = df.select(column).unique().sort(column).collect().to_numpy().ravel()
         encoder = LabelEncoder()
         encoder.fit(unique_categories)
         encoders[column] = encoder
 
         # Get counts for each category in the training set for focal loss
+        # TODO: Wait...why is df_train in here?
         counts_df = df_train.group_by(column).agg(pl.len().alias('count')).sort(column)
 
         logging.info(f"Categories for {column}")
