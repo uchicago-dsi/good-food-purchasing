@@ -171,14 +171,17 @@ class MultiTaskModel(PreTrainedModel):
 
         # TODO: write actual documentation of what's happening here if this works
         logits = []
-        # TODO: uh....how should I actually do this?
-        # unfreeze_heads = ["Food Product Group", "Food Product Category", "Basic Type"]
         for i, item in enumerate(self.classification_heads.items()):
             head, classifier = item
             if head not in self.attached_heads:
                 logits.append(classifier(pooled_output.detach()))
             else:
                 logits.append(classifier(pooled_output))
+
+        # TODO: I can probably set up a makeshift multilabel task here on the logits
+        # Do something like this: pool the labels from the Sub-Type columns
+        # Encode them as a single vector, then use BCELoss to compare the logits to the encoded vector
+        # This will be a bit complicated since the size of the dataset is going to be mismatched now...
 
         loss = None
         losses = []

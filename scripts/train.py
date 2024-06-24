@@ -133,44 +133,35 @@ def get_encoders_and_counts_polars(df, labels=LABELS):
 
     return encoders, counts
 
+def get_encoder(unique_categories):
+    encoder = LabelEncoder()
+    encoder.fit(unique_categories)
+    return encoder
+
 
 def get_encoders_and_counts(df, labels=LABELS):
     encoders = {}
     counts = {}
+    subtype_counts = pd.Series(dtype=int)
 
     for column in labels:
-        if column == "Sub-Types":
-            # Use MultiLabelBinarizer for multilabel classification
-            mlb = MultiLabelBinarizer()
-            sub_types_encoded = mlb.fit_transform(df[column])
-            encoders[column] = mlb
-
-            # Get counts for each subtype
-            counts_df = pd.DataFrame(sub_types_encoded, columns=mlb.classes_).sum().sort_index()
-
-            logging.info(f"Categories for {column}")
-            logging.info(counts_df)
-
-            counts[column] = counts_df.to_list()
+        if "Sub-Type" in column:
+            # Aggregate all sub-type options and handle at the end
+            col_counts = df[column].value_counts().sort_index()
+            subtype_counts = subtype_counts.add(col_counts, fill_value=0).astype(int)
         else:
-            # Create LabelEncoder for single-label columns
-            unique_categories = df[column].unique()
-            unique_categories.sort()
-
-            encoder = LabelEncoder()
-            encoder.fit(unique_categories)
-            encoders[column] = encoder
-
-            # Get counts for each category in the training set for focal loss
-            counts_df = df[column].value_counts().sort_index()
-
+            col_counts = df[column].value_counts().sort_index()
             logging.info(f"Categories for {column}")
-            logging.info(counts_df)
+            logging.info(col_counts)
+            counts[column] = col_counts.to_list()
+            encoders[column] = get_encoder(col_counts.index)
 
-            # Fill 0s for categories that aren't in the training set
-            full_counts_df = pd.Series(0, index=unique_categories)
-            full_counts_df.update(counts_df)
-            counts[column] = full_counts_df.to_list()
+    # Handle sub-types
+    subtype_counts = subtype_counts.sort_index()
+    logging.info("Categories for Sub-Types")
+    logging.info(subtype_counts)
+    counts["Sub-Types"] = subtype_counts.to_list()
+    encoders["Sub-Types"] = get_encoder(subtype_counts.index)
 
     return encoders, counts
 
@@ -223,6 +214,7 @@ def tokenize(example, labels=LABELS):
     tokenized_inputs["labels"] = [
         encoders[label].transform([example[label]]) for label in LABELS
     ]
+    breakpoint()
     return tokenized_inputs
 
 

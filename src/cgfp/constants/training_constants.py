@@ -1,14 +1,7 @@
-# TODO: All of these labels and columns should be organized better...
-
 # Note: Be careful with capitalization here
-LABELS = [
-    "Food Product Group",
-    "Food Product Category",
-    "Primary Food Product Category",
-    "Basic Type",
-    "Sub-Types",
-    # "Sub-Type 1",
-    # "Sub-Type 2",
+FPG_FPC_COLS = ["Food Product Group", "Food Product Category", "Primary Food Product Category"]
+SUB_TYPE_COLS = ["Sub-Type 1", "Sub-Type 2"]
+MISC_COLS = [
     "Flavor/Cut",
     "Shape",
     "Skin",
@@ -24,9 +17,12 @@ LABELS = [
     "Commodity",
 ]
 
-# These indeces are used to set up inference filtering
+LABELS = FPG_FPC_COLS + ["Basic Type"] +  MISC_COLS + SUB_TYPE_COLS
+
+# These indeces are used in model configuration
 FPG_IDX = LABELS.index("Food Product Group")
 BASIC_TYPE_IDX = LABELS.index("Basic Type")
+SUB_TYPE_IDX = LABELS.index("Sub-Type 1")
 
 COMPLETE_LABELS = ["Product Type", "Center Product ID"] + LABELS
 
