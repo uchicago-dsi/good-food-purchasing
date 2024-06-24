@@ -210,10 +210,19 @@ def tokenize(example, labels=LABELS):
     tokenized_inputs = tokenizer(
         example[TEXT_FIELD], padding="max_length", truncation=True, max_length=100
     )
-    LABELS = ["Sub-Types"]
-    tokenized_inputs["labels"] = [
-        encoders[label].transform([example[label]]) for label in LABELS
-    ]
+    tokenized_labels = []
+    for label in LABELS:
+        if "Sub-Type" in label:
+            tokenized_labels.append(
+                encoders["Sub-Types"].transform([example[label]])
+            )
+        else:
+            tokenized_labels.append(
+                encoders[label].transform([example[label]])
+            )
+    # tokenized_inputs["labels"] = [
+    #     encoders[label].transform([example[label]]) for label in LABELS
+    # ]
     breakpoint()
     return tokenized_inputs
 
