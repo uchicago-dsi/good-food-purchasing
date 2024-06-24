@@ -80,7 +80,7 @@ class MultiTaskTrainer(Trainer):
             "Last Attention Layer Q": self.model.distilbert.transformer.layer[-1].attention.q_lin.weight,
             "Basic Type Classification Head": self.model.classification_heads['Basic Type'][0].weight,
             "Food Product Group Classification Head": self.model.classification_heads['Food Product Group'][0].weight,
-            "Sub-Type 1 Classification Head": self.model.classification_heads['Sub-Type 1'][0].weight,
+            "Sub-Types Classification Head": self.model.classification_heads['Sub-Types'][0].weight,
         }
 
     def log_gradients(self, name, param):

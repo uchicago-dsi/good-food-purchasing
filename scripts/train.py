@@ -374,13 +374,6 @@ if __name__ == "__main__":
 
         model.config = multi_task_config
 
-        # # Note: If the data has changed, we need to update the model config
-        # model.config.decoders = decoders
-
-        # # Note: inference masks and counts are finicky due to the way they are saved in the config
-        # # Need to save them as JSON and initialize them in the model
-        # model.config.inference_masks = json.dumps(inference_masks)
-        # model.config.counts = json.dumps(counts)
         model.initialize_inference_masks()
         model.initialize_counts()
 
@@ -392,7 +385,7 @@ if __name__ == "__main__":
     else:
         classification_head_labels = [label for label in LABELS if "Sub-Type" not in label]
         classification_head_labels += ["Sub-Types"]
-        model.set_attached_heads(LABELS)
+        model.set_attached_heads(classification_head_labels)
 
     if FREEZE_BASE:
         # Freeze all parameters
