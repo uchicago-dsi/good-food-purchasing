@@ -86,6 +86,7 @@ def read_data(input_col, labels, data_path, smoke_test=False):
         df_cleaned["Sub-Types"] = df_cleaned["Sub-Types"].apply(lambda s: ast.literal_eval(s) if isinstance(s, str) and s else [])
 
     # Make sure input_col is correctly encoded as string
+    # TODO: fix slice warning here
     df_cleaned[input_col] = df_cleaned[input_col].astype(str)
 
     df_cleaned = df_cleaned.fillna("None")
@@ -220,10 +221,7 @@ def tokenize(example, labels=LABELS):
             tokenized_labels.append(
                 encoders[label].transform([example[label]])
             )
-    # tokenized_inputs["labels"] = [
-    #     encoders[label].transform([example[label]]) for label in LABELS
-    # ]
-    breakpoint()
+    tokenized_inputs["labels"] = tokenized_labels
     return tokenized_inputs
 
 
@@ -345,17 +343,15 @@ if __name__ == "__main__":
 
     ### MODEL SETUP ###
     logging.info("Instantiating model")
+    
 
     if checkpoint is None:
         # If no specified checkpoint, use pretrained Huggingface model
         distilbert_model = DistilBertForSequenceClassification.from_pretrained(MODEL_NAME)
-
         multi_task_config = MultiTaskConfig(
             decoders=decoders,
             columns=LABELS,
             classification=classification,
-            fpg_idx=FPG_IDX,
-            basic_type_idx=BASIC_TYPE_IDX,
             inference_masks=json.dumps(inference_masks),
             counts=json.dumps(counts),
             loss=loss,
@@ -366,13 +362,25 @@ if __name__ == "__main__":
         # Note: ignore_mismatched_sizes since we are often loading from checkpoints with different numbers of categories
         model = MultiTaskModel.from_pretrained(checkpoint, ignore_mismatched_sizes=True)
 
-        # Note: If the data has changed, we need to update the model config
-        model.config.decoders = decoders
+        # TODO: Kinda ugly...
+        config_dict = model.config.to_dict()
+        config_dict['decoders'] = decoders
+        config_dict['columns'] = LABELS
+        config_dict['classification'] = classification
+        config_dict['inference_masks'] = json.dumps(inference_masks)
+        config_dict['counts'] = json.dumps(counts)
+        config_dict['loss'] = loss
+        multi_task_config = MultiTaskConfig(**config_dict)
 
-        # Note: inference masks and counts are finicky due to the way they are saved in the config
-        # Need to save them as JSON and initialize them in the model
-        model.config.inference_masks = json.dumps(inference_masks)
-        model.config.counts = json.dumps(counts)
+        model.config = multi_task_config
+
+        # # Note: If the data has changed, we need to update the model config
+        # model.config.decoders = decoders
+
+        # # Note: inference masks and counts are finicky due to the way they are saved in the config
+        # # Need to save them as JSON and initialize them in the model
+        # model.config.inference_masks = json.dumps(inference_masks)
+        # model.config.counts = json.dumps(counts)
         model.initialize_inference_masks()
         model.initialize_counts()
 

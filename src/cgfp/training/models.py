@@ -14,7 +14,7 @@ from transformers import (
 )
 from transformers.modeling_outputs import SequenceClassifierOutput
 
-from cgfp.constants.training_constants import BASIC_TYPE_IDX, FPG_IDX
+from cgfp.constants.training_constants import BASIC_TYPE_IDX, FPG_IDX, SUB_TYPE_IDX
 
 # TODO: This doesn't actually work very well...
 class FocalLoss(nn.Module):
@@ -60,6 +60,7 @@ class MultiTaskConfig(DistilBertConfig):
         counts=None,
         fpg_idx=FPG_IDX,
         basic_type_idx=BASIC_TYPE_IDX,
+        sub_type_idx=SUB_TYPE_IDX,
         inference_masks=None,
         loss="cross_entropy",
         **kwargs
@@ -70,11 +71,13 @@ class MultiTaskConfig(DistilBertConfig):
         self.classification = classification  # choices are "linear" or "mlp"
         self.loss = loss
         self.counts = counts
-
-        # TODO: can maybe get these indexes from the columns
-        self.fpg_idx = fpg_idx
-        self.basic_type_idx = basic_type_idx
         self.inference_masks = inference_masks
+
+        # Initialize indeces for key columns
+        # TODO: Unclear why columns is sometimes None here...try just accessing columns directly?
+        self.fpg_idx = self.columns.index("Food Product Group") if self.columns is not None else fpg_idx
+        self.basic_type_idx = self.columns.index("Basic Type") if self.columns is not None else basic_type_idx
+        self.sub_type_idx = self.columns.index("Sub-Type 1") if self.columns is not None else sub_type_idx
 
 
 class MultiTaskModel(PreTrainedModel):
@@ -91,6 +94,8 @@ class MultiTaskModel(PreTrainedModel):
 
         self.initialize_classification_heads()
         self.initialize_losses()
+
+        # Note: Initialize with all heads attached. Can change this directly by invoking the method.
         self.set_attached_heads(self.config.columns)
 
     def initialize_classification_heads(self):
@@ -101,18 +106,20 @@ class MultiTaskModel(PreTrainedModel):
                     nn.ReLU(),
                     nn.Dropout(self.config.seq_classif_dropout),
                     nn.Linear(self.config.dim // 2, num_categories),
-                    nn.Sigmoid() if task_name == "Sub-Types" else nn.Identity()  # Add Sigmoid for multi-label task
+                    nn.Sigmoid() if "Sub-Type" in task_name else nn.Identity()  # Add Sigmoid for multi-label task
 
-                ) for task_name, num_categories in zip(self.config.columns, self.num_categories_per_task)
+                ) for task_name, num_categories in self.num_categories_per_task.items()
             })
         elif self.config.classification == "linear":
             self.classification_heads = nn.ModuleDict({
                 task_name: nn.Sequential(
                     nn.Linear(self.config.dim, num_categories),
                     nn.Dropout(self.config.seq_classif_dropout),
-                    nn.Sigmoid() if task_name == "Sub-Types" else nn.Identity()
-                ) for task_name, num_categories in zip(self.config.columns, self.num_categories_per_task)
+                    nn.Sigmoid() if "Sub-Type" in task_name else nn.Identity()  # Add Sigmoid for multi-label task
+                ) for task_name, num_categories in self.num_categories_per_task.items()
             })
+
+        breakpoint()
 
     def initialize_losses(self):
         self.losses = []
@@ -139,7 +146,7 @@ class MultiTaskModel(PreTrainedModel):
 
     def initialize_counts(self):
         self.counts = json.loads(self.config.counts)
-        self.num_categories_per_task = [len(v) for k, v in self.counts.items()]
+        self.num_categories_per_task = {task_name: len(counts) for task_name, counts in self.counts.items()}
 
     def set_attached_heads(self, heads_to_attach):
         """Set which heads should have their inputs attached to the computation graph. Allows for controlling the finetuning of the model."""
@@ -169,14 +176,15 @@ class MultiTaskModel(PreTrainedModel):
         hidden_state = distilbert_output[0]
         pooled_output = hidden_state[:, 0]
 
-        # TODO: write actual documentation of what's happening here if this works
+        # Note: For each forward pass, we detach classification heads that are not being trained
+        # in order to prevent backprop to the stem model
         logits = []
         for i, item in enumerate(self.classification_heads.items()):
             head, classifier = item
-            if head not in self.attached_heads:
-                logits.append(classifier(pooled_output.detach()))
-            else:
+            if head in self.attached_heads:
                 logits.append(classifier(pooled_output))
+            else:
+                logits.append(classifier(pooled_output.detach()))
 
         # TODO: I can probably set up a makeshift multilabel task here on the logits
         # Do something like this: pool the labels from the Sub-Type columns
@@ -196,7 +204,7 @@ class MultiTaskModel(PreTrainedModel):
 
         output = (logits,) + distilbert_output[
             1:
-        ]  # TODO why activations? see https://github.com/huggingface/transformers/blob/6f316016877197014193b9463b2fd39fa8f0c8e4/src/transformers/models/distilbert/modeling_distilbert.py#L824
+        ]  # Note: why activations? see https://github.com/huggingface/transformers/blob/6f316016877197014193b9463b2fd39fa8f0c8e4/src/transformers/models/distilbert/modeling_distilbert.py#L824
 
         if not return_dict:
             return (loss,) + output if loss is not None else output

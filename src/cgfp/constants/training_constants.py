@@ -19,6 +19,7 @@ MISC_COLS = [
 
 LABELS = FPG_FPC_COLS + ["Basic Type"] +  MISC_COLS + SUB_TYPE_COLS
 
+# TODO: Maybe don't need these if I get them from the model.config
 # These indeces are used in model configuration
 FPG_IDX = LABELS.index("Food Product Group")
 BASIC_TYPE_IDX = LABELS.index("Basic Type")
