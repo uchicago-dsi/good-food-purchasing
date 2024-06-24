@@ -6,6 +6,7 @@ import argparse
 import json
 
 import torch
+from torch.nn.functional import sigmoid
 
 from transformers import DistilBertTokenizerFast
 
@@ -16,9 +17,11 @@ from cgfp.training.models import MultiTaskModel
 logger = logging.getLogger("inference_logger")
 logger.setLevel(logging.INFO)
 
+
 def test_inference(model, tokenizer, prompt, device="cuda:0"):
     normalized_name = inference(model, tokenizer, prompt, device, combine_name=True)
     logging.info(f"Example output for 'frozen peas and carrots': {normalized_name}")
+    # TODO: I should set this up so I only do the forward pass once...
     preds_dict = inference(model, tokenizer, prompt, device)
     pretty_preds = json.dumps(preds_dict, indent=4)
     logging.info(pretty_preds)
@@ -48,7 +51,14 @@ def inference(
     model.eval()
     with torch.no_grad():
         outputs = model(**inputs, return_dict=True)
-    softmaxed_scores = [torch.softmax(logits, dim=1) for logits in outputs.logits]
+
+    # TODO: Need to pull out the subtype logits here
+    # This is bad but I'm going to hardcode this for now
+    nonsubtype_logits = outputs.logits[:-1]
+    subtype_logits = outputs.logits[-1]
+
+    # Note: Handle non-subtype logits first (multi-class classification)
+    softmaxed_scores = [torch.softmax(logits, dim=1) for logits in nonsubtype_logits]
 
     # get predicted food product group & predicted food product category
     fpg = prediction_to_string(model, softmaxed_scores, model.config.fpg_idx)
@@ -66,11 +76,15 @@ def inference(
     # get the score for each task
     scores = [
         torch.max(score, dim=1) for score in softmaxed_scores
-    ]  # torch.max returns both max and argmax if you specify dim so this is a list of tuples
+    ]  # Note: torch.max returns both max and argmax if you specify dim so this is a list of tuples
 
     # 4. Figure out what to do with the sub-types
     # - Idea: set up some sort of partial ordering and allow up to three sub-types if tokens
     # are in those sets
+    # Need to set this up in a config somehwere
+    threshold = 0.5
+    # TODO: Also need to sort this to take the top three only...
+    subtype_preds = (sigmoid(subtype_logits) > threshold).int()
 
     # assertion to make sure fpg & fpg match
     # TODO: Maybe good assertion behavior would be something like:

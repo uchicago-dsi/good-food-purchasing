@@ -337,7 +337,7 @@ if __name__ == "__main__":
     train_dataset.set_format("torch", columns=["input_ids", "attention_mask", "labels"])
     eval_dataset.set_format("torch", columns=["input_ids", "attention_mask", "labels"])
 
-    # TODO: Kinda hacky since we need to skip "Product Type" in counting our columns...
+    # TODO: Kinda hacky since we need to skip "Product Type" when counting our columns...
     subtype_indices = [i - 1  for i, col in enumerate(train_dataset.features) if "Sub-Type" in col]
 
     logging.info("Datasets are prepared")
@@ -458,7 +458,7 @@ if __name__ == "__main__":
         confidence_score=False,
         raw_results=False,
         assertion=False,
-        save_output=not SMOKE_TEST
+        save=not SMOKE_TEST
     )
     with pd.option_context('display.max_columns', None):
         logging.info(output_sheet.head(1))

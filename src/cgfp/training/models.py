@@ -176,7 +176,7 @@ class MultiTaskModel(PreTrainedModel):
         pooled_output = hidden_state[:, 0]
 
         # Note: For each forward pass, we detach classification heads that are not being trained
-        # in order to prevent backprop to the stem model
+        # in order to prevent backprop to the base model
         logits = []
         for i, item in enumerate(self.classification_heads.items()):
             head, classifier = item
@@ -187,19 +187,6 @@ class MultiTaskModel(PreTrainedModel):
 
         loss = None
         losses = []
-        # TODO: Fragile...fix later
-        # if labels is not None:
-        #     for i, output in enumerate(zip(
-        #         logits, labels.squeeze().transpose(0, 1)
-        #     )):  # trust me
-        #         breakpoint()
-        #         logit, label = output
-        #         losses.append(self.loss_fns[i](logit, label.view(-1)))
-        #     loss = sum(losses)
-
-        # Ok...need to iterate through the tasks in the classification_heads
-        # And make sure that the labels align correctly with the logits
-        # This is non-trivial because of the sub-type setup...
         if labels is not None:
             for i, task_logit_pair in enumerate(zip(self.classification_heads.keys(), logits)):
                 task, logit = task_logit_pair
@@ -217,7 +204,7 @@ class MultiTaskModel(PreTrainedModel):
 
                     # Create multi-label target tensor
                     # TODO: I think this can be done better...
-                    for _, labels in enumerate(all_labels):
+                    for labels in all_labels:
                         # Note: labels are sub-type labels for one sub-type column for a whole batch
                         # Shape: (batch_size,)
                         for batch_idx, lbl in enumerate(labels):
@@ -226,11 +213,6 @@ class MultiTaskModel(PreTrainedModel):
                                 target[batch_idx, lbl] = 1
 
                     losses.append(self.loss_fns["Sub-Types"](logit, target))
-                
-
-                # subtype_idx = list(self.classification_heads.keys()).index("Sub-Types")
-                # logit = logits[subtype_idx]
-                # target = torch.zeros((logit.shape[0], self.num_categories_per_task['Sub-Types']), device='cuda:0')  # get batch size from logit, num_classes from counts
 
             loss = sum(losses)
 
