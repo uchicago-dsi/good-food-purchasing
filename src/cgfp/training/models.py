@@ -101,6 +101,8 @@ class MultiTaskModel(PreTrainedModel):
                     nn.ReLU(),
                     nn.Dropout(self.config.seq_classif_dropout),
                     nn.Linear(self.config.dim // 2, num_categories),
+                    nn.Sigmoid() if task_name == "Sub-Types" else nn.Identity()  # Add Sigmoid for multi-label task
+
                 ) for task_name, num_categories in zip(self.config.columns, self.num_categories_per_task)
             })
         elif self.config.classification == "linear":
@@ -108,6 +110,7 @@ class MultiTaskModel(PreTrainedModel):
                 task_name: nn.Sequential(
                     nn.Linear(self.config.dim, num_categories),
                     nn.Dropout(self.config.seq_classif_dropout),
+                    nn.Sigmoid() if task_name == "Sub-Types" else nn.Identity()
                 ) for task_name, num_categories in zip(self.config.columns, self.num_categories_per_task)
             })
 
@@ -128,7 +131,7 @@ class MultiTaskModel(PreTrainedModel):
                     self.losses.append(nn.BCELoss())
                 else:
                     logging.info(f"Using CrossEntropyLoss for {task}")
-                    self.losses.appedn(nn.CrossEntropyLoss())
+                    self.losses.append(nn.CrossEntropyLoss())
 
 
     def initialize_inference_masks(self):

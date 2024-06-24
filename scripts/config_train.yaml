@@ -19,7 +19,8 @@ model:
   save_best: true # Model saving strategy. If set to false, saves last model.
   freeze_base: true # Freezes the base model and only trains the classification heads
   reset_classification_heads: true # Renitializes the classification heads
-  attached_heads: null # If null, attaches all heads. If not null, attaches only the specified heads
+  attached_heads: "Sub-Types"
+  # attached_heads: null # If null, attaches all heads. If not null, attaches only the specified heads
 training:
   lr: 0.001
   epochs: 20 # Recommended: 80 for full model training, 20 for classification head training

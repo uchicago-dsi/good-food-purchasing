@@ -219,6 +219,7 @@ def tokenize(example, labels=LABELS):
     tokenized_inputs = tokenizer(
         example[TEXT_FIELD], padding="max_length", truncation=True, max_length=100
     )
+    LABELS = ["Sub-Types"]
     tokenized_inputs["labels"] = [
         encoders[label].transform([example[label]]) for label in LABELS
     ]
@@ -312,12 +313,12 @@ if __name__ == "__main__":
 
     ### DATA PREP ###
     logging.info(f"Reading training data from path : {TRAIN_DATA_PATH}")
-    df_train = read_data(TEXT_FIELD, LABELS, TRAIN_DATA_PATH)
+    df_train = read_data(TEXT_FIELD, LABELS, TRAIN_DATA_PATH, smoke_test=SMOKE_TEST)
 
     logging.info(f"Reading eval data from path : {TRAIN_DATA_PATH}")
     # TODO: doing this as a smoke test...
     EVAL_DATA_PATH = TRAIN_DATA_PATH
-    df_eval = read_data(TEXT_FIELD, LABELS, EVAL_DATA_PATH)
+    df_eval = read_data(TEXT_FIELD, LABELS, EVAL_DATA_PATH, smoke_test=SMOKE_TEST)
 
     df_combined = pd.concat([df_train, df_eval]) # combine training and eval so we have all valid outputs for evaluation
 
