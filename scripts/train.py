@@ -6,7 +6,7 @@ import yaml
 from pathlib import Path
 import ast
 
-from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import LabelEncoder, MultiLabelBinarizer
 import polars as pl
 import numpy as np
 import pandas as pd
@@ -35,7 +35,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
 
-def read_data(input_col, labels, data_path):
+def read_data_polars(input_col, labels, data_path):
     # Note: polars syntax is different than pandas syntax
     df = pl.read_csv(data_path, infer_schema_length=1, null_values=["NULL"]).lazy()
     for col in [input_col, "Food Product Group", "Food Product Category", "Primary Food Product Category"]:
@@ -44,13 +44,14 @@ def read_data(input_col, labels, data_path):
         new_height = df.collect().shape[0]
         logging.info(f"Excluded {prev_height - new_height} rows due to null values in '{col}'.")
 
-    # Handle "Sub-Types" — may not always be in dataset
-    if "Sub-Types" not in df.collect().columns:
-        sub_type_cols = [col for col in df.columns if "Sub-Type" in col]
-        if sub_type_cols:
-            df = df.with_columns(
-                pl.concat_list(sub_type_cols).alias("Sub-Types")
-            )
+    # TODO: I think this isn't a good idea...should just set this up so that the data comes in with a list of Sub-Types
+    # # Handle "Sub-Types" — may not always be in dataset
+    # if "Sub-Types" not in df.collect().columns:
+    #     sub_type_cols = [col for col in df.columns if "Sub-Type" in col]
+    #     if sub_type_cols:
+    #         df = df.with_columns(
+    #             pl.concat_list(sub_type_cols).alias("Sub-Types")
+    #         )
 
     df_cleaned = df.select(input_col, *labels)
         
@@ -59,42 +60,118 @@ def read_data(input_col, labels, data_path):
         return ast.literal_eval(s) if s else []
     df_cleaned = df_cleaned.with_columns(pl.col("Sub-Types").apply(str_to_list))
 
-    # TODO: This maybe needs to be done to each column? 
-    # Make sure every row is correctly encoded as string
+    # Make sure every input_col is correctly encoded as string
     df_cleaned = df_cleaned.with_columns(pl.col(input_col).cast(pl.Utf8))
-    # TODO: make this come from function args
+
     # TODO: should we use FPC to fix nulls for PFPC? This is a pipeline question
     df_cleaned = df_cleaned.fill_null("None")
     return df_cleaned
 
 
-def get_encoders(df, labels=LABELS):
+def read_data(input_col, labels, data_path, smoke_test=False):
+    nrows = 1000 if smoke_test else None
+    df = pd.read_csv(data_path, na_values=["NULL"], nrows=nrows)
+    
+    # Filter out rows with null values in specific columns
+    for col in [input_col, "Food Product Group", "Food Product Category", "Primary Food Product Category"]:
+        prev_height = df.shape[0]
+        df = df[df[col].notna()]
+        new_height = df.shape[0]
+        logging.info(f"Excluded {prev_height - new_height} rows due to null values in '{col}'.")
+
+    df_cleaned = df[[input_col] + labels]
+        
+    # Convert 'Sub-Types' from string back to list
+    if "Sub-Types" in df_cleaned.columns:
+        df_cleaned["Sub-Types"] = df_cleaned["Sub-Types"].apply(lambda s: ast.literal_eval(s) if isinstance(s, str) and s else [])
+
+    # Make sure input_col is correctly encoded as string
+    df_cleaned[input_col] = df_cleaned[input_col].astype(str)
+
+    df_cleaned = df_cleaned.fillna("None")
+    
+    return df_cleaned
+
+
+def get_encoders_and_counts_polars(df, labels=LABELS):
     encoders = {}
     counts = {}
     for column in labels:
         # Create encoders (including all labels from training and eval sets)
+        # Note: labels are sorted this so that the order is consistent
         if column == "Sub-Types":
             # Flatten the list of subtypes and find unique items
-            unique_categories = df.select(pl.col(column).arr.explode()).unique().sort(column).collect().to_numpy().ravel()
+            unique_categories = (
+                df
+                .select(pl.col(column).arr.explode())
+                .unique()
+                .sort(column)
+                .collect()
+                .to_numpy()
+                .ravel()
+            )
         else:
-            # Note: this is sorted this so that the order is consistent
             unique_categories = df.select(column).unique().sort(column).collect().to_numpy().ravel()
         encoder = LabelEncoder()
         encoder.fit(unique_categories)
         encoders[column] = encoder
 
-        # Get counts for each category in the training set for focal loss
-        # TODO: Wait...why is df_train in here?
-        counts_df = df_train.group_by(column).agg(pl.len().alias('count')).sort(column)
+    # Get counts for each category in the training set for focal loss
+        if column == "Sub-Types":
+            continue
+        else:
+            counts_df = df.group_by(column).agg(pl.len().alias('count')).sort(column)
 
-        logging.info(f"Categories for {column}")
-        with pl.Config(tbl_rows=-1):
-            logging.info(counts_df.collect())
+            logging.info(f"Categories for {column}")
+            with pl.Config(tbl_rows=-1):
+                logging.info(counts_df.collect())
 
         # Fill 0s for categories that aren't in the training set
         full_counts_df = pl.DataFrame({column: unique_categories})
         full_counts_df = full_counts_df.join(counts_df.collect(), on=column, how='left').fill_null(0)
         counts[column] = full_counts_df['count'].to_list()
+
+    return encoders, counts
+
+
+def get_encoders_and_counts(df, labels=LABELS):
+    encoders = {}
+    counts = {}
+
+    for column in labels:
+        if column == "Sub-Types":
+            # Use MultiLabelBinarizer for multilabel classification
+            mlb = MultiLabelBinarizer()
+            sub_types_encoded = mlb.fit_transform(df[column])
+            encoders[column] = mlb
+
+            # Get counts for each subtype
+            counts_df = pd.DataFrame(sub_types_encoded, columns=mlb.classes_).sum().sort_index()
+
+            logging.info(f"Categories for {column}")
+            logging.info(counts_df)
+
+            counts[column] = counts_df.to_list()
+        else:
+            # Create LabelEncoder for single-label columns
+            unique_categories = df[column].unique()
+            unique_categories.sort()
+
+            encoder = LabelEncoder()
+            encoder.fit(unique_categories)
+            encoders[column] = encoder
+
+            # Get counts for each category in the training set for focal loss
+            counts_df = df[column].value_counts().sort_index()
+
+            logging.info(f"Categories for {column}")
+            logging.info(counts_df)
+
+            # Fill 0s for categories that aren't in the training set
+            full_counts_df = pd.Series(0, index=unique_categories)
+            full_counts_df.update(counts_df)
+            counts[column] = full_counts_df.to_list()
+
     return encoders, counts
 
 
@@ -110,7 +187,7 @@ def get_decoders(encoders):
     return decoders
 
 
-def get_inference_masks(df, encoders):
+def get_inference_masks_polars(df, encoders):
     # Save valid basic types for each food product group
     inference_masks = {}
     basic_types = df.select("Basic Type").unique().collect()['Basic Type'].to_list()
@@ -124,12 +201,26 @@ def get_inference_masks(df, encoders):
     return inference_masks
 
 
-def tokenize(batch):
+def get_inference_masks(df, encoders):
+    '''Save valid basic types for each food product group'''
+    inference_masks = {}
+    basic_types = df['Basic Type'].unique().tolist()
+    food_product_groups = df['Food Product Group'].unique().tolist()
+    for fpg in food_product_groups:
+        valid_basic_types = df[df['Food Product Group'] == fpg]['Basic Type'].unique().tolist()
+        basic_type_indices = encoders['Basic Type'].transform(valid_basic_types)
+        mask = np.zeros(len(basic_types))
+        mask[basic_type_indices] = 1
+        inference_masks[fpg] = mask.tolist()
+    return inference_masks
+
+
+def tokenize(example, labels=LABELS):
     tokenized_inputs = tokenizer(
-        batch[TEXT_FIELD], padding="max_length", truncation=True, max_length=100
+        example[TEXT_FIELD], padding="max_length", truncation=True, max_length=100
     )
     tokenized_inputs["labels"] = [
-        encoders[label].transform([batch[label]]) for label in LABELS
+        encoders[label].transform([example[label]]) for label in LABELS
     ]
     return tokenized_inputs
 
@@ -224,22 +315,21 @@ if __name__ == "__main__":
     df_train = read_data(TEXT_FIELD, LABELS, TRAIN_DATA_PATH)
 
     logging.info(f"Reading eval data from path : {TRAIN_DATA_PATH}")
+    # TODO: doing this as a smoke test...
+    EVAL_DATA_PATH = TRAIN_DATA_PATH
     df_eval = read_data(TEXT_FIELD, LABELS, EVAL_DATA_PATH)
 
-    df_combined = pl.concat([df_train, df_eval]) # combine training and eval so we have all valid outputs for evaluation
+    df_combined = pd.concat([df_train, df_eval]) # combine training and eval so we have all valid outputs for evaluation
 
-    encoders, counts = get_encoders(df_combined)
+    encoders, counts = get_encoders_and_counts(df_combined)
     decoders = get_decoders(encoders)
     inference_masks = get_inference_masks(df_combined, encoders)
 
     logging.info("Preparing dataset")
     tokenizer = DistilBertTokenizerFast.from_pretrained(MODEL_NAME)
 
-    train_dataset = Dataset.from_pandas(df_train.collect().to_pandas())
-    eval_dataset = Dataset.from_pandas(df_eval.collect().to_pandas())
-
-    if SMOKE_TEST:
-        train_dataset = train_dataset.select(range(1000))
+    train_dataset = Dataset.from_pandas(df_train)
+    eval_dataset = Dataset.from_pandas(df_eval)
 
     train_dataset = train_dataset.map(tokenize)
     eval_dataset = eval_dataset.map(tokenize)

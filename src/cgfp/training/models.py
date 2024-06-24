@@ -1,4 +1,5 @@
 import json
+import logging
 
 import torch
 import torch.nn as nn
@@ -15,7 +16,7 @@ from transformers.modeling_outputs import SequenceClassifierOutput
 
 from cgfp.constants.training_constants import BASIC_TYPE_IDX, FPG_IDX
 
-# TODO: Clean this up
+# TODO: This doesn't actually work very well...
 class FocalLoss(nn.Module):
     # TODO: add documentation for the alpha and gamma parameters
     def __init__(self, alpha=None, gamma=2.0, num_classes=None):
@@ -69,7 +70,6 @@ class MultiTaskConfig(DistilBertConfig):
         self.classification = classification  # choices are "linear" or "mlp"
         self.loss = loss
         self.counts = counts
-        # self.num_categories_per_task = [len(v) for v in json.loads(self.counts).values()]
 
         # TODO: can maybe get these indexes from the columns
         self.fpg_idx = fpg_idx
@@ -123,7 +123,13 @@ class MultiTaskModel(PreTrainedModel):
                 self.losses.append(FocalLoss(num_classes=len(counts), alpha=alpha))
         else:
             for task, counts in self.counts.items():
-                self.losses.append(nn.CrossEntropyLoss())
+                if task == "Sub-Types":
+                    logging.info(f"Using BCELoss for {task}")
+                    self.losses.append(nn.BCELoss())
+                else:
+                    logging.info(f"Using CrossEntropyLoss for {task}")
+                    self.losses.appedn(nn.CrossEntropyLoss())
+
 
     def initialize_inference_masks(self):
         self.inference_masks = {key: torch.tensor(value) for key, value in json.loads(self.config.inference_masks).items()}
