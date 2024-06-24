@@ -337,13 +337,15 @@ if __name__ == "__main__":
     train_dataset.set_format("torch", columns=["input_ids", "attention_mask", "labels"])
     eval_dataset.set_format("torch", columns=["input_ids", "attention_mask", "labels"])
 
+    # TODO: Kinda hacky since we need to skip "Product Type" in counting our columns...
+    subtype_indices = [i - 1  for i, col in enumerate(train_dataset.features) if "Sub-Type" in col]
+
     logging.info("Datasets are prepared")
     logging.info(f"Structure of the dataset : {train_dataset}")
     logging.info(f"Sample record from the dataset : {train_dataset[0]}")
 
     ### MODEL SETUP ###
     logging.info("Instantiating model")
-    
 
     if checkpoint is None:
         # If no specified checkpoint, use pretrained Huggingface model
@@ -355,6 +357,7 @@ if __name__ == "__main__":
             inference_masks=json.dumps(inference_masks),
             counts=json.dumps(counts),
             loss=loss,
+            subtype_indices=subtype_indices,
             **distilbert_model.config.to_dict(),
         )
         model = MultiTaskModel(multi_task_config)
@@ -370,12 +373,14 @@ if __name__ == "__main__":
         config_dict['inference_masks'] = json.dumps(inference_masks)
         config_dict['counts'] = json.dumps(counts)
         config_dict['loss'] = loss
+        config_dict['subtype_indices'] = subtype_indices
         multi_task_config = MultiTaskConfig(**config_dict)
 
         model.config = multi_task_config
 
         model.initialize_inference_masks()
         model.initialize_counts()
+        model.initialize_losses()
 
     if RESET_CLASSIFICATION_HEADS:
         model.initialize_classification_heads()

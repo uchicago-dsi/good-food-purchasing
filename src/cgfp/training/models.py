@@ -60,7 +60,7 @@ class MultiTaskConfig(DistilBertConfig):
         counts=None,
         fpg_idx=FPG_IDX,
         basic_type_idx=BASIC_TYPE_IDX,
-        sub_type_idx=SUB_TYPE_IDX,
+        subtype_indices=None,
         inference_masks=None,
         loss="cross_entropy",
         **kwargs
@@ -72,12 +72,12 @@ class MultiTaskConfig(DistilBertConfig):
         self.loss = loss
         self.counts = counts
         self.inference_masks = inference_masks
+        self.subtype_indices = subtype_indices
 
         # Initialize indeces for key columns
-        # TODO: Unclear why columns is sometimes None here...try just accessing columns directly?
+        # TODO: Unclear why columns is sometimes None here...
         self.fpg_idx = self.columns.index("Food Product Group") if self.columns is not None else fpg_idx
         self.basic_type_idx = self.columns.index("Basic Type") if self.columns is not None else basic_type_idx
-        self.sub_type_idx = self.columns.index("Sub-Type 1") if self.columns is not None else sub_type_idx
 
 
 class MultiTaskModel(PreTrainedModel):
@@ -106,7 +106,6 @@ class MultiTaskModel(PreTrainedModel):
                     nn.ReLU(),
                     nn.Dropout(self.config.seq_classif_dropout),
                     nn.Linear(self.config.dim // 2, num_categories),
-                    nn.Sigmoid() if "Sub-Type" in task_name else nn.Identity()  # Add Sigmoid for multi-label task
 
                 ) for task_name, num_categories in self.num_categories_per_task.items()
             })
@@ -115,12 +114,11 @@ class MultiTaskModel(PreTrainedModel):
                 task_name: nn.Sequential(
                     nn.Linear(self.config.dim, num_categories),
                     nn.Dropout(self.config.seq_classif_dropout),
-                    nn.Sigmoid() if "Sub-Type" in task_name else nn.Identity()  # Add Sigmoid for multi-label task
                 ) for task_name, num_categories in self.num_categories_per_task.items()
             })
 
     def initialize_losses(self):
-        self.losses = []
+        self.loss_fns = {}
         if self.config.loss == "focal":
             # TODO: Results here are unstable/bad — probably not actually correct
             for task, counts in self.counts.items():
@@ -128,16 +126,15 @@ class MultiTaskModel(PreTrainedModel):
                 total = counts.sum()
                 alpha = (1 / counts) * (total / len(counts)) # Use the inverse frequency
                 # alpha /= alpha.sum()  # Normalize to sum to 1
-                self.losses.append(FocalLoss(num_classes=len(counts), alpha=alpha))
+                self.loss_fns[task] = FocalLoss(num_classes=len(counts), alpha=alpha)
         else:
             for task, counts in self.counts.items():
                 if task == "Sub-Types":
-                    logging.info(f"Using BCELoss for {task}")
-                    self.losses.append(nn.BCELoss())
+                    logging.info(f"Using BCEWithLogitsLoss for {task}")
+                    self.loss_fns[task] = nn.BCEWithLogitsLoss()
                 else:
                     logging.info(f"Using CrossEntropyLoss for {task}")
-                    self.losses.append(nn.CrossEntropyLoss())
-
+                    self.loss_fns[task] = nn.CrossEntropyLoss()
 
     def initialize_inference_masks(self):
         self.inference_masks = {key: torch.tensor(value) for key, value in json.loads(self.config.inference_masks).items()}
@@ -188,20 +185,53 @@ class MultiTaskModel(PreTrainedModel):
             else:
                 logits.append(classifier(pooled_output.detach()))
 
-        # TODO: I can probably set up a makeshift multilabel task here on the logits
-        # Do something like this: pool the labels from the Sub-Type columns
-        # Encode them as a single vector, then use BCELoss to compare the logits to the encoded vector
-        # This will be a bit complicated since the size of the dataset is going to be mismatched now...
-
         loss = None
         losses = []
         # TODO: Fragile...fix later
+        # if labels is not None:
+        #     for i, output in enumerate(zip(
+        #         logits, labels.squeeze().transpose(0, 1)
+        #     )):  # trust me
+        #         breakpoint()
+        #         logit, label = output
+        #         losses.append(self.loss_fns[i](logit, label.view(-1)))
+        #     loss = sum(losses)
+
+        # Ok...need to iterate through the tasks in the classification_heads
+        # And make sure that the labels align correctly with the logits
+        # This is non-trivial because of the sub-type setup...
         if labels is not None:
-            for i, output in enumerate(zip(
-                logits, labels.squeeze().transpose(0, 1)
-            )):  # trust me
-                logit, label = output
-                losses.append(self.losses[i](logit, label.view(-1)))
+            for i, task_logit_pair in enumerate(zip(self.classification_heads.keys(), logits)):
+                task, logit = task_logit_pair
+                if task != "Sub-Types":
+                    formatted_labels = labels.squeeze().transpose(0, 1)[i].view(-1)
+                    losses.append(self.loss_fns[task](logit, formatted_labels))
+                else:
+                    # Handle sub-types separately for multi-label classification
+                    batch_size = labels.shape[0]
+                    subtype_labels = []
+                    for idx in self.config.subtype_indices:
+                        subtype_labels.append(labels.squeeze().transpose(0, 1)[idx].view(-1))
+                    all_labels = torch.stack(subtype_labels)  # Shape: (# of subtype columns, batch_size)
+                    target = torch.zeros((batch_size, self.num_categories_per_task['Sub-Types']), device='cuda:0')  # Shape: (batch size, num classes)
+
+                    # Create multi-label target tensor
+                    # TODO: I think this can be done better...
+                    for _, labels in enumerate(all_labels):
+                        # Note: labels are sub-type labels for one sub-type column for a whole batch
+                        # Shape: (batch_size,)
+                        for batch_idx, lbl in enumerate(labels):
+                            # TODO: Make sure that this is correct...need to explicitly set the index for None I think...
+                            if lbl > 0:
+                                target[batch_idx, lbl] = 1
+
+                    losses.append(self.loss_fns["Sub-Types"](logit, target))
+                
+
+                # subtype_idx = list(self.classification_heads.keys()).index("Sub-Types")
+                # logit = logits[subtype_idx]
+                # target = torch.zeros((logit.shape[0], self.num_categories_per_task['Sub-Types']), device='cuda:0')  # get batch size from logit, num_classes from counts
+
             loss = sum(losses)
 
         output = (logits,) + distilbert_output[
