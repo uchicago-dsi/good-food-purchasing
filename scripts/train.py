@@ -362,7 +362,7 @@ if __name__ == "__main__":
         # Note: ignore_mismatched_sizes since we are often loading from checkpoints with different numbers of categories
         model = MultiTaskModel.from_pretrained(checkpoint, ignore_mismatched_sizes=True)
 
-        # TODO: Kinda ugly...
+        # TODO: Kinda ugly...may also need to set something up so that we are not always overwriting config
         config_dict = model.config.to_dict()
         config_dict['decoders'] = decoders
         config_dict['columns'] = LABELS
@@ -390,6 +390,8 @@ if __name__ == "__main__":
     if ATTACHED_HEADS is not None:
         model.set_attached_heads(ATTACHED_HEADS)
     else:
+        classification_head_labels = [label for label in LABELS if "Sub-Type" not in label]
+        classification_head_labels += ["Sub-Types"]
         model.set_attached_heads(LABELS)
 
     if FREEZE_BASE:

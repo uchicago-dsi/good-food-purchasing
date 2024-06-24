@@ -119,8 +119,6 @@ class MultiTaskModel(PreTrainedModel):
                 ) for task_name, num_categories in self.num_categories_per_task.items()
             })
 
-        breakpoint()
-
     def initialize_losses(self):
         self.losses = []
         if self.config.loss == "focal":
@@ -150,6 +148,10 @@ class MultiTaskModel(PreTrainedModel):
 
     def set_attached_heads(self, heads_to_attach):
         """Set which heads should have their inputs attached to the computation graph. Allows for controlling the finetuning of the model."""
+        if isinstance(heads_to_attach, str):
+            heads_to_attach = {heads_to_attach}
+        else:
+            heads_to_attach = set(heads_to_attach) 
         if not all(head in self.classification_heads for head in heads_to_attach):
             raise ValueError("One or more specified heads do not exist in the model.")
         self.attached_heads = heads_to_attach
