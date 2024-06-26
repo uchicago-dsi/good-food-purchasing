@@ -145,6 +145,7 @@ class MultiTaskModel(PreTrainedModel):
 
     def set_attached_heads(self, heads_to_attach):
         """Set which heads should have their inputs attached to the computation graph. Allows for controlling the finetuning of the model."""
+        logging.info(f"Running model with {heads_to_attach} heads attached to the computation graph...")
         if isinstance(heads_to_attach, str):
             heads_to_attach = {heads_to_attach}
         else:

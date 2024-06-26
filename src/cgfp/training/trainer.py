@@ -23,6 +23,8 @@ def compute_metrics(pred, basic_type_idx=BASIC_TYPE_IDX):
     array([[ 5],
        [26]])
     """
+    # TODO: Getting the actual predictions here for the multilabel task is hard...
+
     num_tasks = len(pred.predictions)
     preds = [pred.predictions[i].argmax(-1) for i in range(num_tasks)]
     labels = [pred.label_ids[:, i, 0].tolist() for i in range(num_tasks)]
