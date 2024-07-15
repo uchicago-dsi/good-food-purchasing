@@ -1,6 +1,11 @@
 # TODO: Maybe I should pull out some of the common mappings like "cut" and include some sort of set membership check
 TOKEN_MAP_DICT = {
     ## TYPOS ##
+    "talpia": "tilapia",
+    "talapia": "tilapia",
+    "omlete": "omelette",
+    "omelete": "omelette",
+    "grapefuit": "grapefruit",
     "cheedar": "cheddar",
     "carribean": "caribbean",
     "cardamon": "cardamom",

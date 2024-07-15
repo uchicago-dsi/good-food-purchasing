@@ -514,7 +514,6 @@ def clean_name(row):
         # If token is allowed in a non-subtype column, put it there
         # Otherwise, add to subtypes
         if token in NON_SUBTYPE_TAGS_FPC.get(food_product_category, {}).get("All", []):
-            # if token in NON_SUBTYPE_TAGS_FPC[food_product_category]["All"]:
             matched = False
             # Note: Skip "Basic Type" column since it's already set
             for col in NON_SUBTYPE_COLUMNS:
