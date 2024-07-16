@@ -1,18 +1,16 @@
-import pandas as pd
-import os
-import logging
-import numpy as np
 import argparse
 import json
+import logging
+import os
 
+import numpy as np
+import pandas as pd
 import torch
-from torch.nn.functional import sigmoid
-
-from transformers import DistilBertTokenizerFast
-
-from cgfp.constants.training_constants import lower2label
 from cgfp.constants.tokens.misc_tags import FPG2FPC
+from cgfp.constants.training_constants import lower2label
 from cgfp.training.models import MultiTaskModel
+from torch.nn.functional import sigmoid
+from transformers import DistilBertTokenizerFast
 
 logger = logging.getLogger("inference_logger")
 logger.setLevel(logging.INFO)
@@ -69,9 +67,7 @@ def inference(
     inference_mask = model.inference_masks[fpg].to(device)
 
     # actually mask the basic type scores
-    softmaxed_scores[model.config.basic_type_idx] = (
-        inference_mask * softmaxed_scores[model.config.basic_type_idx]
-    )
+    softmaxed_scores[model.config.basic_type_idx] = inference_mask * softmaxed_scores[model.config.basic_type_idx]
 
     # get the score for each task
     scores = [
@@ -85,6 +81,13 @@ def inference(
     threshold = 0.5
     # TODO: Also need to sort this to take the top three only...
     subtype_preds = (sigmoid(subtype_logits) > threshold).int()
+    print(subtype_preds.sum())
+    print(subtype_preds)
+    subtype_indeces = torch.nonzero(subtype_preds.squeeze())
+    print(subtype_indeces)
+    decoders = {item[0]: item[1] for item in model.config.decoders}
+    for idx in subtype_indeces:
+        print(decoders["Sub-Types"][str(idx.item())])
 
     # assertion to make sure fpg & fpg match
     # TODO: Maybe good assertion behavior would be something like:
@@ -96,18 +99,17 @@ def inference(
         assertion_failed = True
 
     legible_preds = {}
+    # TODO: I think this is wrong because this is the wrong prediction head...
     for item, score in zip(model.config.decoders, scores):
         col, decoder = item
         prob, idx = score
 
         try:
-            pred = decoder[
-                str(idx.item())
-            ]  # decoders have been serialized so keys are strings
+            pred = decoder[str(idx.item())]  # decoders have been serialized so keys are strings
             legible_preds[col] = pred if not assertion_failed else None
             if confidence_score:
                 legible_preds[col + "_score"] = prob.item()
-        except Exception as e:
+        except Exception:
             pass
             # TODO: what do we want to actually happen here?
             # Can we log or print base on where we are?
@@ -136,9 +138,7 @@ def highlight_uncertain_preds(df, threshold=0.85):
                     lambda x: "background-color: yellow" if x < threshold else ""
                 )
             except:
-                print(
-                    f"Tried to find uncertainty in a a non-float column! {df.iloc[:,col_idx].head(5)}"
-                )
+                print(f"Tried to find uncertainty in a a non-float column! {df.iloc[:,col_idx].head(5)}")
     return styles_dict
 
 
@@ -173,7 +173,7 @@ def inference_handler(
 
     try:
         df = pd.read_excel(input_path, sheet_name=sheet_name)
-    except FileNotFoundError as e:
+    except FileNotFoundError:
         print("FileNotFound: {e}\n. Please double check the filename: {input_path}")
         raise
 
@@ -186,9 +186,7 @@ def inference_handler(
 
     output = (
         df[input_column]
-        .apply(
-            lambda text: inference(model, tokenizer, text, device, assertion=assertion)
-        )
+        .apply(lambda text: inference(model, tokenizer, text, device, assertion=assertion))
         .apply(pd.Series)
     )
     results = pd.concat([df[input_column], output], axis=1)
@@ -227,11 +225,7 @@ def inference_handler(
         results_full = results_full[[col for col in df.columns if "_score" not in col]]
 
     # Actually apply the styles here
-    df_formatted = (
-        results_full.style.apply(lambda x: styles_df, axis=None)
-        if highlight
-        else results_full
-    )
+    df_formatted = results_full.style.apply(lambda x: styles_df, axis=None) if highlight else results_full
 
     if output_filename is None:
         output_filename = input_path
@@ -256,9 +250,7 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-    checkpoint = (
-        args.checkpoint if args.checkpoint else "uchicago-dsi/cgfp-classifier-dev"
-    )
+    checkpoint = args.checkpoint if args.checkpoint else "uchicago-dsi/cgfp-classifier-dev"
     FILENAME = args.filename
 
     model = MultiTaskModel.from_pretrained(checkpoint)
