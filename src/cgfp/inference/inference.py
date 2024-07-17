@@ -58,11 +58,14 @@ def inference(
     # Note: Handle non-subtype logits first (multi-class classification)
     softmaxed_scores = [torch.softmax(logits, dim=1) for logits in nonsubtype_logits]
 
+    fpg_idx = list(model.classification_heads.keys()).index("Food Product Group")
+    fpc_idx = list(model.classification_heads.keys()).index("Food Product Category")
+
     # get predicted food product group & predicted food product category
-    fpg = prediction_to_string(model, softmaxed_scores, model.config.fpg_idx)
+    fpg = prediction_to_string(model, softmaxed_scores, fpg_idx)
     # TODO: This is fragile. Maybe change config to have a mapping of each column to index
     # TODO: This whole thing breaks if you have different columns that you're using...fix at some point
-    fpc = prediction_to_string(model, softmaxed_scores, model.config.fpg_idx + 1)
+    fpc = prediction_to_string(model, softmaxed_scores, fpc_idx)
 
     inference_mask = model.inference_masks[fpg].to(device)
 
@@ -74,20 +77,7 @@ def inference(
         torch.max(score, dim=1) for score in softmaxed_scores
     ]  # Note: torch.max returns both max and argmax if you specify dim so this is a list of tuples
 
-    # 4. Figure out what to do with the sub-types
-    # - Idea: set up some sort of partial ordering and allow up to three sub-types if tokens
-    # are in those sets
-    # Need to set this up in a config somehwere
-    threshold = 0.5
-    # TODO: Also need to sort this to take the top three only...
-    subtype_preds = (sigmoid(subtype_logits) > threshold).int()
-    print(subtype_preds.sum())
-    print(subtype_preds)
-    subtype_indeces = torch.nonzero(subtype_preds.squeeze())
-    print(subtype_indeces)
     decoders = {item[0]: item[1] for item in model.config.decoders}
-    for idx in subtype_indeces:
-        print(decoders["Sub-Types"][str(idx.item())])
 
     # assertion to make sure fpg & fpg match
     # TODO: Maybe good assertion behavior would be something like:
@@ -99,8 +89,8 @@ def inference(
         assertion_failed = True
 
     legible_preds = {}
-    # TODO: I think this is wrong because this is the wrong prediction head...
-    for item, score in zip(model.config.decoders, scores):
+    # TODO: This needs to be set up with the correct prediction head indeces
+    for item, score in zip(decoders.items(), scores):
         col, decoder = item
         prob, idx = score
 
@@ -114,6 +104,22 @@ def inference(
             # TODO: what do we want to actually happen here?
             # Can we log or print base on where we are?
             # logging.info(f"Exception: {e}")
+
+    # 4. Figure out what to do with the sub-types
+    # - Idea: set up some sort of partial ordering and allow up to three sub-types if tokens
+    # are in those sets
+    # Need to set this up in a config somehwere
+    threshold = 0.5
+    # TODO: Also need to sort this to take the top three only...
+    subtype_preds = (sigmoid(subtype_logits) > threshold).int()
+    print(subtype_preds.sum())
+    print(subtype_preds)
+    subtype_indeces = torch.nonzero(subtype_preds.squeeze())
+    print(subtype_indeces)
+    legible_preds["Sub-Types"] = []
+    for idx in subtype_indeces:
+        legible_preds["Sub-Types"].append(decoders["Sub-Types"][str(idx.item())])
+        # print(decoders["Sub-Types"][str(idx.item())])
 
     if combine_name:
         normalized_name = ""

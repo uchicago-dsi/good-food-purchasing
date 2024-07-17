@@ -1,15 +1,14 @@
-import logging
 import json
+import logging
 
+from cgfp.constants.training_constants import BASIC_TYPE_IDX
+from cgfp.inference.inference import test_inference
 from sklearn.metrics import accuracy_score, f1_score
 from transformers import Trainer, TrainerCallback
 
-from cgfp.inference.inference import test_inference
-from cgfp.constants.training_constants import BASIC_TYPE_IDX
 
 def compute_metrics(pred, basic_type_idx=BASIC_TYPE_IDX):
-    """
-    Extract the predictions and labels for each task
+    """Extract the predictions and labels for each task
 
     TODO: organize this info in a docstring
     len(pred.predictions) » 2
@@ -34,13 +33,19 @@ def compute_metrics(pred, basic_type_idx=BASIC_TYPE_IDX):
     for i, task in enumerate(zip(preds, labels)):
         pred, lbl = task
         accuracies[i] = accuracy_score(lbl, pred)
-        f1_scores[i] = f1_score(lbl, pred, average='weighted')  # Use weighted for multi-class classification
+        f1_scores[i] = f1_score(lbl, pred, average="weighted")  # Use weighted for multi-class classification
 
     basic_type_accuracy = accuracies[basic_type_idx]
     mean_accuracy = sum(accuracies.values()) / num_tasks
     mean_f1_score = sum(f1_scores.values()) / num_tasks
 
-    return {"mean_accuracy": mean_accuracy, "accuracies": accuracies, "mean_f1_score": mean_f1_score, "f1_scores": f1_scores, "basic_type_accuracy": basic_type_accuracy}
+    return {
+        "mean_accuracy": mean_accuracy,
+        "accuracies": accuracies,
+        "mean_f1_score": mean_f1_score,
+        "f1_scores": f1_scores,
+        "basic_type_accuracy": basic_type_accuracy,
+    }
 
 
 class SaveBestModelCallback(TrainerCallback):
@@ -48,7 +53,7 @@ class SaveBestModelCallback(TrainerCallback):
         self.model = model
         self.tokenizer = tokenizer
         self.device = device
-        self.best_metric = -float('inf')
+        self.best_metric = -float("inf")
         self.best_model_metric = best_model_metric
         self.best_epoch = None
         self.eval_prompt = eval_prompt
@@ -72,6 +77,7 @@ class SaveBestModelCallback(TrainerCallback):
             logging.info(f"The best model was saved from epoch: {self.best_epoch}")
             logging.info(f"The best result was {self.best_model_metric}: {self.best_metric}")
 
+
 # TODO: How does logging work here?
 class MultiTaskTrainer(Trainer):
     def __init__(self, *args, **kwargs):
@@ -80,16 +86,16 @@ class MultiTaskTrainer(Trainer):
         self.logging_params = {
             "First Attention Layer Q": self.model.distilbert.transformer.layer[0].attention.q_lin.weight,
             "Last Attention Layer Q": self.model.distilbert.transformer.layer[-1].attention.q_lin.weight,
-            "Basic Type Classification Head": self.model.classification_heads['Basic Type'][0].weight,
-            "Food Product Group Classification Head": self.model.classification_heads['Food Product Group'][0].weight,
-            "Sub-Types Classification Head": self.model.classification_heads['Sub-Types'][0].weight,
+            "Basic Type Classification Head": self.model.classification_heads["Basic Type"][0].weight,
+            "Food Product Group Classification Head": self.model.classification_heads["Food Product Group"][0].weight,
+            "Sub-Types Classification Head": self.model.classification_heads["Sub-Types"][0].weight,
         }
 
     def log_gradients(self, name, param):
         """Safely compute the sum of gradients for a given parameter."""
         value = param.grad.sum() if param.grad is not None else 0
         logging.info(f"Gradient sum for {name}: {value}")
-    
+
     def training_step(self, model, inputs):
         loss = super().training_step(model, inputs)
 

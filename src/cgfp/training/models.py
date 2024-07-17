@@ -1,20 +1,18 @@
 import json
 import logging
+from typing import List, Union
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
-# from collections import OrderedDict
-
+from cgfp.constants.training_constants import BASIC_TYPE_IDX, FPG_IDX
 from transformers import (
-    PreTrainedModel,
     DistilBertConfig,
     DistilBertModel,
+    PreTrainedModel,
 )
 from transformers.modeling_outputs import SequenceClassifierOutput
 
-from cgfp.constants.training_constants import BASIC_TYPE_IDX, FPG_IDX, SUB_TYPE_IDX
 
 # TODO: This doesn't actually work very well...
 class FocalLoss(nn.Module):
@@ -34,11 +32,11 @@ class FocalLoss(nn.Module):
 
     def forward(self, inputs, targets):
         # Compute the cross entropy loss
-        ce_loss = F.cross_entropy(inputs, targets, reduction='none')
+        ce_loss = F.cross_entropy(inputs, targets, reduction="none")
 
         # Get the probabilities for the classes that are actually true
         pt = torch.exp(-ce_loss)
-        
+
         # Calculate alpha for each example
         if self.alpha is not None:
             alpha = self.alpha.gather(0, targets.data)
@@ -63,7 +61,8 @@ class MultiTaskConfig(DistilBertConfig):
         subtype_indices=None,
         inference_masks=None,
         loss="cross_entropy",
-        **kwargs
+        combine_subtypes=False,
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self.decoders = decoders
@@ -73,17 +72,37 @@ class MultiTaskConfig(DistilBertConfig):
         self.counts = counts
         self.inference_masks = inference_masks
         self.subtype_indices = subtype_indices
+        self.combine_subtypes = combine_subtypes
 
         # Initialize indeces for key columns
         # TODO: Unclear why columns is sometimes None here...
-        self.fpg_idx = self.columns.index("Food Product Group") if self.columns is not None else fpg_idx
-        self.basic_type_idx = self.columns.index("Basic Type") if self.columns is not None else basic_type_idx
+        # self.fpg_idx = self.columns.index("Food Product Group") if self.columns is not None else fpg_idx
+        # self.basic_type_idx = self.columns.index("Basic Type") if self.columns is not None else basic_type_idx
 
 
 class MultiTaskModel(PreTrainedModel):
+    """A multi-task learning model based on the DistilBert architecture for handling multiple classification tasks.
+
+    This model allows for training and inference on multiple tasks simultaneously by attaching multiple
+    classification heads to a shared DistilBert backbone. It supports different types of classification heads
+    (MLP or linear) and loss functions (CrossEntropy or Focal Loss). The model is highly configurable via the
+    MultiTaskConfig class and allows for dynamic attachment and detachment of classification heads.
+
+    Attributes:
+        config: The configuration object containing model parameters.
+        distilbert: The DistilBert model serving as the backbone.
+        classification_heads: The classification tasks.
+        loss_fns: The loss functions for each task.
+        inference_masks: The inference masks for each task. These are the allowed categories based on tag structure.
+        counts: The counts of each class for each task.
+        num_categories_per_task: The number of categories per task.
+        attached_heads: The classification heads that should be attached to the computation graph.
+    """
+
     config_class = MultiTaskConfig
 
-    def __init__(self, config, *args, **kwargs):
+    def __init__(self, config: MultiTaskConfig, *args, **kwargs):
+        """Initialize the multi-task model with the given configuration."""
         super().__init__(config)
         self.config = config
         self.distilbert = DistilBertModel(config)
@@ -96,39 +115,46 @@ class MultiTaskModel(PreTrainedModel):
         self.initialize_losses()
 
         # Note: Initialize with all heads attached. Can change this directly by invoking the method.
-        self.set_attached_heads(self.config.columns)
+        self.set_attached_heads(self.counts.keys())
 
-    def initialize_classification_heads(self):
+    def initialize_classification_heads(self) -> None:
+        """Initialize the classification heads based on the configuration."""
         if self.config.classification == "mlp":
-            self.classification_heads = nn.ModuleDict({
-                task_name: nn.Sequential(
-                    nn.Linear(self.config.dim, self.config.dim // 2),
-                    nn.ReLU(),
-                    nn.Dropout(self.config.seq_classif_dropout),
-                    nn.Linear(self.config.dim // 2, num_categories),
-
-                ) for task_name, num_categories in self.num_categories_per_task.items()
-            })
+            self.classification_heads = nn.ModuleDict(
+                {
+                    task_name: nn.Sequential(
+                        nn.Linear(self.config.dim, self.config.dim // 2),
+                        nn.ReLU(),
+                        nn.Dropout(self.config.seq_classif_dropout),
+                        nn.Linear(self.config.dim // 2, num_categories),
+                    )
+                    for task_name, num_categories in self.num_categories_per_task.items()
+                }
+            )
         elif self.config.classification == "linear":
-            self.classification_heads = nn.ModuleDict({
-                task_name: nn.Sequential(
-                    nn.Linear(self.config.dim, num_categories),
-                    nn.Dropout(self.config.seq_classif_dropout),
-                ) for task_name, num_categories in self.num_categories_per_task.items()
-            })
+            self.classification_heads = nn.ModuleDict(
+                {
+                    task_name: nn.Sequential(
+                        nn.Linear(self.config.dim, num_categories),
+                        nn.Dropout(self.config.seq_classif_dropout),
+                    )
+                    for task_name, num_categories in self.num_categories_per_task.items()
+                }
+            )
 
-    def initialize_losses(self):
+    def initialize_losses(self) -> None:
+        """Initialize the loss functions for each task based on the configuration."""
         self.loss_fns = {}
         if self.config.loss == "focal":
             # TODO: Results here are unstable/bad — probably not actually correct
             for task, counts in self.counts.items():
                 counts = torch.tensor(counts, dtype=torch.float)
                 total = counts.sum()
-                alpha = (1 / counts) * (total / len(counts)) # Use the inverse frequency
+                alpha = (1 / counts) * (total / len(counts))  # Use the inverse frequency
                 # alpha /= alpha.sum()  # Normalize to sum to 1
                 self.loss_fns[task] = FocalLoss(num_classes=len(counts), alpha=alpha)
         else:
-            for task, counts in self.counts.items():
+            for task, _ in self.counts.items():
                 if task == "Sub-Types":
                     logging.info(f"Using BCEWithLogitsLoss for {task}")
                     self.loss_fns[task] = nn.BCEWithLogitsLoss()
@@ -136,35 +162,40 @@ class MultiTaskModel(PreTrainedModel):
                     logging.info(f"Using CrossEntropyLoss for {task}")
                     self.loss_fns[task] = nn.CrossEntropyLoss()
 
-    def initialize_inference_masks(self):
-        self.inference_masks = {key: torch.tensor(value) for key, value in json.loads(self.config.inference_masks).items()}
+    def initialize_inference_masks(self) -> None:
+        """Initialize the inference masks from the configuration."""
+        self.inference_masks = {
+            key: torch.tensor(value) for key, value in json.loads(self.config.inference_masks).items()
+        }
 
-    def initialize_counts(self):
+    def initialize_counts(self) -> None:
+        """Initialize the counts and number of categories per task from the configuration."""
         self.counts = json.loads(self.config.counts)
         self.num_categories_per_task = {task_name: len(counts) for task_name, counts in self.counts.items()}
 
-    def set_attached_heads(self, heads_to_attach):
+    def set_attached_heads(self, heads_to_attach: Union[str, List[str]]) -> None:
         """Set which heads should have their inputs attached to the computation graph. Allows for controlling the finetuning of the model."""
         logging.info(f"Running model with {heads_to_attach} heads attached to the computation graph...")
         if isinstance(heads_to_attach, str):
             heads_to_attach = {heads_to_attach}
         else:
-            heads_to_attach = set(heads_to_attach) 
+            heads_to_attach = set(heads_to_attach)
         if not all(head in self.classification_heads for head in heads_to_attach):
             raise ValueError("One or more specified heads do not exist in the model.")
         self.attached_heads = heads_to_attach
 
     def forward(
         self,
-        input_ids=None,
-        attention_mask=None,
-        head_mask=None,
-        inputs_embeds=None,
-        labels=None,
-        output_attentions=None,
-        output_hidden_states=None,
-        return_dict=False,
-    ):
+        input_ids: torch.Tensor = None,
+        attention_mask: torch.Tensor = None,
+        head_mask: torch.Tensor = None,
+        inputs_embeds: torch.Tensor = None,
+        labels: torch.Tensor = None,
+        output_attentions: bool = None,
+        output_hidden_states: bool = None,
+        return_dict: bool = False,
+    ) -> SequenceClassifierOutput:
+        """Perform a forward pass through the model."""
         distilbert_output = self.distilbert(
             input_ids=input_ids,
             attention_mask=attention_mask,
@@ -179,9 +210,8 @@ class MultiTaskModel(PreTrainedModel):
         # Note: For each forward pass, we detach classification heads that are not being trained
         # in order to prevent backprop to the base model
         logits = []
-        for i, item in enumerate(self.classification_heads.items()):
-            head, classifier = item
-            if head in self.attached_heads:
+        for task_name, classifier in self.classification_heads.items():
+            if task_name in self.attached_heads:
                 logits.append(classifier(pooled_output))
             else:
                 logits.append(classifier(pooled_output.detach()))
@@ -189,8 +219,7 @@ class MultiTaskModel(PreTrainedModel):
         loss = None
         losses = []
         if labels is not None:
-            for i, task_logit_pair in enumerate(zip(self.classification_heads.keys(), logits)):
-                task, logit = task_logit_pair
+            for i, (task, logit) in enumerate(zip(self.classification_heads.keys(), logits)):
                 if task != "Sub-Types":
                     formatted_labels = labels.squeeze().transpose(0, 1)[i].view(-1)
                     losses.append(self.loss_fns[task](logit, formatted_labels))
@@ -201,7 +230,9 @@ class MultiTaskModel(PreTrainedModel):
                     for idx in self.config.subtype_indices:
                         subtype_labels.append(labels.squeeze().transpose(0, 1)[idx].view(-1))
                     all_labels = torch.stack(subtype_labels)  # Shape: (# of subtype columns, batch_size)
-                    target = torch.zeros((batch_size, self.num_categories_per_task['Sub-Types']), device='cuda:0')  # Shape: (batch size, num classes)
+                    target = torch.zeros(
+                        (batch_size, self.num_categories_per_task["Sub-Types"]), device="cuda:0"
+                    )  # Shape: (batch size, num classes)
 
                     # Create multi-label target tensor
                     # TODO: I think this can be done better...
@@ -217,9 +248,9 @@ class MultiTaskModel(PreTrainedModel):
 
             loss = sum(losses)
 
-        output = (logits,) + distilbert_output[
-            1:
-        ]  # Note: why activations? see https://github.com/huggingface/transformers/blob/6f316016877197014193b9463b2fd39fa8f0c8e4/src/transformers/models/distilbert/modeling_distilbert.py#L824
+        output = (
+            (logits,) + distilbert_output[1:]
+        )  # Note: why activations? see https://github.com/huggingface/transformers/blob/6f316016877197014193b9463b2fd39fa8f0c8e4/src/transformers/models/distilbert/modeling_distilbert.py#L824
 
         if not return_dict:
             return (loss,) + output if loss is not None else output
@@ -230,6 +261,7 @@ class MultiTaskModel(PreTrainedModel):
             hidden_states=distilbert_output.hidden_states,
             attentions=distilbert_output.attentions,
         )
-    
+
+
 if __name__ == "__main__":
     pass

@@ -7,7 +7,7 @@ RUN apt-get update && \
     apt-get install -y vim && \
     apt-get install build-essential -y
 
-COPY requirements.dev.txt .
+COPY requirements.pipeline.txt .
 COPY pyproject.toml .
 
 # Note: The devcontainer mounts the working directory "over" the copied version
