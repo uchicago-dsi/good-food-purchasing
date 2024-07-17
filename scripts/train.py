@@ -329,12 +329,6 @@ if __name__ == "__main__":
         )
         model = MultiTaskModel(multi_task_config)
     else:
-        # Note: ignore_mismatched_sizes since we are often loading from checkpoints with different numbers of categories
-        # model = MultiTaskModel.from_pretrained(starting_checkpoint, ignore_mismatched_sizes=True)
-
-        # TODO: Kinda ugly...may also need to set something up so that we are not always overwriting config
-        # TODO: This also breaks with smoke test...reinit the size of the categories somehow maybe?
-        # config_dict = model.config.to_dict()
         multi_task_config = MultiTaskConfig.from_pretrained(starting_checkpoint)
         multi_task_config.decoders = decoders
         multi_task_config.columns = labels_dict
@@ -342,21 +336,11 @@ if __name__ == "__main__":
         multi_task_config.inference_masks = json.dumps(inference_masks)
         multi_task_config.counts = json.dumps(counts)
         multi_task_config.loss = loss
-        # config_dict["decoders"] = decoders
-        # config_dict["columns"] = labels_dict
-        # config_dict["classification"] = classification
-        # config_dict["inference_masks"] = json.dumps(inference_masks)
-        # config_dict["counts"] = json.dumps(counts)
-        # config_dict["loss"] = loss
-        # TODO:
-        # config_dict["subtype_indices"] = subtype_indices
-        # multi_task_config = MultiTaskConfig(**config_updated)
 
+        # Note: ignore_mismatched_sizes since we are often loading from checkpoints with different numbers of categories
         model = MultiTaskModel.from_pretrained(
             starting_checkpoint, config=multi_task_config, ignore_mismatched_sizes=True
         )
-
-        # model.config = multi_task_config
 
         model.initialize_inference_masks()
         model.initialize_tasks()

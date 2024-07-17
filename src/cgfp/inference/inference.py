@@ -118,10 +118,12 @@ def inference(
     print(subtype_preds)
     subtype_indeces = torch.nonzero(subtype_preds.squeeze())
     print(subtype_indeces)
-    legible_preds["Sub-Types"] = []
-    for idx in subtype_indeces:
-        legible_preds["Sub-Types"].append(model.decoders["Sub-Types"][str(idx.item())])
-        # print(decoders["Sub-Types"][str(idx.item())])
+    legible_preds["Sub-Types"] = ", ".join(
+        [model.decoders["Sub-Types"][str(idx.item())] for idx in model.subtype_indices]
+    )
+    # legible_preds["Sub-Types"] = ""
+    # for idx in subtype_indeces:
+    #     legible_preds["Sub-Types"] += model.decoders["Sub-Types"][str(idx.item())]
 
     if combine_name:
         normalized_name = ""
