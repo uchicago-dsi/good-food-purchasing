@@ -226,7 +226,7 @@ class MultiTaskModel(PreTrainedModel):
                     # TODO:
                     all_labels = torch.stack(subtype_labels)  # Shape: (# of subtype columns, batch_size)
                     target = torch.zeros(
-                        (batch_size, len(self.decoders["Sub-Types"])), device="cuda:0"
+                        (batch_size, len(self.decoders["Sub-Types"])), device=self.device
                     )  # Shape: (batch size, num classes)
 
                     # Create multi-label target tensor

@@ -79,7 +79,7 @@ def inference(
         torch.max(score, dim=1) for score in softmaxed_scores
     ]  # Note: torch.max returns both max and argmax if you specify dim so this is a list of tuples
 
-    decoders = {item[0]: item[1] for item in model.config.decoders}
+    # decoders = {item[0]: item[1] for item in model.config.decoders}
 
     # assertion to make sure fpg & fpg match
     # TODO: Maybe good assertion behavior would be something like:
@@ -92,7 +92,7 @@ def inference(
 
     legible_preds = {}
     # TODO: This needs to be set up with the correct prediction head indeces
-    for item, score in zip(decoders.items(), scores):
+    for item, score in zip(model.decoders.items(), scores):
         col, decoder = item
         prob, idx = score
 
@@ -120,7 +120,7 @@ def inference(
     print(subtype_indeces)
     legible_preds["Sub-Types"] = []
     for idx in subtype_indeces:
-        legible_preds["Sub-Types"].append(decoders["Sub-Types"][str(idx.item())])
+        legible_preds["Sub-Types"].append(model.decoders["Sub-Types"][str(idx.item())])
         # print(decoders["Sub-Types"][str(idx.item())])
 
     if combine_name:
