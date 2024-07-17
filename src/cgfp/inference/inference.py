@@ -70,7 +70,9 @@ def inference(
     inference_mask = model.inference_masks[fpg].to(device)
 
     # actually mask the basic type scores
-    softmaxed_scores[model.config.basic_type_idx] = inference_mask * softmaxed_scores[model.config.basic_type_idx]
+    softmaxed_scores[model.config.columns["Basic Type"]] = (
+        inference_mask * softmaxed_scores[model.config.columns["Basic Type"]]
+    )
 
     # get the score for each task
     scores = [

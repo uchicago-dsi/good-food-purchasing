@@ -60,27 +60,28 @@ def read_data_polars(input_col, labels, data_path):
     return df_cleaned
 
 
-def read_data(input_col, labels, data_path, smoke_test=False):
+def read_data(input_col, labels, data_path, smoke_test=False, combine_subtypes=False):
     nrows = 1000 if smoke_test else None
-    df = pd.read_csv(data_path, na_values=["NULL"], nrows=nrows)
+    df_cgfp = pd.read_csv(data_path, na_values=["NULL"], nrows=nrows)
 
     # Filter out rows with null values in specific columns
     for col in [input_col, "Food Product Group", "Food Product Category", "Primary Food Product Category"]:
-        prev_height = df.shape[0]
-        df = df[df[col].notna()]
-        new_height = df.shape[0]
+        prev_height = df_cgfp.shape[0]
+        df_cgfp = df_cgfp[df_cgfp[col].notna()]
+        new_height = df_cgfp.shape[0]
         logging.info(f"Excluded {prev_height - new_height} rows due to null values in '{col}'.")
 
-    # TODO: Handle sub-types here..
-    # Create combined subtypes list
-    # Create subtype 1, 1 & 2, 2 only...then what do we do with it?
-    df_cleaned = df[[input_col] + labels]
+    keep_cols = [input_col] + labels
 
-    # Convert 'Sub-Types' from string back to list
-    if "Sub-Types" in df_cleaned.columns:
-        df_cleaned["Sub-Types"] = df_cleaned["Sub-Types"].apply(
-            lambda s: ast.literal_eval(s) if isinstance(s, str) and s else []
-        )
+    # TODO: This can probably go away...handling sub-types in the forward pass
+    # def combine_sub_types(row):
+    #     return [item for item in row if pd.notna(item) and item is not None]
+
+    # if combine_subtypes:
+    #     df_cgfp["Sub-Types"] = df_cgfp[subtype_cols].apply(combine_sub_types, axis=1)
+    #     keep_cols.append("Sub-Types")
+
+    df_cleaned = df_cgfp[keep_cols]
 
     # Make sure input_col is correctly encoded as string
     # TODO: fix slice warning here
@@ -89,41 +90,6 @@ def read_data(input_col, labels, data_path, smoke_test=False):
     df_cleaned = df_cleaned.fillna("None")
 
     return df_cleaned
-
-
-def get_encoders_and_counts_polars(df, labels=LABELS):
-    encoders = {}
-    counts = {}
-    for column in labels:
-        # Create encoders (including all labels from training and eval sets)
-        # Note: labels are sorted this so that the order is consistent
-        if column == "Sub-Types":
-            # Flatten the list of subtypes and find unique items
-            unique_categories = (
-                df.select(pl.col(column).arr.explode()).unique().sort(column).collect().to_numpy().ravel()
-            )
-        else:
-            unique_categories = df.select(column).unique().sort(column).collect().to_numpy().ravel()
-        encoder = LabelEncoder()
-        encoder.fit(unique_categories)
-        encoders[column] = encoder
-
-        # Get counts for each category in the training set for focal loss
-        if column == "Sub-Types":
-            continue
-        else:
-            counts_df = df.group_by(column).agg(pl.len().alias("count")).sort(column)
-
-            logging.info(f"Categories for {column}")
-            with pl.Config(tbl_rows=-1):
-                logging.info(counts_df.collect())
-
-        # Fill 0s for categories that aren't in the training set
-        full_counts_df = pl.DataFrame({column: unique_categories})
-        full_counts_df = full_counts_df.join(counts_df.collect(), on=column, how="left").fill_null(0)
-        counts[column] = full_counts_df["count"].to_list()
-
-    return encoders, counts
 
 
 def get_encoder(unique_categories):
@@ -138,15 +104,19 @@ def get_encoders_and_counts(df, labels=LABELS):
     subtype_counts = pd.Series(dtype=int)
 
     for column in labels:
+        col_counts = df[column].value_counts().sort_index()
+        logging.info(f"Categories for {column}")
+        logging.info(col_counts)
+        counts[column] = col_counts.to_list()
         if "Sub-Type" in column:
             # Aggregate all sub-type options and handle at the end
+            # Note: We are maintaining individual Sub-Type and collective Sub-Type encoders
+            # so we can sort sub-types at inference time
             col_counts = df[column].value_counts().sort_index()
+            # Note: This handles duplicates correctly
             subtype_counts = subtype_counts.add(col_counts, fill_value=0).astype(int)
         else:
-            col_counts = df[column].value_counts().sort_index()
-            logging.info(f"Categories for {column}")
-            logging.info(col_counts)
-            counts[column] = col_counts.to_list()
+            # Note: We want counts for each sub-type, but not an encoder
             encoders[column] = get_encoder(col_counts.index)
 
     # Handle sub-types
@@ -242,6 +212,7 @@ if __name__ == "__main__":
     RESET_CLASSIFICATION_HEADS = config["model"]["reset_classification_heads"]
     ATTACHED_HEADS = config["model"]["attached_heads"]
     FREEZE_BASE = config["model"]["freeze_base"]
+    COMBINE_SUBTYPES = config["model"]["combine_subtypes"]
 
     starting_checkpoint = config["model"]["starting_checkpoint"]
     classification = config["model"]["classification"]
@@ -302,12 +273,12 @@ if __name__ == "__main__":
 
     ### DATA PREP ###
     logging.info(f"Reading training data from path : {TRAIN_DATA_PATH}")
-    df_train = read_data(TEXT_FIELD, LABELS, TRAIN_DATA_PATH, smoke_test=SMOKE_TEST)
+    df_train = read_data(TEXT_FIELD, LABELS, TRAIN_DATA_PATH, combine_subtypes=COMBINE_SUBTYPES, smoke_test=SMOKE_TEST)
 
     logging.info(f"Reading eval data from path : {TRAIN_DATA_PATH}")
     # TODO: doing this as a smoke test...
     EVAL_DATA_PATH = TRAIN_DATA_PATH
-    df_eval = read_data(TEXT_FIELD, LABELS, EVAL_DATA_PATH, smoke_test=SMOKE_TEST)
+    df_eval = read_data(TEXT_FIELD, LABELS, EVAL_DATA_PATH, combine_subtypes=COMBINE_SUBTYPES, smoke_test=SMOKE_TEST)
 
     labels_dict = {label: i for i, label in enumerate(LABELS)}
 
@@ -332,7 +303,9 @@ if __name__ == "__main__":
     eval_dataset.set_format("torch", columns=["input_ids", "attention_mask", "labels"])
 
     # TODO: Kinda hacky since we need to skip "Product Type" when counting our columns...
-    subtype_indices = [i - 1 for i, col in enumerate(train_dataset.features) if "Sub-Type" in col]
+    # TODO: Do I actually need this?
+    # Kind of...sort this out later for sub-type columns...
+    # subtype_indices = [i - 1 for i, col in enumerate(train_dataset.features) if "Sub-Type" in col]
 
     logging.info("Datasets are prepared")
     logging.info(f"Structure of the dataset : {train_dataset}")
@@ -351,7 +324,7 @@ if __name__ == "__main__":
             inference_masks=json.dumps(inference_masks),
             counts=json.dumps(counts),
             loss=loss,
-            subtype_indices=subtype_indices,
+            # subtype_indices=subtype_indices,
             **distilbert_model.config.to_dict(),
         )
         model = MultiTaskModel(multi_task_config)
@@ -368,13 +341,14 @@ if __name__ == "__main__":
         config_dict["inference_masks"] = json.dumps(inference_masks)
         config_dict["counts"] = json.dumps(counts)
         config_dict["loss"] = loss
-        config_dict["subtype_indices"] = subtype_indices
+        # TODO:
+        # config_dict["subtype_indices"] = subtype_indices
         multi_task_config = MultiTaskConfig(**config_dict)
 
         model.config = multi_task_config
 
         model.initialize_inference_masks()
-        model.initialize_counts()
+        model.initialize_tasks()
         model.initialize_losses()
 
     if RESET_CLASSIFICATION_HEADS:
@@ -383,6 +357,7 @@ if __name__ == "__main__":
     if ATTACHED_HEADS is not None:
         model.set_attached_heads(ATTACHED_HEADS)
     else:
+        # TODO: Handle sub-type configuration here
         classification_head_labels = [label for label in LABELS if "Sub-Type" not in label]
         classification_head_labels += ["Sub-Types"]
         model.set_attached_heads(classification_head_labels)

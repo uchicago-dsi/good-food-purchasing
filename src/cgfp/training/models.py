@@ -71,7 +71,7 @@ class MultiTaskConfig(DistilBertConfig):
         self.loss = loss
         self.counts = counts
         self.inference_masks = inference_masks
-        self.subtype_indices = subtype_indices
+        # self.subtype_indices = subtype_indices
         self.combine_subtypes = combine_subtypes
 
         # Initialize indeces for key columns
@@ -107,17 +107,19 @@ class MultiTaskModel(PreTrainedModel):
         self.config = config
         self.distilbert = DistilBertModel(config)
 
-        # Note: Need to store inference masks and counts as JSON in config, so need to initialize them
+        # Note: Need to store some config objects as JSON, so need to initialize them
         self.initialize_inference_masks()
-        self.initialize_counts()
+
+        self.initialize_tasks()
 
         self.initialize_classification_heads()
         self.initialize_losses()
 
         # Note: Initialize with all heads attached. Can change this directly by invoking the method.
-        self.set_attached_heads(self.counts.keys())
+        self.set_attached_heads(self.decoders.keys())
 
     def initialize_classification_heads(self) -> None:
+        # TODO: Do we want to specify the head here?
         """Initialize the classification heads based on the configuration."""
         if self.config.classification == "mlp":
             self.classification_heads = nn.ModuleDict(
@@ -126,41 +128,32 @@ class MultiTaskModel(PreTrainedModel):
                         nn.Linear(self.config.dim, self.config.dim // 2),
                         nn.ReLU(),
                         nn.Dropout(self.config.seq_classif_dropout),
-                        nn.Linear(self.config.dim // 2, num_categories),
+                        nn.Linear(self.config.dim // 2, len(decoder)),
                     )
-                    for task_name, num_categories in self.num_categories_per_task.items()
+                    for task_name, decoder in self.decoders.items()
                 }
             )
         elif self.config.classification == "linear":
             self.classification_heads = nn.ModuleDict(
                 {
                     task_name: nn.Sequential(
-                        nn.Linear(self.config.dim, num_categories),
+                        nn.Linear(self.config.dim, len(decoder)),
                         nn.Dropout(self.config.seq_classif_dropout),
                     )
-                    for task_name, num_categories in self.num_categories_per_task.items()
+                    for task_name, decoder in self.decoders.items()
                 }
             )
 
     def initialize_losses(self) -> None:
         """Initialize the loss functions for each task based on the configuration."""
         self.loss_fns = {}
-        if self.config.loss == "focal":
-            # TODO: Results here are unstable/bad — probably not actually correct
-            for task, counts in self.counts.items():
-                counts = torch.tensor(counts, dtype=torch.float)
-                total = counts.sum()
-                alpha = (1 / counts) * (total / len(counts))  # Use the inverse frequency
-                # alpha /= alpha.sum()  # Normalize to sum to 1
-                self.loss_fns[task] = FocalLoss(num_classes=len(counts), alpha=alpha)
-        else:
-            for task, _ in self.counts.items():
-                if task == "Sub-Types":
-                    logging.info(f"Using BCEWithLogitsLoss for {task}")
-                    self.loss_fns[task] = nn.BCEWithLogitsLoss()
-                else:
-                    logging.info(f"Using CrossEntropyLoss for {task}")
-                    self.loss_fns[task] = nn.CrossEntropyLoss()
+        for task in self.decoders.keys():
+            if task == "Sub-Types":
+                logging.info(f"Using BCEWithLogitsLoss for {task}")
+                self.loss_fns[task] = nn.BCEWithLogitsLoss()
+            else:
+                logging.info(f"Using CrossEntropyLoss for {task}")
+                self.loss_fns[task] = nn.CrossEntropyLoss()
 
     def initialize_inference_masks(self) -> None:
         """Initialize the inference masks from the configuration."""
@@ -168,10 +161,10 @@ class MultiTaskModel(PreTrainedModel):
             key: torch.tensor(value) for key, value in json.loads(self.config.inference_masks).items()
         }
 
-    def initialize_counts(self) -> None:
+    def initialize_tasks(self) -> None:
         """Initialize the counts and number of categories per task from the configuration."""
-        self.counts = json.loads(self.config.counts)
-        self.num_categories_per_task = {task_name: len(counts) for task_name, counts in self.counts.items()}
+        self.decoders = dict(self.config.decoders)
+        self.subtype_indices = [idx for task, idx in self.config.columns.items() if "Sub-Type" in task]
 
     def set_attached_heads(self, heads_to_attach: Union[str, List[str]]) -> None:
         """Set which heads should have their inputs attached to the computation graph. Allows for controlling the finetuning of the model."""
@@ -227,11 +220,13 @@ class MultiTaskModel(PreTrainedModel):
                     # Handle sub-types separately for multi-label classification
                     batch_size = labels.shape[0]
                     subtype_labels = []
-                    for idx in self.config.subtype_indices:
+                    # TODO: Need to fix this
+                    for idx in self.subtype_indices:
                         subtype_labels.append(labels.squeeze().transpose(0, 1)[idx].view(-1))
+                    # TODO:
                     all_labels = torch.stack(subtype_labels)  # Shape: (# of subtype columns, batch_size)
                     target = torch.zeros(
-                        (batch_size, self.num_categories_per_task["Sub-Types"]), device="cuda:0"
+                        (batch_size, len(self.decoders["Sub-Types"])), device="cuda:0"
                     )  # Shape: (batch size, num classes)
 
                     # Create multi-label target tensor
@@ -240,7 +235,7 @@ class MultiTaskModel(PreTrainedModel):
                         # Note: labels are sub-type labels for one sub-type column for a whole batch
                         # Shape: (batch_size,)
                         for batch_idx, lbl in enumerate(labels):
-                            # TODO: Make sure that this is correct...need to explicitly set the index for None I think...
+                            # TODO: Maybe I should explicitly set the index for None (it's 0)
                             if lbl > 0:
                                 target[batch_idx, lbl] = 1
 
