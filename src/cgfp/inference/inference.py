@@ -50,8 +50,13 @@ def inference(
     with torch.no_grad():
         outputs = model(**inputs, return_dict=True)
 
-    # TODO: Need to pull out the subtype logits here
-    # This is bad but I'm going to hardcode this for now
+    # Pull out the sub-types logits to handle separately
+    subtypes_idx = list(model.classification_heads.keys()).index("Sub-Types")
+    # TODO: This is inexplicably throwing weird CUDA errors...
+    # nonsubtype_logits = outputs.logits[:subtypes_idx] + outputs.logits[subtypes_idx + 1 :]
+    # subtype_logits = outputs.logits[subtypes_idx]
+
+    # TODO: Workaround which is fine since it's the last one...
     nonsubtype_logits = outputs.logits[:-1]
     subtype_logits = outputs.logits[-1]
 
@@ -63,8 +68,6 @@ def inference(
 
     # get predicted food product group & predicted food product category
     fpg = prediction_to_string(model, softmaxed_scores, fpg_idx)
-    # TODO: This is fragile. Maybe change config to have a mapping of each column to index
-    # TODO: This whole thing breaks if you have different columns that you're using...fix at some point
     fpc = prediction_to_string(model, softmaxed_scores, fpc_idx)
 
     inference_mask = model.inference_masks[fpg].to(device)
@@ -91,39 +94,43 @@ def inference(
         assertion_failed = True
 
     legible_preds = {}
-    # TODO: This needs to be set up with the correct prediction head indeces
     for item, score in zip(model.decoders.items(), scores):
         col, decoder = item
         prob, idx = score
 
-        try:
-            pred = decoder[str(idx.item())]  # decoders have been serialized so keys are strings
-            legible_preds[col] = pred if not assertion_failed else None
-            if confidence_score:
-                legible_preds[col + "_score"] = prob.item()
-        except Exception:
-            pass
-            # TODO: what do we want to actually happen here?
-            # Can we log or print base on where we are?
-            # logging.info(f"Exception: {e}")
+        if col != "Sub-Types":
+            try:
+                pred = decoder[str(idx.item())]  # decoders have been serialized so keys are strings
+                legible_preds[col] = pred if not assertion_failed else None
+                if confidence_score:
+                    legible_preds[col + "_score"] = prob.item()
+            except Exception:
+                pass
+                # TODO: what do we want to actually happen here?
+                # Can we log or print base on where we are?
+                # logging.info(f"Exception: {e}")
 
-    # 4. Figure out what to do with the sub-types
-    # - Idea: set up some sort of partial ordering and allow up to three sub-types if tokens
-    # are in those sets
-    # Need to set this up in a config somehwere
+    # TODO: Need to set this up in a config somehwere
     threshold = 0.5
-    # TODO: Also need to sort this to take the top three only...
+    # TODO: Make sure None is not actually being predicted here...
+    topk_values, topk_indices = torch.topk(subtype_logits, 2)
+    mask = torch.zeros_like(subtype_logits)
+    mask.scatter_(1, topk_indices, 1)
+    subtype_logits = subtype_logits * mask
     subtype_preds = (sigmoid(subtype_logits) > threshold).int()
-    print(subtype_preds.sum())
-    print(subtype_preds)
-    subtype_indeces = torch.nonzero(subtype_preds.squeeze())
-    print(subtype_indeces)
-    legible_preds["Sub-Types"] = ", ".join(
-        [model.decoders["Sub-Types"][str(idx.item())] for idx in model.subtype_indices]
-    )
+    subtype_indices = torch.nonzero(subtype_preds.squeeze())
+    print(subtype_indices)
+    # legible_preds["Sub-Types"] = ", ".join([model.decoders["Sub-Types"][str(idx.item())] for idx in subtype_indices])
     # legible_preds["Sub-Types"] = ""
-    # for idx in subtype_indeces:
-    #     legible_preds["Sub-Types"] += model.decoders["Sub-Types"][str(idx.item())]
+    for i, idx in enumerate(subtype_indices):
+        # TODO: This should actually have some partial ordering logic
+        # Put everything as sub-type 1 first
+        # Everything in sub-type 2 second
+        # (I think the combined won't work cuz of meals...)
+        # Sort in order by count within groups
+
+        legible_preds[f"Sub-Type {i + 1}"] = model.decoders["Sub-Types"][str(idx.item())]
+        # legible_preds["Sub-Types"] += model.decoders["Sub-Types"][str(idx.item())]
 
     if combine_name:
         normalized_name = ""
