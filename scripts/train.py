@@ -1,4 +1,3 @@
-import ast
 import json
 import logging
 import os
@@ -26,41 +25,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
 
-def read_data_polars(input_col, labels, data_path):
-    # Note: polars syntax is different than pandas syntax
-    df = pl.read_csv(data_path, infer_schema_length=1, null_values=["NULL"]).lazy()
-    for col in [input_col, "Food Product Group", "Food Product Category", "Primary Food Product Category"]:
-        prev_height = df.collect().shape[0]
-        df = df.filter(pl.col(col).is_not_null())
-        new_height = df.collect().shape[0]
-        logging.info(f"Excluded {prev_height - new_height} rows due to null values in '{col}'.")
-
-    # TODO: I think this isn't a good idea...should just set this up so that the data comes in with a list of Sub-Types
-    # # Handle "Sub-Types" — may not always be in dataset
-    # if "Sub-Types" not in df.collect().columns:
-    #     sub_type_cols = [col for col in df.columns if "Sub-Type" in col]
-    #     if sub_type_cols:
-    #         df = df.with_columns(
-    #             pl.concat_list(sub_type_cols).alias("Sub-Types")
-    #         )
-
-    df_cleaned = df.select(input_col, *labels)
-
-    # Convert 'Sub-Types' from string back to list
-    def str_to_list(s):
-        return ast.literal_eval(s) if s else []
-
-    df_cleaned = df_cleaned.with_columns(pl.col("Sub-Types").apply(str_to_list))
-
-    # Make sure every input_col is correctly encoded as string
-    df_cleaned = df_cleaned.with_columns(pl.col(input_col).cast(pl.Utf8))
-
-    # TODO: should we use FPC to fix nulls for PFPC? This is a pipeline question
-    df_cleaned = df_cleaned.fill_null("None")
-    return df_cleaned
-
-
-def read_data(input_col, labels, data_path, smoke_test=False, combine_subtypes=False):
+def read_data(input_col, labels, data_path, smoke_test=False):
     nrows = 1000 if smoke_test else None
     df_cgfp = pd.read_csv(data_path, na_values=["NULL"], nrows=nrows)
 
@@ -72,15 +37,6 @@ def read_data(input_col, labels, data_path, smoke_test=False, combine_subtypes=F
         logging.info(f"Excluded {prev_height - new_height} rows due to null values in '{col}'.")
 
     keep_cols = [input_col] + labels
-
-    # TODO: This can probably go away...handling sub-types in the forward pass
-    # def combine_sub_types(row):
-    #     return [item for item in row if pd.notna(item) and item is not None]
-
-    # if combine_subtypes:
-    #     df_cgfp["Sub-Types"] = df_cgfp[subtype_cols].apply(combine_sub_types, axis=1)
-    #     keep_cols.append("Sub-Types")
-
     df_cleaned = df_cgfp[keep_cols]
 
     # Make sure input_col is correctly encoded as string
@@ -273,12 +229,10 @@ if __name__ == "__main__":
 
     ### DATA PREP ###
     logging.info(f"Reading training data from path : {TRAIN_DATA_PATH}")
-    df_train = read_data(TEXT_FIELD, LABELS, TRAIN_DATA_PATH, combine_subtypes=COMBINE_SUBTYPES, smoke_test=SMOKE_TEST)
+    df_train = read_data(TEXT_FIELD, LABELS, TRAIN_DATA_PATH, smoke_test=SMOKE_TEST)
 
     logging.info(f"Reading eval data from path : {TRAIN_DATA_PATH}")
-    # TODO: doing this as a smoke test...
-    EVAL_DATA_PATH = TRAIN_DATA_PATH
-    df_eval = read_data(TEXT_FIELD, LABELS, EVAL_DATA_PATH, combine_subtypes=COMBINE_SUBTYPES, smoke_test=SMOKE_TEST)
+    df_eval = read_data(TEXT_FIELD, LABELS, EVAL_DATA_PATH, smoke_test=SMOKE_TEST)
 
     labels_dict = {label: i for i, label in enumerate(LABELS)}
 

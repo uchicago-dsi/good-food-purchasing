@@ -119,18 +119,13 @@ def inference(
     subtype_logits = subtype_logits * mask
     subtype_preds = (sigmoid(subtype_logits) > threshold).int()
     subtype_indices = torch.nonzero(subtype_preds.squeeze())
-    print(subtype_indices)
-    # legible_preds["Sub-Types"] = ", ".join([model.decoders["Sub-Types"][str(idx.item())] for idx in subtype_indices])
-    # legible_preds["Sub-Types"] = ""
     for i, idx in enumerate(subtype_indices):
         # TODO: This should actually have some partial ordering logic
         # Put everything as sub-type 1 first
         # Everything in sub-type 2 second
         # (I think the combined won't work cuz of meals...)
         # Sort in order by count within groups
-
         legible_preds[f"Sub-Type {i + 1}"] = model.decoders["Sub-Types"][str(idx.item())]
-        # legible_preds["Sub-Types"] += model.decoders["Sub-Types"][str(idx.item())]
 
     if combine_name:
         normalized_name = ""
