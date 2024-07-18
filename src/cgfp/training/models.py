@@ -71,13 +71,7 @@ class MultiTaskConfig(DistilBertConfig):
         self.loss = loss
         self.counts = counts
         self.inference_masks = inference_masks
-        # self.subtype_indices = subtype_indices
         self.combine_subtypes = combine_subtypes
-
-        # Initialize indeces for key columns
-        # TODO: Unclear why columns is sometimes None here...
-        # self.fpg_idx = self.columns.index("Food Product Group") if self.columns is not None else fpg_idx
-        # self.basic_type_idx = self.columns.index("Basic Type") if self.columns is not None else basic_type_idx
 
 
 class MultiTaskModel(PreTrainedModel):
@@ -164,7 +158,14 @@ class MultiTaskModel(PreTrainedModel):
     def initialize_tasks(self) -> None:
         """Initialize the counts and number of categories per task from the configuration."""
         self.decoders = dict(self.config.decoders)
-        self.subtype_indices = [idx for task, idx in self.config.columns.items() if "Sub-Type" in task]
+        self.subtype_data_indices = [idx for task, idx in self.config.columns.items() if "Sub-Type" in task]
+
+        for idx, subtype in self.decoders["Sub-Types"].items():
+            if subtype == "None":
+                print("None found at ", idx)
+                self.none_subtype_idx = idx
+
+        self.subtypes_head_idx = list(self.decoders.keys()).index("Sub-Types")
 
     def set_attached_heads(self, heads_to_attach: Union[str, List[str]]) -> None:
         """Set which heads should have their inputs attached to the computation graph. Allows for controlling the finetuning of the model."""
@@ -221,7 +222,7 @@ class MultiTaskModel(PreTrainedModel):
                     batch_size = labels.shape[0]
                     subtype_labels = []
                     # TODO: Need to fix this
-                    for idx in self.subtype_indices:
+                    for idx in self.subtype_data_indices:
                         subtype_labels.append(labels.squeeze().transpose(0, 1)[idx].view(-1))
                     # TODO:
                     all_labels = torch.stack(subtype_labels)  # Shape: (# of subtype columns, batch_size)
@@ -235,11 +236,13 @@ class MultiTaskModel(PreTrainedModel):
                         # Note: labels are sub-type labels for one sub-type column for a whole batch
                         # Shape: (batch_size,)
                         for batch_idx, lbl in enumerate(labels):
-                            # TODO: Maybe I should explicitly set the index for None (it's 0)
-                            if lbl > 0:
+                            # We don't want the multilabel head predicting "None" so exclude that idx
+                            if lbl != int(self.none_subtype_idx):
+                                # print(f"Adding {self.decoders['Sub-Types'][str(lbl.item())]} as subtype")
                                 target[batch_idx, lbl] = 1
-
-                    losses.append(self.loss_fns["Sub-Types"](logit, target))
+                    multilabel_loss = self.loss_fns["Sub-Types"](logit, target)
+                    # print("multilabel loss", multilabel_loss)
+                    losses.append(multilabel_loss)
 
             loss = sum(losses)
 

@@ -113,19 +113,27 @@ def inference(
     # TODO: Need to set this up in a config somehwere
     threshold = 0.5
     # TODO: Make sure None is not actually being predicted here...
+    # Do this in a better way...
+    subtype_logits[:, 26] = 0
     topk_values, topk_indices = torch.topk(subtype_logits, 2)
+    # print("topk_indices")
+    # print(topk_indices)
     mask = torch.zeros_like(subtype_logits)
     mask.scatter_(1, topk_indices, 1)
     subtype_logits = subtype_logits * mask
     subtype_preds = (sigmoid(subtype_logits) > threshold).int()
     subtype_indices = torch.nonzero(subtype_preds.squeeze())
+    # print("subtype_indices")
+    # print(subtype_indices)
     for i, idx in enumerate(subtype_indices):
         # TODO: This should actually have some partial ordering logic
         # Put everything as sub-type 1 first
         # Everything in sub-type 2 second
         # (I think the combined won't work cuz of meals...)
         # Sort in order by count within groups
-        legible_preds[f"Sub-Type {i + 1}"] = model.decoders["Sub-Types"][str(idx.item())]
+        legible_subtype = model.decoders["Sub-Types"][str(idx.item())]
+        print(f"decoding...{legible_subtype}")
+        legible_preds[f"Sub-Type {i + 1}"] = legible_subtype
 
     if combine_name:
         normalized_name = ""
@@ -248,6 +256,7 @@ def inference_handler(
 
 
 if __name__ == "__main__":
+    # TODO: Set this up to use config
     parser = argparse.ArgumentParser(description="Load model checkpoint.")
     parser.add_argument(
         "--filename",

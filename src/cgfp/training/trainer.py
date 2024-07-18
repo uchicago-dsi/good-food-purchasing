@@ -1,41 +1,73 @@
 import json
 import logging
 
+import torch
 from cgfp.constants.training_constants import BASIC_TYPE_IDX
 from cgfp.inference.inference import test_inference
 from sklearn.metrics import accuracy_score, f1_score
+from torch.nn.functional import sigmoid
 from transformers import Trainer, TrainerCallback
+from transformers.trainer_utils import EvalPrediction
 
 
-def compute_metrics(pred, basic_type_idx=BASIC_TYPE_IDX):
+def compute_metrics(pred, model, threshold=0.5, basic_type_idx=BASIC_TYPE_IDX):
     """Extract the predictions and labels for each task
 
-    TODO: organize this info in a docstring
-    len(pred.predictions) » 2
-    len(pred.predictions[0]) » 20
-    len(pred.predictions[0][0]) » 6 (number of classes)
-    len(pred.predictions[1][0]) » 29 (number of classes)
-    Also...why is this 20 and not the batch size?
-
-    len(pred.label_ids) » 2
-    This comes in a list of length 20 with a 2D label for each example?
-    array([[ 5],
-       [26]])
+    pred.predictions: (num_heads, batch_size, num_classes) » note: this is a list
+    pred.label_ids: (batch_size, num_columns, 1) » note: this is a tensor
     """
-    # TODO: Getting the actual predictions here for the multilabel task is hard...
-
-    num_tasks = len(pred.predictions)
-    preds = [pred.predictions[i].argmax(-1) for i in range(num_tasks)]
-    labels = [pred.label_ids[:, i, 0].tolist() for i in range(num_tasks)]
+    batch_size = pred.label_ids.shape[0]
+    num_tasks = len(model.classification_heads)
 
     accuracies = {}
     f1_scores = {}
-    for i, task in enumerate(zip(preds, labels)):
-        pred, lbl = task
-        accuracies[i] = accuracy_score(lbl, pred)
-        f1_scores[i] = f1_score(lbl, pred, average="weighted")  # Use weighted for multi-class classification
 
-    basic_type_accuracy = accuracies[basic_type_idx]
+    # Handle non-subtype predictions
+    for i, task in enumerate(model.classification_heads.keys()):
+        lbl = pred.label_ids[:, i, 0].tolist()
+        if i != model.subtypes_head_idx:
+            # Handle non-subtype tasks
+            pred_lbl = pred.predictions[i].argmax(-1)
+            accuracies[task] = accuracy_score(lbl, pred_lbl)
+            f1_scores[task] = f1_score(
+                lbl, pred_lbl, average="weighted"
+            )  #  Use weighted for multi-class classification
+
+    # Handle subtype predictions - this is a multilabel task so kind of messy
+    num_subtype_classes = len(model.decoders["Sub-Types"])
+
+    # Get all indices with probs above a threshold
+    # Note: preds_subtyps is a list with dimensions (batch_size, num_subtype_classes)
+    preds_subtype = (
+        (sigmoid(torch.tensor(pred.predictions[int(model.subtypes_head_idx)])) > threshold).int().tolist()
+    )  # TODO: threshold should come from the model config maybe?
+
+    # Create a zeros matrix with dimensions (batch_size, num_subtype_classes)
+    lbls_subtype = torch.zeros((batch_size, num_subtype_classes), dtype=int)
+    # Change each index for each example for each subtype col to 1
+    for idx in model.subtype_data_indices:
+        lbls = pred.label_ids[:, idx, 0]
+        lbls_subtype[torch.arange(batch_size), lbls] = 1
+    # Don't compute accuracy for "None" for multilabel task - set to 0
+    lbls_subtype[torch.arange(batch_size), int(model.none_subtype_idx)] = 0
+
+    accuracies["Sub-Types"] = accuracy_score(lbls_subtype, preds_subtype)
+    f1_scores["Sub-Types"] = f1_score(lbls_subtype, preds_subtype, average="weighted")
+
+    # # TODO: this is the old way...
+    # num_tasks = len(pred.predictions)
+    # preds = [
+    #     pred.predictions[i].argmax(-1) for i in range(len(model.classification_heads))
+    # ]  #  (num_heads, batch_size)
+    # labels = [pred.label_ids[:, i, 0].tolist() for i in range(len(model.config.columns))]  #  (num_cols, batch_size)
+    # accuracies = {}
+    # f1_scores = {}
+    # for i, task in enumerate(zip(preds, labels)):
+    #     pred, lbl = task
+    #     accuracies[i] = accuracy_score(lbl, pred)
+    #     f1_scores[i] = f1_score(lbl, pred, average="weighted")  # Use weighted for multi-class classification
+
+    basic_type_accuracy = accuracies["Basic Type"]
     mean_accuracy = sum(accuracies.values()) / num_tasks
     mean_f1_score = sum(f1_scores.values()) / num_tasks
 
@@ -90,6 +122,9 @@ class MultiTaskTrainer(Trainer):
             "Food Product Group Classification Head": self.model.classification_heads["Food Product Group"][0].weight,
             "Sub-Types Classification Head": self.model.classification_heads["Sub-Types"][0].weight,
         }
+
+    def compute_metrics(self, p: EvalPrediction):
+        return compute_metrics(p, self.model)
 
     def log_gradients(self, name, param):
         """Safely compute the sum of gradients for a given parameter."""

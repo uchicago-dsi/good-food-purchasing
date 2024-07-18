@@ -346,13 +346,15 @@ if __name__ == "__main__":
     trainer = MultiTaskTrainer(
         model=model,
         args=training_args,
-        compute_metrics=compute_metrics,
+        compute_metrics=lambda p: compute_metrics(
+            p, model
+        ),  #  Note: We need to access model config during compute metrics
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
         optimizers=(
             adamW,
             scheduler,
-        ),  # Pass optimizers here (rather than training_args) for more fine-grained control
+        ),  #  Pass optimizers here (rather than training_args) for more fine-grained control
         callbacks=[SaveBestModelCallback(model, tokenizer, device, metric_for_best_model, eval_prompt)],
     )
 
