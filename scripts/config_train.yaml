@@ -1,6 +1,6 @@
 # TODO: Maybe set up Paths, etc for this
 config:
-  smoke_test: true
+  smoke_test: false
   checkpoints_dir: "/net/projects/cgfp/checkpoints/"
 data:
   text_field: "Product Type"
@@ -22,7 +22,7 @@ model:
   combine_subtypes: true # Combine sub-type columns for multi-label training
 training:
   lr: 0.001
-  epochs: 20 # Recommended: 80 for full model training, 20 for classification head training
+  epochs: 50 # Recommended: 80 for full model training, 20 for classification head training
   train_batch_size: 32
   eval_batch_size: 64
   metric_for_best_model: "mean_f1_score" # Choices: "mean_f1_score", "basic_type_accuracy"

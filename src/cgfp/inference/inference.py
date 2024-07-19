@@ -2,6 +2,7 @@ import argparse
 import json
 import logging
 import os
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -125,6 +126,8 @@ def inference(
     subtype_indices = torch.nonzero(subtype_preds.squeeze())
     # print("subtype_indices")
     # print(subtype_indices)
+    if len(subtype_indices) == 0:
+        print("No subtypes")
     for i, idx in enumerate(subtype_indices):
         # TODO: This should actually have some partial ordering logic
         # Put everything as sub-type 1 first
@@ -163,8 +166,11 @@ def highlight_uncertain_preds(df, threshold=0.85):
 
 
 def save_output(df, filename, data_dir):
+    if not isinstance(filename, Path):
+        filename = Path(filename)
     os.chdir(data_dir)  # ensures this saves in the expected directory in Colab
-    output_path = filename.rstrip(".xlsx") + "_classified.xlsx"
+    # output_path = filename.rstrip(".xlsx") + "_classified.xlsx"
+    output_path = filename.with_name(filename.stem + "_classified.xlsx")
     df = df.replace("None", np.nan)
     df.to_excel(output_path, index=False)
     print(f"Classification completed! File saved to {output_path}")
