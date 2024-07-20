@@ -1,6 +1,7 @@
 import json
 import logging
 
+import numpy as np
 import torch
 from cgfp.constants.training_constants import BASIC_TYPE_IDX
 from cgfp.inference.inference import test_inference
@@ -32,10 +33,10 @@ def compute_metrics(pred, model, threshold=0.5, basic_type_idx=BASIC_TYPE_IDX):
             pred_lbl = pred.predictions[i].argmax(-1)
             accuracies[task] = accuracy_score(lbl, pred_lbl)
             f1_scores[task] = f1_score(
-                lbl, pred_lbl, average="weighted"
+                lbl, pred_lbl, average="weighted", zero_division=np.nan
             )  #  Use weighted for multi-class classification
-            precisions[task] = precision_score(lbl, pred_lbl, average="weighted")
-            recalls[task] = recall_score(lbl, pred_lbl, average="weighted")
+            precisions[task] = precision_score(lbl, pred_lbl, average="weighted", zero_division=np.nan)
+            recalls[task] = recall_score(lbl, pred_lbl, average="weighted", zero_division=np.nan)
 
     # Handle subtype predictions - this is a multilabel task so kind of messy
     num_subtype_classes = len(model.decoders["Sub-Types"])
@@ -56,9 +57,9 @@ def compute_metrics(pred, model, threshold=0.5, basic_type_idx=BASIC_TYPE_IDX):
     lbls_subtype[torch.arange(batch_size), int(model.none_subtype_idx)] = 0
 
     accuracies["Sub-Types"] = accuracy_score(lbls_subtype, preds_subtype)
-    f1_scores["Sub-Types"] = f1_score(lbls_subtype, preds_subtype, average="weighted")
-    precisions["Sub-Types"] = precision_score(lbls_subtype, preds_subtype, average="weighted")
-    recalls["Sub-Types"] = recall_score(lbls_subtype, preds_subtype, average="weighted")
+    f1_scores["Sub-Types"] = f1_score(lbls_subtype, preds_subtype, average="weighted", zero_division=np.nan)
+    precisions["Sub-Types"] = precision_score(lbls_subtype, preds_subtype, average="weighted", zero_division=np.nan)
+    recalls["Sub-Types"] = recall_score(lbls_subtype, preds_subtype, average="weighted", zero_division=np.nan)
 
     basic_type_accuracy = accuracies["Basic Type"]
     mean_accuracy = sum(accuracies.values()) / num_tasks
