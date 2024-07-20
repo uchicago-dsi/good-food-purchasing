@@ -283,8 +283,7 @@ if __name__ == "__main__":
         logging.info(f"Loading model from {starting_checkpoint}")
         multi_task_config = MultiTaskConfig.from_pretrained(starting_checkpoint)
         # Note: Data is limited for smoke test so don't change these options
-        # if not SMOKE_TEST:
-        if True:
+        if not SMOKE_TEST:
             multi_task_config.decoders = decoders
             multi_task_config.columns = labels_dict
             multi_task_config.classification = classification
@@ -297,33 +296,6 @@ if __name__ == "__main__":
             starting_checkpoint, config=multi_task_config, ignore_mismatched_sizes=True
         )
 
-        #     DATA_DIR = "/net/projects/cgfp/data/raw/"
-        #     FILENAME = "TestData_11.22.23.xlsx"
-        #     # FILENAME = "TestData_11.22.23.xlsx" # Note: standard test file
-        #     INPUT_COLUMN = "Product Type"
-        #     INPUT_PATH = DATA_DIR + FILENAME
-
-        #     SHEET_NUMBER = 0
-        #     CONFIDENCE_SCORE = False
-        #     ROWS_TO_CLASSIFY = None
-        #     RAW_RESULTS = False  # saves the raw model results rather than the formatted normalized name results
-        #     ASSERTION = True  # filters results that have mismatched food product groups and categories
-
-        #     inference_handler(
-        #         model,
-        #         tokenizer,
-        #         input_path=INPUT_PATH,
-        #         save_dir=DATA_DIR,
-        #         device=device,
-        #         sheet_name=SHEET_NUMBER,
-        #         input_column=INPUT_COLUMN,
-        #         rows_to_classify=ROWS_TO_CLASSIFY,
-        #         confidence_score=CONFIDENCE_SCORE,
-        #         raw_results=RAW_RESULTS,
-        #         assertion=ASSERTION,
-        #     )
-
-        # TODO: bring these back probably
         model.initialize_inference_masks()
         model.initialize_tasks()
         model.initialize_losses()
@@ -352,8 +324,6 @@ if __name__ == "__main__":
                 param.requires_grad = True
 
     logging.info("Model instantiated")
-
-    # model = MultiTaskModel.from_pretrained(starting_checkpoint, ignore_mismatched_sizes=True)
 
     ### TRAINING ###
     training_args = TrainingArguments(

@@ -70,6 +70,8 @@ def compute_metrics(pred, model, threshold=0.5, basic_type_idx=BASIC_TYPE_IDX):
         "accuracies": accuracies,
         "mean_f1_score": mean_f1_score,
         "f1_scores": f1_scores,
+        "precisions": precisions,
+        "recalls": recalls,
         "basic_type_accuracy": basic_type_accuracy,
     }
 
