@@ -245,7 +245,8 @@ if __name__ == "__main__":
     inference_masks = get_inference_masks(df_combined, encoders)
 
     logging.info("Preparing dataset")
-    tokenizer = DistilBertTokenizerFast.from_pretrained(MODEL_NAME)
+    # TODO: is this ok or should I load the tokenizer from the checkpoint also
+    tokenizer = DistilBertTokenizerFast.from_pretrained(starting_checkpoint)
 
     train_dataset = Dataset.from_pandas(df_train)
     eval_dataset = Dataset.from_pandas(df_eval)
@@ -256,11 +257,6 @@ if __name__ == "__main__":
     train_dataset.set_format("torch", columns=["input_ids", "attention_mask", "labels"])
     eval_dataset.set_format("torch", columns=["input_ids", "attention_mask", "labels"])
 
-    # TODO: Kinda hacky since we need to skip "Product Type" when counting our columns...
-    # TODO: Do I actually need this?
-    # Kind of...sort this out later for sub-type columns...
-    # subtype_indices = [i - 1 for i, col in enumerate(train_dataset.features) if "Sub-Type" in col]
-
     logging.info("Datasets are prepared")
     logging.info(f"Structure of the dataset : {train_dataset}")
     logging.info(f"Sample record from the dataset : {train_dataset[0]}")
@@ -270,6 +266,7 @@ if __name__ == "__main__":
 
     if starting_checkpoint is None:
         # If no specified checkpoint, use pretrained Huggingface model
+        logging.info("Loading model from the off-the-shelf Huggingface DistilBERT")
         distilbert_model = DistilBertForSequenceClassification.from_pretrained(MODEL_NAME)
         multi_task_config = MultiTaskConfig(
             decoders=decoders,
@@ -283,12 +280,16 @@ if __name__ == "__main__":
         )
         model = MultiTaskModel(multi_task_config)
     else:
+        logging.info(f"Loading model from {starting_checkpoint}")
         multi_task_config = MultiTaskConfig.from_pretrained(starting_checkpoint)
-        multi_task_config.decoders = decoders
-        multi_task_config.columns = labels_dict
-        multi_task_config.classification = classification
-        multi_task_config.inference_masks = json.dumps(inference_masks)
-        multi_task_config.counts = json.dumps(counts)
+        # Note: Data is limited for smoke test so don't change these options
+        # if not SMOKE_TEST:
+        if True:
+            multi_task_config.decoders = decoders
+            multi_task_config.columns = labels_dict
+            multi_task_config.classification = classification
+            multi_task_config.inference_masks = json.dumps(inference_masks)
+            multi_task_config.counts = json.dumps(counts)
         multi_task_config.loss = loss
 
         # Note: ignore_mismatched_sizes since we are often loading from checkpoints with different numbers of categories
@@ -296,11 +297,39 @@ if __name__ == "__main__":
             starting_checkpoint, config=multi_task_config, ignore_mismatched_sizes=True
         )
 
+        #     DATA_DIR = "/net/projects/cgfp/data/raw/"
+        #     FILENAME = "TestData_11.22.23.xlsx"
+        #     # FILENAME = "TestData_11.22.23.xlsx" # Note: standard test file
+        #     INPUT_COLUMN = "Product Type"
+        #     INPUT_PATH = DATA_DIR + FILENAME
+
+        #     SHEET_NUMBER = 0
+        #     CONFIDENCE_SCORE = False
+        #     ROWS_TO_CLASSIFY = None
+        #     RAW_RESULTS = False  # saves the raw model results rather than the formatted normalized name results
+        #     ASSERTION = True  # filters results that have mismatched food product groups and categories
+
+        #     inference_handler(
+        #         model,
+        #         tokenizer,
+        #         input_path=INPUT_PATH,
+        #         save_dir=DATA_DIR,
+        #         device=device,
+        #         sheet_name=SHEET_NUMBER,
+        #         input_column=INPUT_COLUMN,
+        #         rows_to_classify=ROWS_TO_CLASSIFY,
+        #         confidence_score=CONFIDENCE_SCORE,
+        #         raw_results=RAW_RESULTS,
+        #         assertion=ASSERTION,
+        #     )
+
+        # TODO: bring these back probably
         model.initialize_inference_masks()
         model.initialize_tasks()
         model.initialize_losses()
 
     if RESET_CLASSIFICATION_HEADS:
+        logging.info("Resetting classification heads...")
         model.initialize_classification_heads()
 
     if ATTACHED_HEADS is not None:
@@ -312,6 +341,7 @@ if __name__ == "__main__":
         model.set_attached_heads(classification_head_labels)
 
     if FREEZE_BASE:
+        logging.info("Freezing base model...")
         # Freeze all parameters
         for param in model.parameters():
             param.requires_grad = False
@@ -322,6 +352,8 @@ if __name__ == "__main__":
                 param.requires_grad = True
 
     logging.info("Model instantiated")
+
+    # model = MultiTaskModel.from_pretrained(starting_checkpoint, ignore_mismatched_sizes=True)
 
     ### TRAINING ###
     training_args = TrainingArguments(
@@ -357,6 +389,10 @@ if __name__ == "__main__":
         ),  #  Pass optimizers here (rather than training_args) for more fine-grained control
         callbacks=[SaveBestModelCallback(model, tokenizer, device, metric_for_best_model, eval_prompt)],
     )
+
+    logging.info("Evaluating model before training...")
+    pre_train_metrics = trainer.evaluate()
+    logging.info("Pre-training evaluation metrics:", pre_train_metrics)
 
     logging.info("Training...")
     trainer.train()

@@ -10,15 +10,18 @@ data:
   test_filename: "TestData_11.22.23.xlsx"
 model:
   model_name: "distilbert-base-uncased"
-  starting_checkpoint: "uchicago-dsi/cgfp-distilbert"
-  # starting_checkpoint: "/net/projects/cgfp/model-files/distilbert-base-uncased_20240625_1840_subtypes_classification_heads" # null to train the off-the-shelf huggingface model
+  # starting_checkpoint: "uchicago-dsi/cgfp-distilbert"
+  starting_checkpoint: "/net/projects/cgfp/model-files/distilbert-base-uncased_20240718_1358_multilabel_ok_results" # null to train the off-the-shelf huggingface model
   model_dir: "/net/projects/cgfp/model-files/"
+  # TODO: rename this
   classification: "mlp" # Choices: "mlp", "linear"
   loss: "cross_entropy" # Choices: "cross_entropy"
   save_best: true # Model saving strategy. If set to false, saves last model.
-  freeze_base: true # Freezes the base model and only trains the classification heads
-  reset_classification_heads: true # Renitializes the classification heads
-  attached_heads: null # If null, attaches all heads to computation graph. If not null, attaches only the specified heads
+  freeze_base: false # Freezes the base model and only trains the classification heads
+  reset_classification_heads: false # Renitializes the classification heads
+  attached_heads: # If null, attaches all heads to computation graph. If not null, attaches only the specified heads
+    - "Basic Type"
+    - "Sub-Types"
   combine_subtypes: true # Combine sub-type columns for multi-label training
 training:
   lr: 0.001

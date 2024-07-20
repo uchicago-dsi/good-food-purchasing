@@ -135,7 +135,7 @@ def inference(
         # (I think the combined won't work cuz of meals...)
         # Sort in order by count within groups
         legible_subtype = model.decoders["Sub-Types"][str(idx.item())]
-        print(f"decoding...{legible_subtype}")
+        logging.info(f"decoding...{legible_subtype}")
         legible_preds[f"Sub-Type {i + 1}"] = legible_subtype
 
     if combine_name:

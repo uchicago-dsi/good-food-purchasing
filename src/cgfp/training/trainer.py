@@ -4,7 +4,7 @@ import logging
 import torch
 from cgfp.constants.training_constants import BASIC_TYPE_IDX
 from cgfp.inference.inference import test_inference
-from sklearn.metrics import accuracy_score, f1_score
+from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 from torch.nn.functional import sigmoid
 from transformers import Trainer, TrainerCallback
 from transformers.trainer_utils import EvalPrediction
@@ -21,6 +21,8 @@ def compute_metrics(pred, model, threshold=0.5, basic_type_idx=BASIC_TYPE_IDX):
 
     accuracies = {}
     f1_scores = {}
+    precisions = {}
+    recalls = {}
 
     # Handle non-subtype predictions
     for i, task in enumerate(model.classification_heads.keys()):
@@ -32,6 +34,8 @@ def compute_metrics(pred, model, threshold=0.5, basic_type_idx=BASIC_TYPE_IDX):
             f1_scores[task] = f1_score(
                 lbl, pred_lbl, average="weighted"
             )  #  Use weighted for multi-class classification
+            precisions[task] = precision_score(lbl, pred_lbl, average="weighted")
+            recalls[task] = recall_score(lbl, pred_lbl, average="weighted")
 
     # Handle subtype predictions - this is a multilabel task so kind of messy
     num_subtype_classes = len(model.decoders["Sub-Types"])
@@ -53,19 +57,8 @@ def compute_metrics(pred, model, threshold=0.5, basic_type_idx=BASIC_TYPE_IDX):
 
     accuracies["Sub-Types"] = accuracy_score(lbls_subtype, preds_subtype)
     f1_scores["Sub-Types"] = f1_score(lbls_subtype, preds_subtype, average="weighted")
-
-    # # TODO: this is the old way...
-    # num_tasks = len(pred.predictions)
-    # preds = [
-    #     pred.predictions[i].argmax(-1) for i in range(len(model.classification_heads))
-    # ]  #  (num_heads, batch_size)
-    # labels = [pred.label_ids[:, i, 0].tolist() for i in range(len(model.config.columns))]  #  (num_cols, batch_size)
-    # accuracies = {}
-    # f1_scores = {}
-    # for i, task in enumerate(zip(preds, labels)):
-    #     pred, lbl = task
-    #     accuracies[i] = accuracy_score(lbl, pred)
-    #     f1_scores[i] = f1_score(lbl, pred, average="weighted")  # Use weighted for multi-class classification
+    precisions["Sub-Types"] = precision_score(lbls_subtype, preds_subtype, average="weighted")
+    recalls["Sub-Types"] = recall_score(lbls_subtype, preds_subtype, average="weighted")
 
     basic_type_accuracy = accuracies["Basic Type"]
     mean_accuracy = sum(accuracies.values()) / num_tasks
@@ -91,14 +84,16 @@ class SaveBestModelCallback(TrainerCallback):
         self.eval_prompt = eval_prompt
 
     def on_evaluate(self, args, state, control, metrics=None, **kwargs):
-        logging.info(f"### EPOCH: {int(state.epoch)} ###")
+        if state.epoch is not None:
+            logging.info(f"### EPOCH: {int(state.epoch)} ###")
         # Note: "eval_" is prepended to the keys in metrics
         current_metric = metrics["eval_" + self.best_model_metric]
         pretty_metrics = json.dumps(metrics, indent=4)
         logging.info(pretty_metrics)
-        if state.epoch % 5 == 0 or current_metric > self.best_metric:
-            prompt = "frozen peas and carrots"
-            test_inference(self.model, self.tokenizer, prompt, self.device)
+        if state.epoch is not None:
+            if state.epoch % 5 == 0 or current_metric > self.best_metric:
+                prompt = "frozen peas and carrots"
+                test_inference(self.model, self.tokenizer, prompt, self.device)
         if current_metric > self.best_metric:
             self.best_metric = current_metric
             self.best_epoch = state.epoch

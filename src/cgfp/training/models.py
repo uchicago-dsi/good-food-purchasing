@@ -103,11 +103,13 @@ class MultiTaskModel(PreTrainedModel):
 
         # Note: Need to store some config objects as JSON, so need to initialize them
         self.initialize_inference_masks()
-
         self.initialize_tasks()
 
-        self.initialize_classification_heads()
         self.initialize_losses()
+
+        # Note: When loading from checkpoint, the model runs __init__ then loads weights after model
+        # is initialized — so this is safe for loading weights
+        self.initialize_classification_heads()
 
         # Note: Initialize with all heads attached. Can change this directly by invoking the method.
         self.set_attached_heads(self.decoders.keys())
@@ -162,7 +164,6 @@ class MultiTaskModel(PreTrainedModel):
 
         for idx, subtype in self.decoders["Sub-Types"].items():
             if subtype == "None":
-                print("None found at ", idx)
                 self.none_subtype_idx = idx
 
         self.subtypes_head_idx = list(self.decoders.keys()).index("Sub-Types")
