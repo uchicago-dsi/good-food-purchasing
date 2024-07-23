@@ -1,14 +1,12 @@
-import argparse
 import json
 import logging
 import os
 from pathlib import Path
 
-import yaml
-
 import numpy as np
 import pandas as pd
 import torch
+import yaml
 from cgfp.constants.tokens.misc_tags import FPG2FPC
 from cgfp.constants.training_constants import lower2label
 from cgfp.training.models import MultiTaskModel
@@ -123,13 +121,15 @@ def inference(
 
     for i, idx in enumerate(predicted_subtype_indices):
         for j in range(num_subtype_columns):
-            subtype_col_idx = j+1
+            subtype_col_idx = j + 1
             legible_subtype = model.decoders["Sub-Types"][str(idx.item())]
             if legible_subtype in model.counts[f"Sub-Type {subtype_col_idx}"]:
                 # Note: Sort tuples by presence in subtype column, then frequency
-                predicted_subtype_tuples.append((subtype_col_idx, model.counts[f"Sub-Type {subtype_col_idx}"][legible_subtype], legible_subtype))
+                predicted_subtype_tuples.append(
+                    (subtype_col_idx, model.counts[f"Sub-Type {subtype_col_idx}"][legible_subtype], legible_subtype)
+                )
                 break
-    
+
     predicted_subtype_tuples = sorted(predicted_subtype_tuples)
 
     for i, (_, _, subtype) in enumerate(predicted_subtype_tuples):
@@ -264,9 +264,9 @@ if __name__ == "__main__":
     with Path.open(SCRIPT_DIR / "../../../scripts/config_train.yaml") as file:
         config = yaml.safe_load(file)
 
-    DATA_DIR = Path(config['data']['data_dir']) / "raw"
-    test_filepath = DATA_DIR / config['data']['test_filename']
-    model_checkpoint = Path(config['model']['eval_checkpoint'])
+    DATA_DIR = Path(config["data"]["data_dir"]) / "raw"
+    test_filepath = DATA_DIR / config["data"]["test_filename"]
+    model_checkpoint = Path(config["model"]["eval_checkpoint"])
 
     model = MultiTaskModel.from_pretrained(model_checkpoint)
     tokenizer = DistilBertTokenizerFast.from_pretrained("distilbert-base-uncased")
@@ -279,8 +279,7 @@ if __name__ == "__main__":
     RAW_RESULTS = False  # saves the raw model results rather than the formatted normalized name results
     ASSERTION = False
 
-    INPUT_COLUMN = config['data']['text_field']
-
+    INPUT_COLUMN = config["data"]["text_field"]
 
     inference_handler(
         model,
