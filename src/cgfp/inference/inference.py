@@ -119,7 +119,7 @@ def inference(
     num_subtype_columns = sum(1 for key in model.config.columns.keys() if "Sub-Type" in key)
     predicted_subtype_tuples = []
 
-    for i, idx in enumerate(predicted_subtype_indices):
+    for idx in predicted_subtype_indices:
         for j in range(num_subtype_columns):
             subtype_col_idx = j + 1
             legible_subtype = model.decoders["Sub-Types"][str(idx.item())]
@@ -135,6 +135,7 @@ def inference(
     for i, (_, _, subtype) in enumerate(predicted_subtype_tuples):
         legible_preds[f"Sub-Type {i+1}"] = subtype
 
+    # TODO: Reorder this to be in the expected column output order
     if combine_name:
         normalized_name = ""
         for col, pred in legible_preds.items():
