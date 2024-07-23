@@ -4,6 +4,8 @@ import logging
 import os
 from pathlib import Path
 
+import yaml
+
 import numpy as np
 import pandas as pd
 import torch
@@ -262,25 +264,17 @@ def inference_handler(
 
 
 if __name__ == "__main__":
-    # TODO: Set this up to use config
-    parser = argparse.ArgumentParser(description="Load model checkpoint.")
-    parser.add_argument(
-        "--filename",
-        type=str,
-        default="TestData_11.22.23.xlsx",
-        help="Name of the file to classify.",
-    )
-    parser.add_argument(
-        "--checkpoint",
-        type=str,
-        help="Path to the model checkpoint directory or Huggingface model name.",
-    )
+    SCRIPT_DIR = Path(__file__).resolve().parent
 
-    args = parser.parse_args()
-    checkpoint = args.checkpoint if args.checkpoint else "uchicago-dsi/cgfp-classifier-dev"
-    FILENAME = args.filename
+    # TODO: This is ugly...
+    with Path.open(SCRIPT_DIR / "../../../scripts/config_train.yaml") as file:
+        config = yaml.safe_load(file)
 
-    model = MultiTaskModel.from_pretrained(checkpoint)
+    DATA_DIR = Path(config['data']['data_dir']) / "raw"
+    test_filepath = DATA_DIR / config['data']['test_filename']
+    model_checkpoint = Path(config['model']['eval_checkpoint'])
+
+    model = MultiTaskModel.from_pretrained(model_checkpoint)
     tokenizer = DistilBertTokenizerFast.from_pretrained("distilbert-base-uncased")
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
@@ -291,15 +285,13 @@ if __name__ == "__main__":
     RAW_RESULTS = False  # saves the raw model results rather than the formatted normalized name results
     ASSERTION = False
 
-    # TODO: Put in constants or config file
-    INPUT_COLUMN = "Product Type"
-    DATA_DIR = "/net/projects/cgfp/data/raw/"
-    INPUT_PATH = DATA_DIR + FILENAME
+    INPUT_COLUMN = config['data']['text_field']
+
 
     inference_handler(
         model,
         tokenizer,
-        input_path=INPUT_PATH,
+        input_path=test_filepath,
         save_dir=DATA_DIR,
         device=device,
         sheet_name=SHEET_NUMBER,

@@ -11,21 +11,21 @@ data:
 model:
   model_name: "distilbert-base-uncased"
   # starting_checkpoint: "uchicago-dsi/cgfp-distilbert"
-  starting_checkpoint: "/net/projects/cgfp/model-files/distilbert-base-uncased_20240718_1358_multilabel_ok_results" # null to train the off-the-shelf huggingface model
+  starting_checkpoint: "/net/projects/cgfp/model-files/distilbert-base-uncased_20240719_2131_multilabel_full_sft" # null to train the off-the-shelf huggingface model
+  eval_checkpoint: "/net/projects/cgfp/model-files/distilbert-base-uncased_20240720_1027_class_heads_after_multilabel_sft"
   model_dir: "/net/projects/cgfp/model-files/"
-  # TODO: rename this
-  classification: "mlp" # Choices: "mlp", "linear"
+  classification_head_type: "mlp" # Choices: "mlp", "linear"
   loss: "cross_entropy" # Choices: "cross_entropy"
   save_best: true # Model saving strategy. If set to false, saves last model.
-  freeze_base: false # Freezes the base model and only trains the classification heads
+  freeze_base: true # Freezes the base model and only trains the classification heads
   reset_classification_heads: false # Renitializes the classification heads
-  attached_heads: # If null, attaches all heads to computation graph. If not null, attaches only the specified heads
-    - "Basic Type"
-    - "Sub-Types"
+  attached_heads: null # If null, attaches all heads to computation graph. If not null, attaches only the specified heads
+    # - "Basic Type"
+    # - "Sub-Types"
   combine_subtypes: true # Combine sub-type columns for multi-label training
 training:
   lr: 0.001
-  epochs: 50 # Recommended: 80 for full model training, 20 for classification head training
+  epochs: 30 # Recommended: 80 for full model training, 20 for classification head training
   train_batch_size: 32
   eval_batch_size: 64
   metric_for_best_model: "mean_f1_score" # Choices: "mean_f1_score", "basic_type_accuracy"

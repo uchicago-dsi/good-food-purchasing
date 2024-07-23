@@ -71,6 +71,7 @@ def get_encoders_and_counts(df, labels=LABELS):
             col_counts = df[column].value_counts().sort_index()
             # Note: This handles duplicates correctly
             subtype_counts = subtype_counts.add(col_counts, fill_value=0).astype(int)
+            # TODO: Create subtype ordering here
         else:
             # Note: We want counts for each sub-type, but not an encoder
             encoders[column] = get_encoder(col_counts.index)
@@ -171,7 +172,7 @@ if __name__ == "__main__":
     COMBINE_SUBTYPES = config["model"]["combine_subtypes"]
 
     starting_checkpoint = config["model"]["starting_checkpoint"]
-    classification = config["model"]["classification"]
+    classification_head_type = config["model"]["classification_head_type"]
     loss = config["model"]["loss"]
     metric_for_best_model = config["training"]["metric_for_best_model"]
 
@@ -245,7 +246,6 @@ if __name__ == "__main__":
     inference_masks = get_inference_masks(df_combined, encoders)
 
     logging.info("Preparing dataset")
-    # TODO: is this ok or should I load the tokenizer from the checkpoint also
     tokenizer = DistilBertTokenizerFast.from_pretrained(starting_checkpoint)
 
     train_dataset = Dataset.from_pandas(df_train)
@@ -271,7 +271,7 @@ if __name__ == "__main__":
         multi_task_config = MultiTaskConfig(
             decoders=decoders,
             columns=labels_dict,
-            classification=classification,
+            classification=classification_head_type,
             inference_masks=json.dumps(inference_masks),
             counts=json.dumps(counts),
             loss=loss,
@@ -282,13 +282,13 @@ if __name__ == "__main__":
     else:
         logging.info(f"Loading model from {starting_checkpoint}")
         multi_task_config = MultiTaskConfig.from_pretrained(starting_checkpoint)
-        # Note: Data is limited for smoke test so don't change these options
-        if not SMOKE_TEST:
-            multi_task_config.decoders = decoders
-            multi_task_config.columns = labels_dict
-            multi_task_config.classification = classification
-            multi_task_config.inference_masks = json.dumps(inference_masks)
-            multi_task_config.counts = json.dumps(counts)
+        # Note: Smoke test will overwrite model config with limited data
+        # TODO: Maybe add logic here to handle that
+        multi_task_config.decoders = decoders
+        multi_task_config.columns = labels_dict
+        multi_task_config.classification = classification_head_type
+        multi_task_config.inference_masks = json.dumps(inference_masks)
+        multi_task_config.counts = json.dumps(counts)
         multi_task_config.loss = loss
 
         # Note: ignore_mismatched_sizes since we are often loading from checkpoints with different numbers of categories

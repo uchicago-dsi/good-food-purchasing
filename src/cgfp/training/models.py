@@ -1,3 +1,5 @@
+"""Contains custom multitask models and configurations for the CGFP project"""
+
 import json
 import logging
 from typing import List, Union
@@ -56,9 +58,6 @@ class MultiTaskConfig(DistilBertConfig):
         decoders=None,
         columns=None,
         counts=None,
-        fpg_idx=FPG_IDX,
-        basic_type_idx=BASIC_TYPE_IDX,
-        subtype_indices=None,
         inference_masks=None,
         loss="cross_entropy",
         combine_subtypes=False,
@@ -167,6 +166,8 @@ class MultiTaskModel(PreTrainedModel):
                 self.none_subtype_idx = idx
 
         self.subtypes_head_idx = list(self.decoders.keys()).index("Sub-Types")
+
+        breakpoint()
 
     def set_attached_heads(self, heads_to_attach: Union[str, List[str]]) -> None:
         """Set which heads should have their inputs attached to the computation graph. Allows for controlling the finetuning of the model."""
