@@ -58,12 +58,13 @@ def get_encoders_and_counts(df, labels=LABELS):
     encoders = {}
     counts = {}
     subtype_counts = pd.Series(dtype=int)
+    subtype_orders = {}
 
     for column in labels:
         col_counts = df[column].value_counts().sort_index()
         logging.info(f"Categories for {column}")
         logging.info(col_counts)
-        counts[column] = col_counts.to_list()
+        counts[column] = col_counts.to_dict()
         if "Sub-Type" in column:
             # Aggregate all sub-type options and handle at the end
             # Note: We are maintaining individual Sub-Type and collective Sub-Type encoders
@@ -71,7 +72,6 @@ def get_encoders_and_counts(df, labels=LABELS):
             col_counts = df[column].value_counts().sort_index()
             # Note: This handles duplicates correctly
             subtype_counts = subtype_counts.add(col_counts, fill_value=0).astype(int)
-            # TODO: Create subtype ordering here
         else:
             # Note: We want counts for each sub-type, but not an encoder
             encoders[column] = get_encoder(col_counts.index)
@@ -80,7 +80,7 @@ def get_encoders_and_counts(df, labels=LABELS):
     subtype_counts = subtype_counts.sort_index()
     logging.info("Categories for Sub-Types")
     logging.info(subtype_counts)
-    counts["Sub-Types"] = subtype_counts.to_list()
+    counts["Sub-Types"] = subtype_counts.to_dict()
     encoders["Sub-Types"] = get_encoder(subtype_counts.index)
 
     return encoders, counts
@@ -275,15 +275,15 @@ if __name__ == "__main__":
             inference_masks=json.dumps(inference_masks),
             counts=json.dumps(counts),
             loss=loss,
-            # subtype_indices=subtype_indices,
             **distilbert_model.config.to_dict(),
         )
         model = MultiTaskModel(multi_task_config)
     else:
         logging.info(f"Loading model from {starting_checkpoint}")
         multi_task_config = MultiTaskConfig.from_pretrained(starting_checkpoint)
+
         # Note: Smoke test will overwrite model config with limited data
-        # TODO: Maybe add logic here to handle that
+        # TODO: Maybe add logic here to handle that if we want to do smoke test on loaded model
         multi_task_config.decoders = decoders
         multi_task_config.columns = labels_dict
         multi_task_config.classification = classification_head_type

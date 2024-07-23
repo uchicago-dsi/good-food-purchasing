@@ -61,6 +61,7 @@ class MultiTaskConfig(DistilBertConfig):
         inference_masks=None,
         loss="cross_entropy",
         combine_subtypes=False,
+        subtype_orders=None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -167,7 +168,7 @@ class MultiTaskModel(PreTrainedModel):
 
         self.subtypes_head_idx = list(self.decoders.keys()).index("Sub-Types")
 
-        breakpoint()
+        self.counts = json.loads(self.config.counts)
 
     def set_attached_heads(self, heads_to_attach: Union[str, List[str]]) -> None:
         """Set which heads should have their inputs attached to the computation graph. Allows for controlling the finetuning of the model."""

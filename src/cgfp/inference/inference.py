@@ -55,13 +55,8 @@ def inference(
 
     # Pull out the sub-types logits to handle separately
     subtypes_idx = list(model.classification_heads.keys()).index("Sub-Types")
-    # TODO: This is inexplicably throwing weird CUDA errors...
-    # nonsubtype_logits = outputs.logits[:subtypes_idx] + outputs.logits[subtypes_idx + 1 :]
-    # subtype_logits = outputs.logits[subtypes_idx]
-
-    # TODO: Workaround which is fine since it's the last one...
-    nonsubtype_logits = outputs.logits[:-1]
-    subtype_logits = outputs.logits[-1]
+    nonsubtype_logits = outputs.logits[:subtypes_idx] + outputs.logits[subtypes_idx + 1 :]
+    subtype_logits = outputs.logits[subtypes_idx]
 
     # Note: Handle non-subtype logits first (multi-class classification)
     softmaxed_scores = [torch.softmax(logits, dim=1) for logits in nonsubtype_logits]
@@ -69,7 +64,7 @@ def inference(
     fpg_idx = list(model.classification_heads.keys()).index("Food Product Group")
     fpc_idx = list(model.classification_heads.keys()).index("Food Product Category")
 
-    # get predicted food product group & predicted food product category
+    # Get predicted food product group & predicted food product category
     fpg = prediction_to_string(model, softmaxed_scores, fpg_idx)
     fpc = prediction_to_string(model, softmaxed_scores, fpc_idx)
 
@@ -84,8 +79,6 @@ def inference(
     scores = [
         torch.max(score, dim=1) for score in softmaxed_scores
     ]  # Note: torch.max returns both max and argmax if you specify dim so this is a list of tuples
-
-    # decoders = {item[0]: item[1] for item in model.config.decoders}
 
     # assertion to make sure fpg & fpg match
     # TODO: Maybe good assertion behavior would be something like:
@@ -115,30 +108,32 @@ def inference(
 
     # TODO: Need to set this up in a config somehwere
     threshold = 0.5
-    # TODO: Make sure None is not actually being predicted here...
-    # Do this in a better way...
-    subtype_logits[:, 26] = 0
+
+    # Note: Make sure None we are not predicting class "None"
+    subtype_logits[:, int(model.none_subtype_idx)] = 0
     topk_values, topk_indices = torch.topk(subtype_logits, 2)
-    # print("topk_indices")
-    # print(topk_indices)
     mask = torch.zeros_like(subtype_logits)
     mask.scatter_(1, topk_indices, 1)
     subtype_logits = subtype_logits * mask
     subtype_preds = (sigmoid(subtype_logits) > threshold).int()
-    subtype_indices = torch.nonzero(subtype_preds.squeeze())
-    # print("subtype_indices")
-    # print(subtype_indices)
-    if len(subtype_indices) == 0:
-        print("No subtypes")
-    for i, idx in enumerate(subtype_indices):
-        # TODO: This should actually have some partial ordering logic
-        # Put everything as sub-type 1 first
-        # Everything in sub-type 2 second
-        # (I think the combined won't work cuz of meals...)
-        # Sort in order by count within groups
-        legible_subtype = model.decoders["Sub-Types"][str(idx.item())]
-        logging.info(f"decoding...{legible_subtype}")
-        legible_preds[f"Sub-Type {i + 1}"] = legible_subtype
+    predicted_subtype_indices = torch.nonzero(subtype_preds.squeeze())
+
+    num_subtype_columns = sum(1 for key in model.config.columns.keys() if "Sub-Type" in key)
+    predicted_subtype_tuples = []
+
+    for i, idx in enumerate(predicted_subtype_indices):
+        for j in range(num_subtype_columns):
+            subtype_col_idx = j+1
+            legible_subtype = model.decoders["Sub-Types"][str(idx.item())]
+            if legible_subtype in model.counts[f"Sub-Type {subtype_col_idx}"]:
+                # Note: Sort tuples by presence in subtype column, then frequency
+                predicted_subtype_tuples.append((subtype_col_idx, model.counts[f"Sub-Type {subtype_col_idx}"][legible_subtype], legible_subtype))
+                break
+    
+    predicted_subtype_tuples = sorted(predicted_subtype_tuples)
+
+    for i, (_, _, subtype) in enumerate(predicted_subtype_tuples):
+        legible_preds[f"Sub-Type {i+1}"] = subtype
 
     if combine_name:
         normalized_name = ""
@@ -171,7 +166,6 @@ def save_output(df, filename, data_dir):
     if not isinstance(filename, Path):
         filename = Path(filename)
     os.chdir(data_dir)  # ensures this saves in the expected directory in Colab
-    # output_path = filename.rstrip(".xlsx") + "_classified.xlsx"
     output_path = filename.with_name(filename.stem + "_classified.xlsx")
     df = df.replace("None", np.nan)
     df.to_excel(output_path, index=False)

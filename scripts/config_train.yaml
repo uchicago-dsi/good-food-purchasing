@@ -12,7 +12,7 @@ model:
   model_name: "distilbert-base-uncased"
   # starting_checkpoint: "uchicago-dsi/cgfp-distilbert"
   starting_checkpoint: "/net/projects/cgfp/model-files/distilbert-base-uncased_20240719_2131_multilabel_full_sft" # null to train the off-the-shelf huggingface model
-  eval_checkpoint: "/net/projects/cgfp/model-files/distilbert-base-uncased_20240720_1027_class_heads_after_multilabel_sft"
+  eval_checkpoint: "/net/projects/cgfp/model-files/distilbert-base-uncased_20240723_1230_update_config_counts"
   model_dir: "/net/projects/cgfp/model-files/"
   classification_head_type: "mlp" # Choices: "mlp", "linear"
   loss: "cross_entropy" # Choices: "cross_entropy"
@@ -25,7 +25,7 @@ model:
   combine_subtypes: true # Combine sub-type columns for multi-label training
 training:
   lr: 0.001
-  epochs: 30 # Recommended: 80 for full model training, 20 for classification head training
+  epochs: 1 # Recommended: 80 for full model training, 20 for classification head training
   train_batch_size: 32
   eval_batch_size: 64
   metric_for_best_model: "mean_f1_score" # Choices: "mean_f1_score", "basic_type_accuracy"
