@@ -2,19 +2,19 @@ name: cgfp
 channels:
   - pytorch
   - nvidia
-  - conda-forge
-  - nodefaults
 dependencies:
   - python=3.11
-  - pytorch::pytorch
-  - pytorch::pytorch-cuda=11.8
-  - scikit-learn
-  - pandas
-  - polars
-  - pip
+  - pytorch=2.3.1
+  - pytorch-cuda=11.8
+  - pip=24.0
   - pip:
+    - ipykernel
     - transformers==4.28.0
-    - datasets
-    - openpyxl
-    - wandb==0.16.6
+    - datasets==2.20.0
+    - openpyxl==3.1.5
+    - wandb==0.17.4
+    - numpy==1.26.4
+    - pandas==2.2.2
+    - polars==1.2.0
+    - scikit-learn==1.5.1
     - -e .

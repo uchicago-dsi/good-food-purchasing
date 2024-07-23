@@ -1,43 +1,43 @@
-import pandas as pd
 import argparse
-from ordered_set import OrderedSet
 from collections import defaultdict
-from tqdm import tqdm
 
-from cgfp.constants.tokens.tag_sets import (
-    FLAVORS,
-    FRUITS,
-    CHOCOLATE,
-    SHAPE_EXTRAS,
-    SKIP_FLAVORS,
-    FLAVORED_BASIC_TYPES,
-    NUTS,
-    CHEESE_TYPES,
-    VEGETABLES,
-    MELON_TYPES,
-    SKIP_SHAPE,
-    ALL_FLAVORS,
-    SUBTYPE_REPLACEMENT_MAPPING,
-    CORN_CERAL,
-    WHEAT_CEREAL,
-    OAT_CEREAL,
-    FRUIT_SNACKS,
-)
+import pandas as pd
 from cgfp.constants.pipeline_constants import (
-    RUN_FOLDER,
+    ADDITIONAL_COLUMNS,
+    COLUMNS_ORDER,
     GROUP_COLUMNS,
-    SUBTYPE_COLUMNS,
     NON_SUBTYPE_COLUMNS,
     NORMALIZED_COLUMNS,
-    COLUMNS_ORDER,
-    ADDITIONAL_COLUMNS,
+    RUN_FOLDER,
+    SUBTYPE_COLUMNS,
 )
-from cgfp.constants.tokens.misc_tags import NON_SUBTYPE_TAGS_FPC
-from cgfp.constants.tokens.token_map import TOKEN_MAP_DICT
-from cgfp.constants.tokens.skip_tokens import SKIP_TOKENS
-from cgfp.constants.tokens.product_type_mapping import PRODUCT_TYPE_MAPPING
 from cgfp.constants.tokens.basic_type_mapping import BASIC_TYPE_MAPPING
+from cgfp.constants.tokens.misc_tags import NON_SUBTYPE_TAGS_FPC
+from cgfp.constants.tokens.product_type_mapping import PRODUCT_TYPE_MAPPING
+from cgfp.constants.tokens.skip_tokens import SKIP_TOKENS
+from cgfp.constants.tokens.tag_sets import (
+    ALL_FLAVORS,
+    CHEESE_TYPES,
+    CHOCOLATE,
+    CORN_CERAL,
+    FLAVORED_BASIC_TYPES,
+    FLAVORS,
+    FRUIT_SNACKS,
+    FRUITS,
+    MELON_TYPES,
+    NUTS,
+    OAT_CEREAL,
+    SHAPE_EXTRAS,
+    SKIP_FLAVORS,
+    SKIP_SHAPE,
+    SUBTYPE_REPLACEMENT_MAPPING,
+    VEGETABLES,
+    WHEAT_CEREAL,
+)
+from cgfp.constants.tokens.token_map import TOKEN_MAP_DICT
 from cgfp.util import load_to_pd, save_pd_to_csv
+from ordered_set import OrderedSet
+from tqdm import tqdm
 
 tqdm.pandas()
 
@@ -72,38 +72,35 @@ def create_parser():
     return parser
 
 
-def clean_df(df):
-    """
-    Cleaning:
+def clean_df(df_cgfp, str_len_threshold=3):
+    """Cleaning:
+
     - Remove null and short (usually a mistake) Product Types
     - Remove null and short (usually a mistake) Product Names
     - Remove non-food items
-
-
-
     """
     # TODO: Do we ever use "Primary Food Product Group?
-    df = df[ADDITIONAL_COLUMNS + GROUP_COLUMNS].copy()
+    df_cgfp = df_cgfp[ADDITIONAL_COLUMNS + GROUP_COLUMNS].copy()
 
     # Add normalized name columns
-    df[NORMALIZED_COLUMNS + ["Misc"]] = None
+    df_cgfp[NORMALIZED_COLUMNS + ["Misc"]] = None
 
-    df = df[
-        (df["Product Type"].str.len() >= 3)
-        & (df["Product Name"].str.len() >= 3)
-        & (df["Food Product Group"] != "Non-Food")
+    df_cgfp = df_cgfp[
+        (df_cgfp["Product Type"].str.len() >= str_len_threshold)
+        & (df_cgfp["Product Name"].str.len() >= str_len_threshold)
+        & (df_cgfp["Food Product Group"] != "Non-Food")
     ].reset_index(drop=True)
 
     # Handle typos in Primary Food Product Category
     category_typos = {
         "Roots & Tuber": "Roots & Tubers",
     }
-    df["Primary Food Product Category"] = df["Primary Food Product Category"].map(
-        lambda x: category_typos.get(x, x)
-    )
+    df_cgfp["Primary Food Product Category"] = df_cgfp[
+        "Primary Food Product Category"
+    ].map(lambda x: category_typos.get(x, x))
 
     # Replace "Whole/Minimally Processed" with the value from "Food Product Category"
-    df["Primary Food Product Category"] = df.progress_apply(
+    df_cgfp["Primary Food Product Category"] = df_cgfp.progress_apply(
         lambda row: (
             row["Food Product Category"]
             if row["Primary Food Product Category"] == "Whole/Minimally Processed"
@@ -113,10 +110,10 @@ def clean_df(df):
     )
 
     # Remove leading 'PREQUALIFIED: ' string
-    df["Product Name"] = df["Product Name"].str.replace(
+    df_cgfp["Product Name"] = df_cgfp["Product Name"].str.replace(
         "^PREQUALIFIED: ", "", regex=True
     )
-    return df
+    return df_cgfp
 
 
 def token_handler(token, row):
@@ -222,7 +219,7 @@ def token_handler(token, row):
     if basic_type in SKIP_SHAPE and token in SHAPE_EXTRAS:
         return None, row
 
-    ### EDGE CASES FOR NON-SUBTYPE COLUMNS ###
+    # EDGE CASES FOR NON-SUBTYPE COLUMNS #
 
     if token == "grated" and food_product_category != "Cheese":
         return "cut", row
@@ -268,7 +265,7 @@ def token_handler(token, row):
         row["Processing"] = "breaded"
         return None, row
 
-    ### EDGE CASES FOR RENAMING TOKENS ###
+    # EDGE CASES FOR RENAMING TOKENS #
 
     # Map nut tokens to "nut" for some basic types
     if basic_type == "snack" and token in NUTS:
@@ -501,7 +498,7 @@ def clean_name(row):
     food_product_category = row["Food Product Category"]
     # Tags are allowed based on primary food product category for meals
     if food_product_category == "Meals":
-        food_product_category == row["Primary Food Product Category"]
+        food_product_category = row["Primary Food Product Category"]
     product_name_split = row["Product Name"].split(",")
     row["Misc"] = []
 
@@ -516,7 +513,7 @@ def clean_name(row):
             continue  # token_handler returns None for invalid tags so skip
         # If token is allowed in a non-subtype column, put it there
         # Otherwise, add to subtypes
-        if token in NON_SUBTYPE_TAGS_FPC[food_product_category]["All"]:
+        if token in NON_SUBTYPE_TAGS_FPC.get(food_product_category, {}).get("All", []):
             matched = False
             # Note: Skip "Basic Type" column since it's already set
             for col in NON_SUBTYPE_COLUMNS:
@@ -619,16 +616,16 @@ def postprocess_data(row):
 
 
 # TODO: Set up smoke test in config
-def process_data(df, smoke_test=SMOKE_TEST, **options):
+def process_data(df_cgfp, smoke_test=SMOKE_TEST, **options):
     if smoke_test:
-        df = df.head(1000)
+        df_cgfp = df_cgfp.head(1000)
 
     # Filter missing data and non-food items, handle typos in Category and Group columns
-    df = clean_df(df)
+    df_cgfp = clean_df(df_cgfp)
 
     # Create normalized name
     print("Normalizing names...")
-    df_normalized = df.progress_apply(clean_name, axis=1)
+    df_normalized = df_cgfp.progress_apply(clean_name, axis=1)
 
     # Perform diff on "Normalized Name" column with "Product Name" column from df_loaded
     # Save a diff on the "Product Name" column with the edited output
@@ -637,8 +634,12 @@ def process_data(df, smoke_test=SMOKE_TEST, **options):
         lambda row: ", ".join(row[NORMALIZED_COLUMNS].dropna().astype(str)),
         axis=1,
     )
-    df_diff = df["Product Name"].compare(df_normalized["Normalized Name"])
-    df_diff["Product Type"] = df["Product Type"]
+    df_normalized["Sub-Types"] = df_normalized["Sub-Types"].apply(
+        lambda x: str(list(x))
+    )
+
+    df_diff = df_cgfp["Product Name"].compare(df_normalized["Normalized Name"])
+    df_diff["Product Type"] = df_cgfp["Product Type"]
     df_diff = df_diff[
         ["Product Type"] + [col for col in df_diff.columns if col != "Product Type"]
     ]
@@ -682,7 +683,9 @@ def process_data(df, smoke_test=SMOKE_TEST, **options):
     )
     df_scoring = df_scoring[ADDITIONAL_COLUMNS + COLUMNS_ORDER]
 
-    df_normalized = df_normalized[COLUMNS_ORDER].sort_values(by=TAGS_SORT_ORDER)
+    df_normalized = df_normalized[COLUMNS_ORDER + ["Sub-Types"]].sort_values(
+        by=TAGS_SORT_ORDER
+    )
 
     # return processed assets to main
     return df_normalized, misc, df_diff, df_scoring
