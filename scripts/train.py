@@ -17,7 +17,12 @@ from datasets import Dataset
 from sklearn.preprocessing import LabelEncoder
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
-from transformers import DistilBertForSequenceClassification, DistilBertTokenizerFast, TrainingArguments
+from transformers import (
+    DistilBertForSequenceClassification,
+    DistilBertTokenizerFast,
+    RobertaForSequenceClassification,
+    TrainingArguments,
+)
 
 import wandb
 
@@ -172,6 +177,12 @@ if __name__ == "__main__":
     COMBINE_SUBTYPES = config["model"]["combine_subtypes"]
 
     starting_checkpoint = config["model"]["starting_checkpoint"]
+    if starting_checkpoint is None:
+        if MODEL_NAME == "distilbert":
+            starting_checkpoint = "distilbert-base-uncased"
+        elif MODEL_NAME == "roberta":
+            starting_checkpoint = "FacebookAI/roberta-base"
+
     classification_head_type = config["model"]["classification_head_type"]
     loss = config["model"]["loss"]
     metric_for_best_model = config["training"]["metric_for_best_model"]
@@ -266,8 +277,12 @@ if __name__ == "__main__":
 
     if starting_checkpoint is None:
         # If no specified checkpoint, use pretrained Huggingface model
-        logging.info("Loading model from the off-the-shelf Huggingface DistilBERT")
-        distilbert_model = DistilBertForSequenceClassification.from_pretrained(MODEL_NAME)
+        logging.info(f"Loading model from the off-the-shelf Huggingface {starting_checkpoint}")
+        if MODEL_NAME == "distilbert":
+            distilbert_model = DistilBertForSequenceClassification.from_pretrained(starting_checkpoint)
+        elif MODEL_NAME == "roberta":
+            base_model = RobertaForSequenceClassification.from_pretrained(starting_checkpoint)
+
         multi_task_config = MultiTaskConfig(
             decoders=decoders,
             columns=labels_dict,
@@ -275,7 +290,7 @@ if __name__ == "__main__":
             inference_masks=json.dumps(inference_masks),
             counts=json.dumps(counts),
             loss=loss,
-            **distilbert_model.config.to_dict(),
+            **base_model.config.to_dict(),
         )
         model = MultiTaskModel(multi_task_config)
     else:

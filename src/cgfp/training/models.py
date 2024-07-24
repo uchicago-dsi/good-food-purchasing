@@ -7,11 +7,11 @@ from typing import List, Union
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from cgfp.constants.training_constants import BASIC_TYPE_IDX, FPG_IDX
 from transformers import (
-    DistilBertConfig,
     DistilBertModel,
+    PretrainedConfig,
     PreTrainedModel,
+    RobertaModel,
 )
 from transformers.modeling_outputs import SequenceClassifierOutput
 
@@ -51,9 +51,10 @@ class FocalLoss(nn.Module):
         return focal_loss.mean()
 
 
-class MultiTaskConfig(DistilBertConfig):
+class MultiTaskConfig(PretrainedConfig):
     def __init__(
         self,
+        model_type="distilbert",
         classification="linear",
         decoders=None,
         columns=None,
@@ -65,17 +66,75 @@ class MultiTaskConfig(DistilBertConfig):
         **kwargs,
     ):
         super().__init__(**kwargs)
+        self.model_type = model_type
+
+        if model_type == "distilbert":
+            self.attribute_map = {
+                "hidden_size": "dim",
+                "num_attention_heads": "n_heads",
+                "num_hidden_layers": "n_layers",
+            }
+        else:
+            self.attribute_map = {}
+
+        # if model_type == "distilbert":
+        #     self.base_config = DistilBertConfig(**kwargs)
+        # elif model_type == "roberta":
+        #     self.base_config = RobertaConfig(**kwargs)
+        # else:
+        #     raise ValueError(f"Unsupported model type: {model_type}")
+
         self.decoders = decoders
         self.columns = columns
-        self.classification = classification  # choices are "linear" or "mlp"
+        self.classification = classification
         self.loss = loss
         self.counts = counts
         self.inference_masks = inference_masks
         self.combine_subtypes = combine_subtypes
 
+    # Note: DistilBert has some non-standard attributes so...
+    def __getattr__(self, name):
+        if name in self.attribute_map:
+            mapped_name = self.attribute_map[name]
+            return getattr(self.base_config, mapped_name)
+        else:
+            try:
+                return super().__getattr__(name)
+            except AttributeError:
+                raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
+
+    def __setattr__(self, name, value):
+        if name in self.attribute_map:
+            mapped_name = self.attribute_map[name]
+            setattr(self.base_config, mapped_name, value)
+        else:
+            super().__setattr__(name, value)
+
+    # def __getattr__(self, name):
+    #     return getattr(self.base_config, name)
+
+    # @classmethod
+    # def from_pretrained(cls, pretrained_model_name_or_path, **kwargs):
+    #     return PretrainedConfig.from_pretrained(pretrained_model_name_or_path, **kwargs)
+
+    # breakpoint()
+
+    # # Determine model type based on the base configuration class
+    # if isinstance(base_config, DistilBertConfig):
+    #     model_type = "distilbert"
+    # elif isinstance(base_config, RobertaConfig):
+    #     model_type = "roberta"
+    # else:
+    #     raise ValueError(f"Unsupported model type in pretrained configuration: {type(base_config)}")
+
+    # Create an instance of MultiTaskConfig with the model_type and other parameters
+    # config_dict = base_config.to_dict()
+    # config_dict.update(kwargs)
+    # return cls(model_type=model_type, **config_dict)
+
 
 class MultiTaskModel(PreTrainedModel):
-    """A multi-task learning model based on the DistilBert architecture for handling multiple classification tasks.
+    """A multi-task learning model based on the DistilBert or RoBERTa architecture for handling multiple classification tasks.
 
     This model allows for training and inference on multiple tasks simultaneously by attaching multiple
     classification heads to a shared DistilBert backbone. It supports different types of classification heads
@@ -84,7 +143,7 @@ class MultiTaskModel(PreTrainedModel):
 
     Attributes:
         config: The configuration object containing model parameters.
-        distilbert: The DistilBert model serving as the backbone.
+        llm: The DistilBert or RoBERTa model serving as the backbone.
         classification_heads: The classification tasks.
         loss_fns: The loss functions for each task.
         inference_masks: The inference masks for each task. These are the allowed categories based on tag structure.
@@ -99,7 +158,13 @@ class MultiTaskModel(PreTrainedModel):
         """Initialize the multi-task model with the given configuration."""
         super().__init__(config)
         self.config = config
-        self.distilbert = DistilBertModel(config)
+
+        if config.model_type == "distilbert":
+            self.llm = DistilBertModel(config)
+        elif config.model_type == "roberta":
+            self.llm = RobertaModel(config)
+        else:
+            raise ValueError(f"Unsupported model type: {config.model_type}")
 
         # Note: Need to store some config objects as JSON, so need to initialize them
         self.initialize_inference_masks()
@@ -193,7 +258,7 @@ class MultiTaskModel(PreTrainedModel):
         return_dict: bool = False,
     ) -> SequenceClassifierOutput:
         """Perform a forward pass through the model."""
-        distilbert_output = self.distilbert(
+        base_model_output = self.llm(
             input_ids=input_ids,
             attention_mask=attention_mask,
             head_mask=head_mask,
@@ -201,7 +266,7 @@ class MultiTaskModel(PreTrainedModel):
             output_attentions=output_attentions,
             output_hidden_states=output_hidden_states,
         )
-        hidden_state = distilbert_output[0]
+        hidden_state = base_model_output[0]
         pooled_output = hidden_state[:, 0]
 
         # Note: For each forward pass, we detach classification heads that are not being trained
@@ -250,7 +315,7 @@ class MultiTaskModel(PreTrainedModel):
             loss = sum(losses)
 
         output = (
-            (logits,) + distilbert_output[1:]
+            (logits,) + base_model_output[1:]
         )  # Note: why activations? see https://github.com/huggingface/transformers/blob/6f316016877197014193b9463b2fd39fa8f0c8e4/src/transformers/models/distilbert/modeling_distilbert.py#L824
 
         if not return_dict:
@@ -259,8 +324,8 @@ class MultiTaskModel(PreTrainedModel):
         return SequenceClassifierOutput(
             loss=loss,
             logits=logits,
-            hidden_states=distilbert_output.hidden_states,
-            attentions=distilbert_output.attentions,
+            hidden_states=base_model_output.hidden_states,
+            attentions=base_model_output.attentions,
         )
 
 

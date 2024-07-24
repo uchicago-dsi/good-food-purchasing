@@ -1,6 +1,6 @@
 # TODO: Maybe set up Paths, etc for this
 config:
-  smoke_test: false
+  smoke_test: true
   checkpoints_dir: "/net/projects/cgfp/checkpoints/"
 data:
   text_field: "Product Type"
@@ -9,9 +9,9 @@ data:
   eval_filename: "combined_eval_set.csv"
   test_filename: "TestData_11.22.23.xlsx"
 model:
-  model_name: "distilbert-base-uncased"
+  model_name: "distilbert" # Choices: distilbert, roberta
   # starting_checkpoint: "uchicago-dsi/cgfp-distilbert"
-  starting_checkpoint: "/net/projects/cgfp/model-files/distilbert-base-uncased_20240719_2131_multilabel_full_sft" # null to train the off-the-shelf huggingface model
+  starting_checkpoint: "/net/projects/cgfp/model-files/distilbert-base-uncased_20240723_1230_update_config_counts" # null to train the off-the-shelf huggingface model
   eval_checkpoint: "/net/projects/cgfp/model-files/distilbert-base-uncased_20240723_1230_update_config_counts"
   model_dir: "/net/projects/cgfp/model-files/"
   classification_head_type: "mlp" # Choices: "mlp", "linear"
