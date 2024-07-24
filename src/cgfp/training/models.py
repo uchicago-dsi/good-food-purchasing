@@ -73,7 +73,7 @@ class MultiTaskConfig(PretrainedConfig):
                 "hidden_size": "dim",
                 "num_attention_heads": "n_heads",
                 "num_hidden_layers": "n_layers",
-                "seq_classif_dropout": "classifier_dropout",
+                "classifier_dropout": "seq_classif_dropout",
             }
         else:
             self.attribute_map = {}
