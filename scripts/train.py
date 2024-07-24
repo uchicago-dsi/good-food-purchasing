@@ -183,6 +183,8 @@ if __name__ == "__main__":
             starting_checkpoint = "distilbert-base-uncased"
         elif MODEL_NAME == "roberta":
             starting_checkpoint = "FacebookAI/roberta-base"
+    else:
+        starting_checkpoint = pretrained_checkpoint
 
     classification_head_type = config["model"]["classification_head_type"]
     loss = config["model"]["loss"]

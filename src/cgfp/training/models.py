@@ -78,13 +78,6 @@ class MultiTaskConfig(PretrainedConfig):
         else:
             self.attribute_map = {}
 
-        # if model_type == "distilbert":
-        #     self.base_config = DistilBertConfig(**kwargs)
-        # elif model_type == "roberta":
-        #     self.base_config = RobertaConfig(**kwargs)
-        # else:
-        #     raise ValueError(f"Unsupported model type: {model_type}")
-
         self.decoders = decoders
         self.columns = columns
         self.classification = classification
