@@ -73,6 +73,7 @@ class MultiTaskConfig(PretrainedConfig):
                 "hidden_size": "dim",
                 "num_attention_heads": "n_heads",
                 "num_hidden_layers": "n_layers",
+                "seq_classif_dropout": "classifier_dropout",
             }
         else:
             self.attribute_map = {}
@@ -186,21 +187,32 @@ class MultiTaskModel(PreTrainedModel):
             self.classification_heads = nn.ModuleDict(
                 {
                     task_name: nn.Sequential(
-                        nn.Linear(self.config.dim, self.config.dim // 2),
+                        nn.Linear(self.config.hidden_size, self.config.hidden_size // 2),
                         nn.ReLU(),
-                        nn.Dropout(self.config.seq_classif_dropout),
-                        nn.Linear(self.config.dim // 2, len(decoder)),
+                        nn.Dropout(self.config.classifier_dropout),
+                        nn.Linear(self.config.hidden_size // 2, len(decoder)),
                     )
                     for task_name, decoder in self.decoders.items()
+                    # task_name: nn.Sequential(
+                    #     nn.Linear(self.config.dim, self.config.dim // 2),
+                    #     nn.ReLU(),
+                    #     nn.Dropout(self.config.seq_classif_dropout),
+                    #     nn.Linear(self.config.dim // 2, len(decoder)),
+                    # )
+                    # for task_name, decoder in self.decoders.items()
                 }
             )
         elif self.config.classification == "linear":
             self.classification_heads = nn.ModuleDict(
                 {
                     task_name: nn.Sequential(
-                        nn.Linear(self.config.dim, len(decoder)),
-                        nn.Dropout(self.config.seq_classif_dropout),
+                        nn.Linear(self.config.hidden_size, len(decoder)),
+                        nn.Dropout(self.config.classifier_dropout),
                     )
+                    # task_name: nn.Sequential(
+                    #     nn.Linear(self.config.dim, len(decoder)),
+                    #     nn.Dropout(self.config.seq_classif_dropout),
+                    # )
                     for task_name, decoder in self.decoders.items()
                 }
             )

@@ -14,8 +14,14 @@ from transformers.trainer_utils import EvalPrediction
 def compute_metrics(pred, model, threshold=0.5, basic_type_idx=BASIC_TYPE_IDX):
     """Extract the predictions and labels for each task
 
+    For distilbert:
     pred.predictions: (num_heads, batch_size, num_classes) » note: this is a list
     pred.label_ids: (batch_size, num_columns, 1) » note: this is a tensor
+
+    For roberta:
+    pred.predictions: tuple of shape (num_heads, batch_size)
+    - First element is list of shape: (num_heads, batch_size, num_classes)
+    - Second element is numpy array of shape: (batch_size, hidden_dim) — output logits?
     """
     batch_size = pred.label_ids.shape[0]
     num_tasks = len(model.classification_heads)
@@ -25,12 +31,16 @@ def compute_metrics(pred, model, threshold=0.5, basic_type_idx=BASIC_TYPE_IDX):
     precisions = {}
     recalls = {}
 
-    # Handle non-subtype predictions
+    if model.config.model_type == "distilbert":
+        predictions = pred.predictions
+    elif model.config.model_type == "roberta":
+        predictions = pred.predictions[0]
+
     for i, task in enumerate(model.classification_heads.keys()):
         lbl = pred.label_ids[:, i, 0].tolist()
         if i != model.subtypes_head_idx:
             # Handle non-subtype tasks
-            pred_lbl = pred.predictions[i].argmax(-1)
+            pred_lbl = predictions[i].argmax(-1)
             accuracies[task] = accuracy_score(lbl, pred_lbl)
             f1_scores[task] = f1_score(
                 lbl, pred_lbl, average="weighted", zero_division=np.nan
@@ -38,13 +48,29 @@ def compute_metrics(pred, model, threshold=0.5, basic_type_idx=BASIC_TYPE_IDX):
             precisions[task] = precision_score(lbl, pred_lbl, average="weighted", zero_division=np.nan)
             recalls[task] = recall_score(lbl, pred_lbl, average="weighted", zero_division=np.nan)
 
+    # Handle non-subtype predictions
+    # for i, task in enumerate(model.classification_heads.keys()):
+    #     lbl = pred.label_ids[:, i, 0].tolist()
+    #     if i != model.subtypes_head_idx:
+    #         # Handle non-subtype tasks
+    #         pred_lbl = pred.predictions[i].argmax(-1)
+    #         accuracies[task] = accuracy_score(lbl, pred_lbl)
+    #         f1_scores[task] = f1_score(
+    #             lbl, pred_lbl, average="weighted", zero_division=np.nan
+    #         )  #  Use weighted for multi-class classification
+    #         precisions[task] = precision_score(lbl, pred_lbl, average="weighted", zero_division=np.nan)
+    #         recalls[task] = recall_score(lbl, pred_lbl, average="weighted", zero_division=np.nan)
+
     # Handle subtype predictions - this is a multilabel task so kind of messy
     num_subtype_classes = len(model.decoders["Sub-Types"])
 
     # Get all indices with probs above a threshold
     # Note: preds_subtyps is a list with dimensions (batch_size, num_subtype_classes)
+    # preds_subtype = (
+    #     (sigmoid(torch.tensor(pred.predictions[int(model.subtypes_head_idx)])) > threshold).int().tolist()
+    # )  # TODO: threshold should come from the model config maybe?
     preds_subtype = (
-        (sigmoid(torch.tensor(pred.predictions[int(model.subtypes_head_idx)])) > threshold).int().tolist()
+        (sigmoid(torch.tensor(predictions[int(model.subtypes_head_idx)])) > threshold).int().tolist()
     )  # TODO: threshold should come from the model config maybe?
 
     # Create a zeros matrix with dimensions (batch_size, num_subtype_classes)
@@ -110,11 +136,47 @@ class SaveBestModelCallback(TrainerCallback):
 
 # TODO: How does logging work here?
 class MultiTaskTrainer(Trainer):
+    # def __init__(self, *args, **kwargs):
+    # super().__init__(*args, **kwargs)
+    # if self.model.config.model_type == "distilbert":
+    #     transformer = "transformer"
+    #     query = "q_lin"
+    # elif self.model.config.model_type == "roberta":
+    #     transformer = "encoder"
+    #     query = "query"
+
+    # breakpoint()
+    # self.logging_params = {
+    #     "First Attention Layer Q": self.model.llm.__getattr__(transformer)
+    #     .layer[0]
+    #     .attention.__getattr__(query)
+    #     .weight,
+    #     "Last Attention Layer Q": self.model.llm.__getattr__(transformer)
+    #     .layer[-1]
+    #     .attention.__getattr__(query)
+    #     .weight,
+    #     "Basic Type Classification Head": self.model.classification_heads["Basic Type"][0].weight,
+    #     "Food Product Group Classification Head": self.model.classification_heads["Food Product Group"][0].weight,
+    #     "Sub-Types Classification Head": self.model.classification_heads["Sub-Types"][0].weight,
+    # }
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        if self.model.config.model_type == "distilbert":
+            transformer = "transformer"
+            query = "q_lin"
+        elif self.model.config.model_type == "roberta":
+            transformer = "encoder"
+            query = "self.query"
+
+        def get_query(layer):
+            if self.model.config.model_type == "roberta":
+                return layer.attention.self.query
+            return getattr(layer.attention, query)
+
         self.logging_params = {
-            "First Attention Layer Q": self.model.llm.transformer.layer[0].attention.q_lin.weight,
-            "Last Attention Layer Q": self.model.llm.transformer.layer[-1].attention.q_lin.weight,
+            "First Attention Layer Q": get_query(getattr(self.model.llm, transformer).layer[0]).weight,
+            "Last Attention Layer Q": get_query(getattr(self.model.llm, transformer).layer[-1]).weight,
             "Basic Type Classification Head": self.model.classification_heads["Basic Type"][0].weight,
             "Food Product Group Classification Head": self.model.classification_heads["Food Product Group"][0].weight,
             "Sub-Types Classification Head": self.model.classification_heads["Sub-Types"][0].weight,

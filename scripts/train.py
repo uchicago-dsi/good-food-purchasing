@@ -21,6 +21,7 @@ from transformers import (
     DistilBertForSequenceClassification,
     DistilBertTokenizerFast,
     RobertaForSequenceClassification,
+    RobertaTokenizerFast,
     TrainingArguments,
 )
 
@@ -176,8 +177,8 @@ if __name__ == "__main__":
     FREEZE_BASE = config["model"]["freeze_base"]
     COMBINE_SUBTYPES = config["model"]["combine_subtypes"]
 
-    starting_checkpoint = config["model"]["starting_checkpoint"]
-    if starting_checkpoint is None:
+    pretrained_checkpoint = config["model"]["starting_checkpoint"]
+    if pretrained_checkpoint is None:
         if MODEL_NAME == "distilbert":
             starting_checkpoint = "distilbert-base-uncased"
         elif MODEL_NAME == "roberta":
@@ -257,7 +258,10 @@ if __name__ == "__main__":
     inference_masks = get_inference_masks(df_combined, encoders)
 
     logging.info("Preparing dataset")
-    tokenizer = DistilBertTokenizerFast.from_pretrained(starting_checkpoint)
+    if MODEL_NAME == "distilbert":
+        tokenizer = DistilBertTokenizerFast.from_pretrained(starting_checkpoint)
+    elif MODEL_NAME == "roberta":
+        tokenizer = RobertaTokenizerFast.from_pretrained(starting_checkpoint)
 
     train_dataset = Dataset.from_pandas(df_train)
     eval_dataset = Dataset.from_pandas(df_eval)
@@ -275,13 +279,14 @@ if __name__ == "__main__":
     ### MODEL SETUP ###
     logging.info("Instantiating model")
 
-    if starting_checkpoint is None:
+    if pretrained_checkpoint is None:
         # If no specified checkpoint, use pretrained Huggingface model
         logging.info(f"Loading model from the off-the-shelf Huggingface {starting_checkpoint}")
         if MODEL_NAME == "distilbert":
-            distilbert_model = DistilBertForSequenceClassification.from_pretrained(starting_checkpoint)
+            base_model = DistilBertForSequenceClassification.from_pretrained(starting_checkpoint)
         elif MODEL_NAME == "roberta":
             base_model = RobertaForSequenceClassification.from_pretrained(starting_checkpoint)
+            base_model.config.classifier_dropout = 0.2  # TODO: put this in config
 
         multi_task_config = MultiTaskConfig(
             decoders=decoders,
