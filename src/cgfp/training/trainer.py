@@ -53,7 +53,7 @@ def compute_metrics(pred, model, threshold=0.5, basic_type_idx=BASIC_TYPE_IDX):
     num_subtype_classes = len(model.decoders["Sub-Types"])
 
     # Get all indices with probs above a threshold
-    # Note: preds_subtyps is a list with dimensions (batch_size, num_subtype_classes)
+    # Note: preds_subtype is a list with dimensions (batch_size, num_subtype_classes)
     preds_subtype = (
         (sigmoid(torch.tensor(predictions[int(model.subtypes_head_idx)])) > threshold).int().tolist()
     )  # TODO: threshold should come from the model config maybe?

@@ -137,7 +137,7 @@ def get_inference_masks(df, encoders):
 
 
 def tokenize(example, labels=LABELS):
-    tokenized_inputs = tokenizer(example[TEXT_FIELD], padding="max_length", truncation=True, max_length=100)
+    tokenized_inputs = tokenizer(example[TEXT_FIELD].lower(), padding="max_length", truncation=True, max_length=100)
     tokenized_labels = []
     for label in LABELS:
         if "Sub-Type" in label:
@@ -176,6 +176,7 @@ if __name__ == "__main__":
     ATTACHED_HEADS = config["model"]["attached_heads"]
     FREEZE_BASE = config["model"]["freeze_base"]
     COMBINE_SUBTYPES = config["model"]["combine_subtypes"]
+    UPDATE_CONFIG = config["model"]["update_config"]
 
     pretrained_checkpoint = config["model"]["starting_checkpoint"]
     if pretrained_checkpoint is None:
@@ -191,7 +192,7 @@ if __name__ == "__main__":
     metric_for_best_model = config["training"]["metric_for_best_model"]
 
     # Training hyperparameters
-    lr = config["training"]["lr"]
+    lr = float(config["training"]["lr"])
     epochs = config["training"]["epochs"] if not SMOKE_TEST else 6
     train_batch_size = config["training"]["train_batch_size"]
     eval_batch_size = config["training"]["eval_batch_size"]
@@ -297,6 +298,7 @@ if __name__ == "__main__":
             inference_masks=json.dumps(inference_masks),
             counts=json.dumps(counts),
             loss=loss,
+            model_type=MODEL_NAME,
             **base_model.config.to_dict(),
         )
         model = MultiTaskModel(multi_task_config)
@@ -305,13 +307,13 @@ if __name__ == "__main__":
         multi_task_config = MultiTaskConfig.from_pretrained(starting_checkpoint)
 
         # Note: Smoke test will overwrite model config with limited data
-        # TODO: Maybe add logic here to handle that if we want to do smoke test on loaded model
-        multi_task_config.decoders = decoders
-        multi_task_config.columns = labels_dict
-        multi_task_config.classification = classification_head_type
-        multi_task_config.inference_masks = json.dumps(inference_masks)
-        multi_task_config.counts = json.dumps(counts)
-        multi_task_config.loss = loss
+        if UPDATE_CONFIG:
+            multi_task_config.decoders = decoders
+            multi_task_config.columns = labels_dict
+            multi_task_config.classification = classification_head_type
+            multi_task_config.inference_masks = json.dumps(inference_masks)
+            multi_task_config.counts = json.dumps(counts)
+            multi_task_config.loss = loss
 
         # Note: ignore_mismatched_sizes since we are often loading from checkpoints with different numbers of categories
         model = MultiTaskModel.from_pretrained(
@@ -329,13 +331,13 @@ if __name__ == "__main__":
     if ATTACHED_HEADS is not None:
         model.set_attached_heads(ATTACHED_HEADS)
     else:
-        # TODO: Handle sub-type configuration here
         classification_head_labels = [label for label in LABELS if "Sub-Type" not in label]
         classification_head_labels += ["Sub-Types"]
         model.set_attached_heads(classification_head_labels)
 
     if FREEZE_BASE:
         logging.info("Freezing base model...")
+
         # Freeze all parameters
         for param in model.parameters():
             param.requires_grad = False

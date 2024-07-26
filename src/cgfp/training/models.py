@@ -104,28 +104,6 @@ class MultiTaskConfig(PretrainedConfig):
         else:
             super().__setattr__(name, value)
 
-    # def __getattr__(self, name):
-    #     return getattr(self.base_config, name)
-
-    # @classmethod
-    # def from_pretrained(cls, pretrained_model_name_or_path, **kwargs):
-    #     return PretrainedConfig.from_pretrained(pretrained_model_name_or_path, **kwargs)
-
-    # breakpoint()
-
-    # # Determine model type based on the base configuration class
-    # if isinstance(base_config, DistilBertConfig):
-    #     model_type = "distilbert"
-    # elif isinstance(base_config, RobertaConfig):
-    #     model_type = "roberta"
-    # else:
-    #     raise ValueError(f"Unsupported model type in pretrained configuration: {type(base_config)}")
-
-    # Create an instance of MultiTaskConfig with the model_type and other parameters
-    # config_dict = base_config.to_dict()
-    # config_dict.update(kwargs)
-    # return cls(model_type=model_type, **config_dict)
-
 
 class MultiTaskModel(PreTrainedModel):
     """A multi-task learning model based on the DistilBert or RoBERTa architecture for handling multiple classification tasks.
@@ -153,9 +131,9 @@ class MultiTaskModel(PreTrainedModel):
         super().__init__(config)
         self.config = config
 
-        if config.model_type == "distilbert":
+        if self.config.model_type == "distilbert":
             self.llm = DistilBertModel(config)
-        elif config.model_type == "roberta":
+        elif self.config.model_type == "roberta":
             self.llm = RobertaModel(config)
         else:
             raise ValueError(f"Unsupported model type: {config.model_type}")
@@ -186,13 +164,6 @@ class MultiTaskModel(PreTrainedModel):
                         nn.Linear(self.config.hidden_size // 2, len(decoder)),
                     )
                     for task_name, decoder in self.decoders.items()
-                    # task_name: nn.Sequential(
-                    #     nn.Linear(self.config.dim, self.config.dim // 2),
-                    #     nn.ReLU(),
-                    #     nn.Dropout(self.config.seq_classif_dropout),
-                    #     nn.Linear(self.config.dim // 2, len(decoder)),
-                    # )
-                    # for task_name, decoder in self.decoders.items()
                 }
             )
         elif self.config.classification == "linear":
@@ -202,10 +173,6 @@ class MultiTaskModel(PreTrainedModel):
                         nn.Linear(self.config.hidden_size, len(decoder)),
                         nn.Dropout(self.config.classifier_dropout),
                     )
-                    # task_name: nn.Sequential(
-                    #     nn.Linear(self.config.dim, len(decoder)),
-                    #     nn.Dropout(self.config.seq_classif_dropout),
-                    # )
                     for task_name, decoder in self.decoders.items()
                 }
             )
@@ -230,12 +197,9 @@ class MultiTaskModel(PreTrainedModel):
     def initialize_tasks(self) -> None:
         """Initialize the counts and number of categories per task from the configuration."""
         self.decoders = dict(self.config.decoders)
+
         self.subtype_data_indices = [idx for task, idx in self.config.columns.items() if "Sub-Type" in task]
-
-        for idx, subtype in self.decoders["Sub-Types"].items():
-            if subtype == "None":
-                self.none_subtype_idx = idx
-
+        self.none_subtype_idx = next(idx for idx, subtype in self.decoders["Sub-Types"].items() if subtype == "None")
         self.subtypes_head_idx = list(self.decoders.keys()).index("Sub-Types")
 
         self.counts = json.loads(self.config.counts)
@@ -274,8 +238,8 @@ class MultiTaskModel(PreTrainedModel):
         hidden_state = base_model_output[0]
         pooled_output = hidden_state[:, 0]
 
-        # Note: For each forward pass, we detach classification heads that are not being trained
-        # in order to prevent backprop to the base model
+        # Note: For each forward pass, we detach specified classification heads
+        # in order to prevent gradients flowing to the base model
         logits = []
         for task_name, classifier in self.classification_heads.items():
             if task_name in self.attached_heads:
