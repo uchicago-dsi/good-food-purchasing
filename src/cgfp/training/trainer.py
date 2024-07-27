@@ -49,8 +49,7 @@ def compute_metrics(pred, model, threshold=0.5, basic_type_idx=BASIC_TYPE_IDX):
             precisions[task] = precision_score(lbl, pred_lbl, average="weighted", zero_division=np.nan)
             recalls[task] = recall_score(lbl, pred_lbl, average="weighted", zero_division=np.nan)
 
-    # Handle subtype predictions - this is a multilabel task so kind of messy
-    num_subtype_classes = len(model.decoders["Sub-Types"])
+    # Note: Handle subtype predictions - this is a multilabel task so kind of messy
 
     # Get all indices with probs above a threshold
     # Note: preds_subtype is a list with dimensions (batch_size, num_subtype_classes)
@@ -59,6 +58,7 @@ def compute_metrics(pred, model, threshold=0.5, basic_type_idx=BASIC_TYPE_IDX):
     )  # TODO: threshold should come from the model config maybe?
 
     # Create a zeros matrix with dimensions (batch_size, num_subtype_classes)
+    num_subtype_classes = len(model.decoders["Sub-Types"])
     lbls_subtype = torch.zeros((batch_size, num_subtype_classes), dtype=int)
     # Change each index for each example for each subtype col to 1
     for idx in model.subtype_data_indices:

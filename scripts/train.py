@@ -6,7 +6,6 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import polars as pl
 import torch
 import yaml
 from cgfp.constants.training_constants import LABELS
@@ -64,7 +63,6 @@ def get_encoders_and_counts(df, labels=LABELS):
     encoders = {}
     counts = {}
     subtype_counts = pd.Series(dtype=int)
-    subtype_orders = {}
 
     for column in labels:
         col_counts = df[column].value_counts().sort_index()
@@ -102,26 +100,6 @@ def get_decoders(encoders):
     return decoders
 
 
-def get_inference_masks_polars(df, encoders):
-    # Save valid basic types for each food product group
-    inference_masks = {}
-    basic_types = df.select("Basic Type").unique().collect()["Basic Type"].to_list()
-    for fpg in df.select("Food Product Group").unique().collect()["Food Product Group"]:
-        # Note: polars syntax is different than pandas
-        valid_basic_types = (
-            df.filter(pl.col("Food Product Group") == fpg)
-            .select("Basic Type")
-            .unique()
-            .collect()["Basic Type"]
-            .to_list()
-        )
-        basic_type_indeces = encoders["Basic Type"].transform(valid_basic_types)
-        mask = np.zeros(len(basic_types))
-        mask[basic_type_indeces] = 1
-        inference_masks[fpg] = mask.tolist()
-    return inference_masks
-
-
 def get_inference_masks(df, encoders):
     """Save valid basic types for each food product group"""
     inference_masks = {}
@@ -137,6 +115,7 @@ def get_inference_masks(df, encoders):
 
 
 def tokenize(example, labels=LABELS):
+    # Note: lowercase text since not all models are uncased and text is usually all caps
     tokenized_inputs = tokenizer(example[TEXT_FIELD].lower(), padding="max_length", truncation=True, max_length=100)
     tokenized_labels = []
     for label in LABELS:
@@ -154,7 +133,7 @@ if __name__ == "__main__":
 
     SMOKE_TEST = config["config"]["smoke_test"]
 
-    # Data configuration
+    # Data & directory configuration
     DATA_DIR = Path(config["data"]["data_dir"])
     CLEAN_DIR = DATA_DIR / "clean"
     RAW_DIR = DATA_DIR / "raw"
@@ -208,9 +187,12 @@ if __name__ == "__main__":
     eta_min_constant = config["scheduler"]["eta_min_constant"]
 
     # Directory configuration
+    RUN_TITLE = config["config"]["run_name"]
+    RUN_TITLE = RUN_TITLE.replace(" ", "_") if RUN_TITLE is not None else ""
     RUN_NAME = f"{MODEL_NAME}_{datetime.now().strftime('%Y%m%d_%H%M')}"
+    RUN_NAME += RUN_TITLE
     if SMOKE_TEST:
-        RUN_NAME += "-smoke-test"
+        RUN_NAME += "_smoke_test"
     MODEL_SAVE_PATH = Path(config["model"]["model_dir"]) / RUN_NAME
     CHECKPOINTS_DIR = Path(config["config"]["checkpoints_dir"])
     RUN_PATH = CHECKPOINTS_DIR / RUN_NAME

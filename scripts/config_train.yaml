@@ -2,6 +2,7 @@
 config:
   smoke_test: false
   checkpoints_dir: "/net/projects/cgfp/checkpoints/"
+  run_title: null
 data:
   text_field: "Product Type"
   data_dir: "/net/projects/cgfp/data/"
