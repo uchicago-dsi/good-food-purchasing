@@ -42,7 +42,7 @@ def inference(
     confidence_score=True,
     combine_name=False,
 ):
-    inputs = tokenizer(text, padding=True, truncation=True, return_tensors="pt")
+    inputs = tokenizer(text.lower(), padding=True, truncation=True, return_tensors="pt")
 
     inputs = inputs.to(device)
     model = model.to(device)
