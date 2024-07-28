@@ -190,7 +190,7 @@ if __name__ == "__main__":
     RUN_TITLE = config["config"]["run_title"]
     RUN_TITLE = RUN_TITLE.replace(" ", "_") if RUN_TITLE is not None else ""
     RUN_NAME = f"{MODEL_NAME}_{datetime.now().strftime('%Y%m%d_%H%M')}"
-    RUN_NAME += RUN_TITLE
+    RUN_NAME += "_" + RUN_TITLE
     if SMOKE_TEST:
         RUN_NAME += "_smoke_test"
     MODEL_SAVE_PATH = Path(config["model"]["model_dir"]) / RUN_NAME

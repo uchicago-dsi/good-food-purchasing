@@ -12,7 +12,7 @@ data:
 model:
   model_name: "roberta" # Choices: distilbert, roberta
   # starting_checkpoint: null
-  starting_checkpoint: "/net/projects/cgfp/model-files/roberta_20240727_1029_full_model_sft_all_heads" # null to train the off-the-shelf huggingface model
+  starting_checkpoint: "/net/projects/cgfp/model-files/roberta_20240727_2111_subtypes_only_sft" # null to train the off-the-shelf huggingface model
   eval_checkpoint: "/net/projects/cgfp/model-files/roberta_20240726_0823_heads_only_uncased"
   model_dir: "/net/projects/cgfp/model-files/"
   classification_head_type: "mlp" # Choices: "mlp", "linear"
