@@ -187,7 +187,7 @@ if __name__ == "__main__":
     eta_min_constant = config["scheduler"]["eta_min_constant"]
 
     # Directory configuration
-    RUN_TITLE = config["config"]["run_name"]
+    RUN_TITLE = config["config"]["run_title"]
     RUN_TITLE = RUN_TITLE.replace(" ", "_") if RUN_TITLE is not None else ""
     RUN_NAME = f"{MODEL_NAME}_{datetime.now().strftime('%Y%m%d_%H%M')}"
     RUN_NAME += RUN_TITLE
@@ -296,6 +296,7 @@ if __name__ == "__main__":
             multi_task_config.inference_masks = json.dumps(inference_masks)
             multi_task_config.counts = json.dumps(counts)
             multi_task_config.loss = loss
+            multi_task_config.model_type = MODEL_NAME
 
         # Note: ignore_mismatched_sizes since we are often loading from checkpoints with different numbers of categories
         model = MultiTaskModel.from_pretrained(
