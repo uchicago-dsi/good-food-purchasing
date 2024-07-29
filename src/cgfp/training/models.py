@@ -20,9 +20,9 @@ from transformers.modeling_outputs import SequenceClassifierOutput
 class FocalLoss(nn.Module):
     # TODO: add documentation for the alpha and gamma parameters
     def __init__(self, alpha=None, gamma=2.0, num_classes=None):
-        super(FocalLoss, self).__init__()
+        super().__init__()
         self.gamma = gamma
-        # TODO: set alpha based on class frequency » we should maybe calculate this during data processing?
+        # TODO: set alpha based on class frequency
         if alpha is None:
             self.alpha = torch.ones(num_classes) / num_classes
         else:
@@ -86,8 +86,8 @@ class MultiTaskConfig(PretrainedConfig):
         self.inference_masks = inference_masks
         self.combine_subtypes = combine_subtypes
 
-    # Note: DistilBert has some non-standard attributes so...
     def __getattr__(self, name):
+        """DistilBert has some non-standard attribute names so we need to look up mapped names"""
         if name in self.attribute_map:
             mapped_name = self.attribute_map[name]
             return getattr(self.base_config, mapped_name)
