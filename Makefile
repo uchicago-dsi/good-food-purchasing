@@ -12,7 +12,7 @@ build_dir = ${workdir}build/
 logs_dir = ${workdir}logs/
 conda_udpated = ${build_dir}conda_updated.txt
 
-DATE := $(shell date)
+DATE := $(shell date +"%Y%m%d_%H%M%S")
 LOG_FILE_PREFIX = ${logs_dir}${DATE}
 output_file = ${LOG_FILE_PREFIX}_res.txt
 err_file = ${LOG_FILE_PREFIX}_err.txt
