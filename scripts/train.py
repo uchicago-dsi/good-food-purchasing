@@ -6,7 +6,6 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import polars as pl
 import torch
 import yaml
 from cgfp.constants.training_constants import LABELS
@@ -17,7 +16,13 @@ from datasets import Dataset
 from sklearn.preprocessing import LabelEncoder
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
-from transformers import DistilBertForSequenceClassification, DistilBertTokenizerFast, TrainingArguments
+from transformers import (
+    DistilBertForSequenceClassification,
+    DistilBertTokenizerFast,
+    RobertaForSequenceClassification,
+    RobertaTokenizerFast,
+    TrainingArguments,
+)
 
 import wandb
 
@@ -58,7 +63,6 @@ def get_encoders_and_counts(df, labels=LABELS):
     encoders = {}
     counts = {}
     subtype_counts = pd.Series(dtype=int)
-    subtype_orders = {}
 
     for column in labels:
         col_counts = df[column].value_counts().sort_index()
@@ -96,26 +100,6 @@ def get_decoders(encoders):
     return decoders
 
 
-def get_inference_masks_polars(df, encoders):
-    # Save valid basic types for each food product group
-    inference_masks = {}
-    basic_types = df.select("Basic Type").unique().collect()["Basic Type"].to_list()
-    for fpg in df.select("Food Product Group").unique().collect()["Food Product Group"]:
-        # Note: polars syntax is different than pandas
-        valid_basic_types = (
-            df.filter(pl.col("Food Product Group") == fpg)
-            .select("Basic Type")
-            .unique()
-            .collect()["Basic Type"]
-            .to_list()
-        )
-        basic_type_indeces = encoders["Basic Type"].transform(valid_basic_types)
-        mask = np.zeros(len(basic_types))
-        mask[basic_type_indeces] = 1
-        inference_masks[fpg] = mask.tolist()
-    return inference_masks
-
-
 def get_inference_masks(df, encoders):
     """Save valid basic types for each food product group"""
     inference_masks = {}
@@ -131,7 +115,8 @@ def get_inference_masks(df, encoders):
 
 
 def tokenize(example, labels=LABELS):
-    tokenized_inputs = tokenizer(example[TEXT_FIELD], padding="max_length", truncation=True, max_length=100)
+    # Note: lowercase text since not all models are uncased and text is usually all caps
+    tokenized_inputs = tokenizer(example[TEXT_FIELD].lower(), padding="max_length", truncation=True, max_length=100)
     tokenized_labels = []
     for label in LABELS:
         if "Sub-Type" in label:
@@ -148,7 +133,7 @@ if __name__ == "__main__":
 
     SMOKE_TEST = config["config"]["smoke_test"]
 
-    # Data configuration
+    # Data & directory configuration
     DATA_DIR = Path(config["data"]["data_dir"])
     CLEAN_DIR = DATA_DIR / "clean"
     RAW_DIR = DATA_DIR / "raw"
@@ -170,14 +155,23 @@ if __name__ == "__main__":
     ATTACHED_HEADS = config["model"]["attached_heads"]
     FREEZE_BASE = config["model"]["freeze_base"]
     COMBINE_SUBTYPES = config["model"]["combine_subtypes"]
+    UPDATE_CONFIG = config["model"]["update_config"]
 
-    starting_checkpoint = config["model"]["starting_checkpoint"]
+    pretrained_checkpoint = config["model"]["starting_checkpoint"]
+    if pretrained_checkpoint is None:
+        if MODEL_NAME == "distilbert":
+            starting_checkpoint = "distilbert-base-uncased"
+        elif MODEL_NAME == "roberta":
+            starting_checkpoint = "FacebookAI/roberta-base"
+    else:
+        starting_checkpoint = pretrained_checkpoint
+
     classification_head_type = config["model"]["classification_head_type"]
     loss = config["model"]["loss"]
     metric_for_best_model = config["training"]["metric_for_best_model"]
 
     # Training hyperparameters
-    lr = config["training"]["lr"]
+    lr = float(config["training"]["lr"])
     epochs = config["training"]["epochs"] if not SMOKE_TEST else 6
     train_batch_size = config["training"]["train_batch_size"]
     eval_batch_size = config["training"]["eval_batch_size"]
@@ -193,9 +187,12 @@ if __name__ == "__main__":
     eta_min_constant = config["scheduler"]["eta_min_constant"]
 
     # Directory configuration
+    RUN_TITLE = config["config"]["run_title"]
+    RUN_TITLE = RUN_TITLE.replace(" ", "_") if RUN_TITLE is not None else ""
     RUN_NAME = f"{MODEL_NAME}_{datetime.now().strftime('%Y%m%d_%H%M')}"
+    RUN_NAME += "_" + RUN_TITLE
     if SMOKE_TEST:
-        RUN_NAME += "-smoke-test"
+        RUN_NAME += "_smoke_test"
     MODEL_SAVE_PATH = Path(config["model"]["model_dir"]) / RUN_NAME
     CHECKPOINTS_DIR = Path(config["config"]["checkpoints_dir"])
     RUN_PATH = CHECKPOINTS_DIR / RUN_NAME
@@ -246,7 +243,10 @@ if __name__ == "__main__":
     inference_masks = get_inference_masks(df_combined, encoders)
 
     logging.info("Preparing dataset")
-    tokenizer = DistilBertTokenizerFast.from_pretrained(starting_checkpoint)
+    if MODEL_NAME == "distilbert":
+        tokenizer = DistilBertTokenizerFast.from_pretrained(starting_checkpoint)
+    elif MODEL_NAME == "roberta":
+        tokenizer = RobertaTokenizerFast.from_pretrained(starting_checkpoint)
 
     train_dataset = Dataset.from_pandas(df_train)
     eval_dataset = Dataset.from_pandas(df_eval)
@@ -264,10 +264,15 @@ if __name__ == "__main__":
     ### MODEL SETUP ###
     logging.info("Instantiating model")
 
-    if starting_checkpoint is None:
+    if pretrained_checkpoint is None:
         # If no specified checkpoint, use pretrained Huggingface model
-        logging.info("Loading model from the off-the-shelf Huggingface DistilBERT")
-        distilbert_model = DistilBertForSequenceClassification.from_pretrained(MODEL_NAME)
+        logging.info(f"Loading model from the off-the-shelf Huggingface {starting_checkpoint}")
+        if MODEL_NAME == "distilbert":
+            base_model = DistilBertForSequenceClassification.from_pretrained(starting_checkpoint)
+        elif MODEL_NAME == "roberta":
+            base_model = RobertaForSequenceClassification.from_pretrained(starting_checkpoint)
+            base_model.config.classifier_dropout = 0.2  # TODO: put this in config
+
         multi_task_config = MultiTaskConfig(
             decoders=decoders,
             columns=labels_dict,
@@ -275,7 +280,8 @@ if __name__ == "__main__":
             inference_masks=json.dumps(inference_masks),
             counts=json.dumps(counts),
             loss=loss,
-            **distilbert_model.config.to_dict(),
+            model_type=MODEL_NAME,
+            **base_model.config.to_dict(),
         )
         model = MultiTaskModel(multi_task_config)
     else:
@@ -283,13 +289,14 @@ if __name__ == "__main__":
         multi_task_config = MultiTaskConfig.from_pretrained(starting_checkpoint)
 
         # Note: Smoke test will overwrite model config with limited data
-        # TODO: Maybe add logic here to handle that if we want to do smoke test on loaded model
-        multi_task_config.decoders = decoders
-        multi_task_config.columns = labels_dict
-        multi_task_config.classification = classification_head_type
-        multi_task_config.inference_masks = json.dumps(inference_masks)
-        multi_task_config.counts = json.dumps(counts)
-        multi_task_config.loss = loss
+        if UPDATE_CONFIG:
+            multi_task_config.decoders = decoders
+            multi_task_config.columns = labels_dict
+            multi_task_config.classification = classification_head_type
+            multi_task_config.inference_masks = json.dumps(inference_masks)
+            multi_task_config.counts = json.dumps(counts)
+            multi_task_config.loss = loss
+            multi_task_config.model_type = MODEL_NAME
 
         # Note: ignore_mismatched_sizes since we are often loading from checkpoints with different numbers of categories
         model = MultiTaskModel.from_pretrained(
@@ -307,13 +314,13 @@ if __name__ == "__main__":
     if ATTACHED_HEADS is not None:
         model.set_attached_heads(ATTACHED_HEADS)
     else:
-        # TODO: Handle sub-type configuration here
         classification_head_labels = [label for label in LABELS if "Sub-Type" not in label]
         classification_head_labels += ["Sub-Types"]
         model.set_attached_heads(classification_head_labels)
 
     if FREEZE_BASE:
         logging.info("Freezing base model...")
+
         # Freeze all parameters
         for param in model.parameters():
             param.requires_grad = False

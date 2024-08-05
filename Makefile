@@ -12,7 +12,7 @@ build_dir = ${workdir}build/
 logs_dir = ${workdir}logs/
 conda_udpated = ${build_dir}conda_updated.txt
 
-DATE := $(shell date)
+DATE := $(shell date +"%Y%m%d_%H%M%S")
 LOG_FILE_PREFIX = ${logs_dir}${DATE}
 output_file = ${LOG_FILE_PREFIX}_res.txt
 err_file = ${LOG_FILE_PREFIX}_err.txt
@@ -42,26 +42,14 @@ train: ${conda_updated}
 	$(scripts_dir)train-cgfp.slurm
 
 
-# TODO: could add run-pipeline if we want later
+# TODO: add run-pipeline if we want later
 
 ##### HUGGINGFACE #####
 
-# TODO: update this to take model as an argument
-# Usage: make update-dev-model MODEL_DIR=2024-02-05_10-56
-update-dev-model:
+# Usage: make update-huggingface MODEL_DIR=2024-02-05_10-56 MODEL_NAME=distilbert
+update-huggingface:
 	$(RUNNING)
 	@echo "Moving model files from $(MODEL_DIR)..."
-	cp $(MODEL_DIR)/pytorch_model.bin $(CGFP_DIR)huggingface/cgfp-distilbert/
-	cp $(MODEL_DIR)/config.json $(CGFP_DIR)huggingface/cgfp-distilbert/
+	cp $(MODEL_DIR)/* $(CGFP_DIR)huggingface/cgfp-$(MODEL_NAME)/
 	@echo "Committing changes..."
-	cd $(CGFP_DIR)huggingface/cgfp-distilbert/ && git add -u && git commit -m "update dev model" && git push
-
-# TODO: this is probably deprecated...review huggingface saving process
-# Usage: This upgrades the dev model to production
-update-prod-model:
-	$(RUNNING)
-	@echo "Moving model files from $(MODEL_DIR)..."
-	cp $(CGFP_DIR)huggingface/cgfp-distilbert/pytorch_model.bin $(CGFP_DIR)huggingface/cgfp-classifier/
-	cp $(CGFP_DIR)huggingface/cgfp-distilbert/config.json $(CGFP_DIR)huggingface/cgfp-classifier/
-	@echo "Committing changes..."
-	cd $(CGFP_DIR)huggingface/cgfp-classifier/ && git add -u && git commit -m "update prod model" && git push
+	cd $(CGFP_DIR)huggingface/cgfp-$(MODEL_NAME) && git add . && git commit -m "update model with $(MODEL_DIR)" && git push

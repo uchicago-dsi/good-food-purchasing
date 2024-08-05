@@ -110,7 +110,6 @@ MISC_COLUMN_TAGS = {
             "patty",
             "salami",
             "crumble",
-            "hot dog",
         },
         "Skin": {"skin on"},
         "Seed/Bone": {"bone-in"},
