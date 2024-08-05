@@ -1,78 +1,92 @@
-import os
-import logging
 import json
+import logging
+import os
 from datetime import datetime
-import yaml
 from pathlib import Path
 
-from sklearn.preprocessing import LabelEncoder
-import polars as pl
 import numpy as np
 import pandas as pd
-
-from typing import Dict, Union, Any
-
 import torch
+import yaml
+from cgfp.constants.training_constants import LABELS
+from cgfp.inference.inference import inference_handler, test_inference
+from cgfp.training.models import MultiTaskConfig, MultiTaskModel
+from cgfp.training.trainer import MultiTaskTrainer, SaveBestModelCallback, compute_metrics
+from datasets import Dataset
+from sklearn.preprocessing import LabelEncoder
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
-
 from transformers import (
     DistilBertForSequenceClassification,
     DistilBertTokenizerFast,
-    TrainingArguments
+    RobertaForSequenceClassification,
+    RobertaTokenizerFast,
+    TrainingArguments,
 )
-from datasets import Dataset
 
 import wandb
-
-from cgfp.inference.inference import inference_handler, test_inference
-from cgfp.training.models import MultiTaskConfig, MultiTaskModel
-from cgfp.training.trainer import compute_metrics, SaveBestModelCallback, MultiTaskTrainer
-from cgfp.constants.training_constants import LABELS, BASIC_TYPE_IDX, FPG_IDX
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
-def read_data(input_col, labels, data_path):
-    # Note: polars syntax is different than pandas syntax
-    df = pl.read_csv(data_path, infer_schema_length=1, null_values=["NULL"]).lazy()
+
+def read_data(input_col, labels, data_path, smoke_test=False):
+    nrows = 1000 if smoke_test else None
+    df_cgfp = pd.read_csv(data_path, na_values=["NULL"], nrows=nrows)
+
+    # Filter out rows with null values in specific columns
     for col in [input_col, "Food Product Group", "Food Product Category", "Primary Food Product Category"]:
-        prev_height = df.collect().shape[0]
-        df = df.filter(pl.col(col).is_not_null())
-        new_height = df.collect().shape[0]
+        prev_height = df_cgfp.shape[0]
+        df_cgfp = df_cgfp[df_cgfp[col].notna()]
+        new_height = df_cgfp.shape[0]
         logging.info(f"Excluded {prev_height - new_height} rows due to null values in '{col}'.")
-    df_cleaned = df.select(input_col, *labels)
-    # TODO: This maybe needs to be done to each column? 
-    # Make sure every row is correctly encoded as string
-    df_cleaned = df_cleaned.with_columns(pl.col(input_col).cast(pl.Utf8))
-    # TODO: make this come from function args
-    # TODO: should we use FPC to fix nulls for PFPC? This is a pipeline question
-    df_cleaned = df_cleaned.fill_null("None")
+
+    keep_cols = [input_col] + labels
+    df_cleaned = df_cgfp[keep_cols]
+
+    # Make sure input_col is correctly encoded as string
+    # TODO: fix slice warning here
+    df_cleaned[input_col] = df_cleaned[input_col].astype(str)
+
+    df_cleaned = df_cleaned.fillna("None")
+
     return df_cleaned
 
 
-def get_encoders(df, labels=LABELS):
+def get_encoder(unique_categories):
+    encoder = LabelEncoder()
+    encoder.fit(unique_categories)
+    return encoder
+
+
+def get_encoders_and_counts(df, labels=LABELS):
     encoders = {}
     counts = {}
+    subtype_counts = pd.Series(dtype=int)
+
     for column in labels:
-        # Create encoders (including all labels from training and eval sets)
-        # Note: sort this so that the order is consistent
-        unique_categories = df.select(column).unique().sort(column).collect().to_numpy().ravel()
-        encoder = LabelEncoder()
-        encoder.fit(unique_categories)
-        encoders[column] = encoder
-
-        # Get counts for each category in the training set for focal loss
-        counts_df = df_train.group_by(column).agg(pl.len().alias('count')).sort(column)
-
+        col_counts = df[column].value_counts().sort_index()
         logging.info(f"Categories for {column}")
-        with pl.Config(tbl_rows=-1):
-            logging.info(counts_df.collect())
+        logging.info(col_counts)
+        counts[column] = col_counts.to_dict()
+        if "Sub-Type" in column:
+            # Aggregate all sub-type options and handle at the end
+            # Note: We are maintaining individual Sub-Type and collective Sub-Type encoders
+            # so we can sort sub-types at inference time
+            col_counts = df[column].value_counts().sort_index()
+            # Note: This handles duplicates correctly
+            subtype_counts = subtype_counts.add(col_counts, fill_value=0).astype(int)
+        else:
+            # Note: We want counts for each sub-type, but not an encoder
+            encoders[column] = get_encoder(col_counts.index)
 
-        # Fill 0s for categories that aren't in the training set
-        full_counts_df = pl.DataFrame({column: unique_categories})
-        full_counts_df = full_counts_df.join(counts_df.collect(), on=column, how='left').fill_null(0)
-        counts[column] = full_counts_df['count'].to_list()
+    # Handle sub-types
+    subtype_counts = subtype_counts.sort_index()
+    logging.info("Categories for Sub-Types")
+    logging.info(subtype_counts)
+    counts["Sub-Types"] = subtype_counts.to_dict()
+    encoders["Sub-Types"] = get_encoder(subtype_counts.index)
+
     return encoders, counts
 
 
@@ -81,92 +95,106 @@ def get_decoders(encoders):
     decoders = []
     for col, encoder in encoders.items():
         # Note: Huggingface is picky with config.json...a list of tuples works
-        decoding_dict = {
-            f"{index}": label for index, label in enumerate(encoder.classes_)
-        }
+        decoding_dict = {f"{index}": label for index, label in enumerate(encoder.classes_)}
         decoders.append((col, decoding_dict))
     return decoders
 
 
 def get_inference_masks(df, encoders):
-    # Save valid basic types for each food product group
+    """Save valid basic types for each food product group"""
     inference_masks = {}
-    basic_types = df.select("Basic Type").unique().collect()['Basic Type'].to_list()
-    for fpg in df.select('Food Product Group').unique().collect()['Food Product Group']:
-        # Note: polars syntax is different than pandas
-        valid_basic_types = df.filter(pl.col("Food Product Group") == fpg).select("Basic Type").unique().collect()['Basic Type'].to_list()
-        basic_type_indeces = encoders['Basic Type'].transform(valid_basic_types)
+    basic_types = df["Basic Type"].unique().tolist()
+    food_product_groups = df["Food Product Group"].unique().tolist()
+    for fpg in food_product_groups:
+        valid_basic_types = df[df["Food Product Group"] == fpg]["Basic Type"].unique().tolist()
+        basic_type_indices = encoders["Basic Type"].transform(valid_basic_types)
         mask = np.zeros(len(basic_types))
-        mask[basic_type_indeces] = 1
+        mask[basic_type_indices] = 1
         inference_masks[fpg] = mask.tolist()
     return inference_masks
 
 
-def tokenize(batch):
-    tokenized_inputs = tokenizer(
-        batch[TEXT_FIELD], padding="max_length", truncation=True, max_length=100
-    )
-    tokenized_inputs["labels"] = [
-        encoders[label].transform([batch[label]]) for label in LABELS
-    ]
+def tokenize(example, labels=LABELS):
+    # Note: lowercase text since not all models are uncased and text is usually all caps
+    tokenized_inputs = tokenizer(example[TEXT_FIELD].lower(), padding="max_length", truncation=True, max_length=100)
+    tokenized_labels = []
+    for label in LABELS:
+        if "Sub-Type" in label:
+            tokenized_labels.append(encoders["Sub-Types"].transform([example[label]]))
+        else:
+            tokenized_labels.append(encoders[label].transform([example[label]]))
+    tokenized_inputs["labels"] = tokenized_labels
     return tokenized_inputs
 
 
 if __name__ == "__main__":
-    with open(SCRIPT_DIR / "config_train.yaml", "r") as file:
+    with Path.open(SCRIPT_DIR / "config_train.yaml") as file:
         config = yaml.safe_load(file)
 
-    SMOKE_TEST = config['config']['smoke_test']
+    SMOKE_TEST = config["config"]["smoke_test"]
 
-    # Data configuration    
-    DATA_DIR = Path(config['data']['data_dir'])
+    # Data & directory configuration
+    DATA_DIR = Path(config["data"]["data_dir"])
     CLEAN_DIR = DATA_DIR / "clean"
     RAW_DIR = DATA_DIR / "raw"
     TEST_DIR = DATA_DIR / "test"
-    os.makedirs(CLEAN_DIR, exist_ok=True)
-    os.makedirs(RAW_DIR, exist_ok=True)
-    os.makedirs(TEST_DIR, exist_ok=True)
+    Path.mkdir(CLEAN_DIR, exist_ok=True, parents=True)
+    Path.mkdir(RAW_DIR, exist_ok=True, parents=True)
+    Path.mkdir(TEST_DIR, exist_ok=True, parents=True)
 
-    TRAIN_DATA_PATH = CLEAN_DIR / config['data']['train_filename']
-    EVAL_DATA_PATH = CLEAN_DIR / config['data']['eval_filename']
-    TEST_DATA_PATH = RAW_DIR / config['data']['test_filename']
+    TRAIN_DATA_PATH = CLEAN_DIR / config["data"]["train_filename"]
+    EVAL_DATA_PATH = CLEAN_DIR / config["data"]["eval_filename"]
+    TEST_DATA_PATH = RAW_DIR / config["data"]["test_filename"]
 
-    TEXT_FIELD = config['data']['text_field']
+    TEXT_FIELD = config["data"]["text_field"]
 
     # Model configuration
-    SAVE_BEST = config['model']['save_best']
-    MODEL_NAME = config['model']['model_name']
-    RESET_CLASSIFICATION_HEADS = config['model']['reset_classification_heads']
-    ATTACHED_HEADS = config['model']['attached_heads']
-    FREEZE_BASE = config['model']['freeze_base']
+    SAVE_BEST = config["model"]["save_best"]
+    MODEL_NAME = config["model"]["model_name"]
+    RESET_CLASSIFICATION_HEADS = config["model"]["reset_classification_heads"]
+    ATTACHED_HEADS = config["model"]["attached_heads"]
+    FREEZE_BASE = config["model"]["freeze_base"]
+    COMBINE_SUBTYPES = config["model"]["combine_subtypes"]
+    UPDATE_CONFIG = config["model"]["update_config"]
 
-    checkpoint = config['model']['checkpoint']
-    classification = config['model']['classification']
-    loss = config['model']['loss']
-    metric_for_best_model = config['training']['metric_for_best_model'] 
+    pretrained_checkpoint = config["model"]["starting_checkpoint"]
+    if pretrained_checkpoint is None:
+        if MODEL_NAME == "distilbert":
+            starting_checkpoint = "distilbert-base-uncased"
+        elif MODEL_NAME == "roberta":
+            starting_checkpoint = "FacebookAI/roberta-base"
+    else:
+        starting_checkpoint = pretrained_checkpoint
+
+    classification_head_type = config["model"]["classification_head_type"]
+    loss = config["model"]["loss"]
+    metric_for_best_model = config["training"]["metric_for_best_model"]
 
     # Training hyperparameters
-    lr = config['training']['lr']
-    epochs = config['training']['epochs'] if not SMOKE_TEST else 6
-    train_batch_size = config['training']['train_batch_size']
-    eval_batch_size = config['training']['eval_batch_size']
+    lr = float(config["training"]["lr"])
+    epochs = config["training"]["epochs"] if not SMOKE_TEST else 6
+    train_batch_size = config["training"]["train_batch_size"]
+    eval_batch_size = config["training"]["eval_batch_size"]
 
-    eval_prompt = config['training']['eval_prompt']
+    eval_prompt = config["training"]["eval_prompt"]
 
-    betas = tuple(config['adamw']['betas'])
-    eps = float(config['adamw']['eps'])  # Note: scientific notation, so convert to float
-    weight_decay = config['adamw']['weight_decay']
+    betas = tuple(config["adamw"]["betas"])
+    eps = float(config["adamw"]["eps"])  # Note: scientific notation, so convert to float
+    weight_decay = config["adamw"]["weight_decay"]
 
-    T_0 = config['scheduler']['T_0']
-    T_mult = config['scheduler']['T_mult']
-    eta_min_constant = config['scheduler']['eta_min_constant']
+    T_0 = config["scheduler"]["T_0"]
+    T_mult = config["scheduler"]["T_mult"]
+    eta_min_constant = config["scheduler"]["eta_min_constant"]
 
     # Directory configuration
+    RUN_TITLE = config["config"]["run_title"]
+    RUN_TITLE = RUN_TITLE.replace(" ", "_") if RUN_TITLE is not None else ""
     RUN_NAME = f"{MODEL_NAME}_{datetime.now().strftime('%Y%m%d_%H%M')}"
+    RUN_NAME += "_" + RUN_TITLE
     if SMOKE_TEST:
-        RUN_NAME += "-smoke-test"
-    MODEL_SAVE_PATH = Path(config['model']['model_dir']) / RUN_NAME
-    CHECKPOINTS_DIR = Path(config['config']['checkpoints_dir'])
+        RUN_NAME += "_smoke_test"
+    MODEL_SAVE_PATH = Path(config["model"]["model_dir"]) / RUN_NAME
+    CHECKPOINTS_DIR = Path(config["config"]["checkpoints_dir"])
     RUN_PATH = CHECKPOINTS_DIR / RUN_NAME
     LOGGING_DIR = SCRIPT_DIR.parent / "logs/"
 
@@ -176,16 +204,16 @@ if __name__ == "__main__":
     if SMOKE_TEST:
         os.environ["WANDB_DISABLED"] = "true"
     else:
-        wandb.init(project='cgfp', name=RUN_NAME)
+        wandb.init(project="cgfp", name=RUN_NAME)
 
     # TODO: This still behaves oddly with slurm, etc...
     logging.basicConfig(level=logging.INFO)
-    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s')
+    formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s")
     file_handler = logging.FileHandler(LOG_FILE)
     file_handler.setFormatter(formatter)
     logging.getLogger().addHandler(file_handler)
 
-    transformers_logger = logging.getLogger('transformers')
+    transformers_logger = logging.getLogger("transformers")
     transformers_logger.setLevel(logging.INFO)
     transformers_logger.addHandler(file_handler)
 
@@ -199,25 +227,29 @@ if __name__ == "__main__":
 
     ### DATA PREP ###
     logging.info(f"Reading training data from path : {TRAIN_DATA_PATH}")
-    df_train = read_data(TEXT_FIELD, LABELS, TRAIN_DATA_PATH)
+    df_train = read_data(TEXT_FIELD, LABELS, TRAIN_DATA_PATH, smoke_test=SMOKE_TEST)
 
     logging.info(f"Reading eval data from path : {TRAIN_DATA_PATH}")
-    df_eval = read_data(TEXT_FIELD, LABELS, EVAL_DATA_PATH)
+    df_eval = read_data(TEXT_FIELD, LABELS, EVAL_DATA_PATH, smoke_test=SMOKE_TEST)
 
-    df_combined = pl.concat([df_train, df_eval]) # combine training and eval so we have all valid outputs for evaluation
+    labels_dict = {label: i for i, label in enumerate(LABELS)}
 
-    encoders, counts = get_encoders(df_combined)
+    df_combined = pd.concat(
+        [df_train, df_eval]
+    )  # combine training and eval so we have all valid outputs for evaluation
+
+    encoders, counts = get_encoders_and_counts(df_combined)
     decoders = get_decoders(encoders)
     inference_masks = get_inference_masks(df_combined, encoders)
 
     logging.info("Preparing dataset")
-    tokenizer = DistilBertTokenizerFast.from_pretrained(MODEL_NAME)
+    if MODEL_NAME == "distilbert":
+        tokenizer = DistilBertTokenizerFast.from_pretrained(starting_checkpoint)
+    elif MODEL_NAME == "roberta":
+        tokenizer = RobertaTokenizerFast.from_pretrained(starting_checkpoint)
 
-    train_dataset = Dataset.from_pandas(df_train.collect().to_pandas())
-    eval_dataset = Dataset.from_pandas(df_eval.collect().to_pandas())
-
-    if SMOKE_TEST:
-        train_dataset = train_dataset.select(range(1000))
+    train_dataset = Dataset.from_pandas(df_train)
+    eval_dataset = Dataset.from_pandas(df_eval)
 
     train_dataset = train_dataset.map(tokenize)
     eval_dataset = eval_dataset.map(tokenize)
@@ -232,56 +264,74 @@ if __name__ == "__main__":
     ### MODEL SETUP ###
     logging.info("Instantiating model")
 
-    if checkpoint is None:
+    if pretrained_checkpoint is None:
         # If no specified checkpoint, use pretrained Huggingface model
-        distilbert_model = DistilBertForSequenceClassification.from_pretrained(MODEL_NAME)
+        logging.info(f"Loading model from the off-the-shelf Huggingface {starting_checkpoint}")
+        if MODEL_NAME == "distilbert":
+            base_model = DistilBertForSequenceClassification.from_pretrained(starting_checkpoint)
+        elif MODEL_NAME == "roberta":
+            base_model = RobertaForSequenceClassification.from_pretrained(starting_checkpoint)
+            base_model.config.classifier_dropout = 0.2  # TODO: put this in config
 
         multi_task_config = MultiTaskConfig(
             decoders=decoders,
-            columns=LABELS,
-            classification=classification,
-            fpg_idx=FPG_IDX,
-            basic_type_idx=BASIC_TYPE_IDX,
+            columns=labels_dict,
+            classification=classification_head_type,
             inference_masks=json.dumps(inference_masks),
             counts=json.dumps(counts),
             loss=loss,
-            **distilbert_model.config.to_dict(),
+            model_type=MODEL_NAME,
+            **base_model.config.to_dict(),
         )
         model = MultiTaskModel(multi_task_config)
     else:
+        logging.info(f"Loading model from {starting_checkpoint}")
+        multi_task_config = MultiTaskConfig.from_pretrained(starting_checkpoint)
+
+        # Note: Smoke test will overwrite model config with limited data
+        if UPDATE_CONFIG:
+            multi_task_config.decoders = decoders
+            multi_task_config.columns = labels_dict
+            multi_task_config.classification = classification_head_type
+            multi_task_config.inference_masks = json.dumps(inference_masks)
+            multi_task_config.counts = json.dumps(counts)
+            multi_task_config.loss = loss
+            multi_task_config.model_type = MODEL_NAME
+
         # Note: ignore_mismatched_sizes since we are often loading from checkpoints with different numbers of categories
-        model = MultiTaskModel.from_pretrained(checkpoint, ignore_mismatched_sizes=True)
+        model = MultiTaskModel.from_pretrained(
+            starting_checkpoint, config=multi_task_config, ignore_mismatched_sizes=True
+        )
 
-        # Note: If the data has changed, we need to update the model config
-        model.config.decoders = decoders
-
-        # Note: inference masks and counts are finicky due to the way they are saved in the config
-        # Need to save them as JSON and initialize them in the model
-        model.config.inference_masks = json.dumps(inference_masks)
-        model.config.counts = json.dumps(counts)
         model.initialize_inference_masks()
-        model.initialize_counts()
+        model.initialize_tasks()
+        model.initialize_losses()
 
     if RESET_CLASSIFICATION_HEADS:
+        logging.info("Resetting classification heads...")
         model.initialize_classification_heads()
 
     if ATTACHED_HEADS is not None:
         model.set_attached_heads(ATTACHED_HEADS)
     else:
-        model.set_attached_heads(LABELS)
+        classification_head_labels = [label for label in LABELS if "Sub-Type" not in label]
+        classification_head_labels += ["Sub-Types"]
+        model.set_attached_heads(classification_head_labels)
 
     if FREEZE_BASE:
+        logging.info("Freezing base model...")
+
         # Freeze all parameters
         for param in model.parameters():
             param.requires_grad = False
 
         # Unfreeze the classification heads
-        for name, head in model.classification_heads.items():
+        for head in model.classification_heads.values():
             for param in head.parameters():
                 param.requires_grad = True
 
     logging.info("Model instantiated")
-    
+
     ### TRAINING ###
     training_args = TrainingArguments(
         output_dir=RUN_PATH,
@@ -296,21 +346,30 @@ if __name__ == "__main__":
         load_best_model_at_end=True,
         metric_for_best_model=metric_for_best_model,
         greater_is_better=True,
-        report_to="wandb" if not SMOKE_TEST else None
+        report_to="wandb" if not SMOKE_TEST else None,
     )
 
     adamW = AdamW(model.parameters(), lr=lr, betas=betas, eps=eps, weight_decay=weight_decay)
-    scheduler = CosineAnnealingWarmRestarts(adamW, T_0=T_0, T_mult=T_mult, eta_min=lr*eta_min_constant)
-        
+    scheduler = CosineAnnealingWarmRestarts(adamW, T_0=T_0, T_mult=T_mult, eta_min=lr * eta_min_constant)
+
     trainer = MultiTaskTrainer(
         model=model,
         args=training_args,
-        compute_metrics=compute_metrics,
+        compute_metrics=lambda p: compute_metrics(
+            p, model
+        ),  #  Note: We need to access model config during compute metrics
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
-        optimizers=(adamW, scheduler),  # Pass optimizers here (rather than training_args) for more fine-grained control
-        callbacks=[SaveBestModelCallback(model, tokenizer, device, metric_for_best_model, eval_prompt)]
+        optimizers=(
+            adamW,
+            scheduler,
+        ),  #  Pass optimizers here (rather than training_args) for more fine-grained control
+        callbacks=[SaveBestModelCallback(model, tokenizer, device, metric_for_best_model, eval_prompt)],
     )
+
+    logging.info("Evaluating model before training...")
+    pre_train_metrics = trainer.evaluate()
+    logging.info("Pre-training evaluation metrics:", pre_train_metrics)
 
     logging.info("Training...")
     trainer.train()
@@ -336,7 +395,7 @@ if __name__ == "__main__":
         confidence_score=False,
         raw_results=False,
         assertion=False,
-        save_output=not SMOKE_TEST
+        save=not SMOKE_TEST,
     )
-    with pd.option_context('display.max_columns', None):
+    with pd.option_context("display.max_columns", None):
         logging.info(output_sheet.head(1))
