@@ -36,7 +36,7 @@ def read_data(input_col: str, labels: list[str], data_path: str, smoke_test: boo
     """Reads data from a CSV file, filters out rows with null values in specified columns, and returns a cleaned DataFrame with specified columns.
 
     Args:
-        input_col: The name of the input column to be read and cleaned.
+        input_col: The name of the input column that will be used for predictions
         labels: A list of column names to be included in the returned DataFrame.
         data_path: The path to the CSV file containing the data.
         smoke_test: If True, limits the number of rows to read for testing purposes.
@@ -46,6 +46,7 @@ def read_data(input_col: str, labels: list[str], data_path: str, smoke_test: boo
     """
     nrows = 1000 if smoke_test else None
     df_cgfp = pd.read_csv(data_path, na_values=["NULL"], nrows=nrows)
+    df_cgfp = df_cgfp.drop_duplicates(subset=[input_col])
 
     # Filter out rows with null values in specific columns
     for col in [input_col, "Food Product Group", "Food Product Category", "Primary Food Product Category"]:
@@ -332,6 +333,10 @@ if __name__ == "__main__":
             base_model = RobertaForSequenceClassification.from_pretrained(starting_checkpoint)
             base_model.config.classifier_dropout = 0.2  # TODO: put this in config
 
+        base_model_config = base_model.config.to_dict()
+        if "model_type" not in base_model_config:
+            base_model_config["model_type"] = MODEL_NAME
+
         multi_task_config = MultiTaskConfig(
             decoders=decoders,
             columns=labels_dict,
@@ -339,8 +344,7 @@ if __name__ == "__main__":
             inference_masks=json.dumps(inference_masks),
             counts=json.dumps(counts),
             loss=loss,
-            model_type=MODEL_NAME,
-            **base_model.config.to_dict(),
+            **base_model_config,
         )
         model = MultiTaskModel(multi_task_config)
     else:
