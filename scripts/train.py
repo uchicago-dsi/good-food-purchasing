@@ -46,7 +46,12 @@ def read_data(input_col: str, labels: list[str], data_path: str, smoke_test: boo
     """
     nrows = 1000 if smoke_test else None
     df_cgfp = pd.read_csv(data_path, na_values=["NULL"], nrows=nrows)
+
+    # Drop duplicate input column rows for more balanced dataset
+    prev_height = df_cgfp.shape[0]
     df_cgfp = df_cgfp.drop_duplicates(subset=[input_col])
+    new_height = df_cgfp.shape[0]
+    logging.info(f"Dropped {prev_height - new_height} duplicate rows based on the column '{input_col}'.")
 
     # Filter out rows with null values in specific columns
     for col in [input_col, "Food Product Group", "Food Product Category", "Primary Food Product Category"]:

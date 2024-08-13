@@ -1,6 +1,6 @@
 # TODO: Maybe set up Paths, etc for this
 config:
-  smoke_test: true
+  smoke_test: false
   checkpoints_dir: "/net/projects/cgfp/checkpoints/"
   run_title: "raw_distilbert"
 data:
@@ -21,16 +21,15 @@ model:
   freeze_base: false # Freezes the base model and only trains the classification heads
   reset_classification_heads: false # Renitializes the classification heads
   attached_heads: # If null, attaches all heads to computation graph. If not null, attaches only the specified heads
-    # - "Basic Type"
-    - "Sub-Types"
+    - "Basic Type"
   combine_subtypes: true # Combine sub-type columns for multi-label training
-  update_config: false # Update the model config with new counts, etc. from data (set to false to prevent smoke test from updating)
+  update_config: true # Update the model config with new counts, etc. from data (set to false to prevent smoke test from updating)
 training:
   lr: 2e-5 # .001 for distilbert, 2e-5 for roberta
-  epochs: 50 # Recommended: 80 for full model training, 20 for classification head training
+  epochs: 80 # Recommended: 80 for full model training, 20 for classification head training
   train_batch_size: 32
   eval_batch_size: 64
-  metric_for_best_model: "mean_f1_score" # Choices: "mean_f1_score", "basic_type_accuracy"
+  metric_for_best_model: "basic_type_accuracy" # Choices: "mean_f1_score", "basic_type_accuracy"
   eval_prompt: "frozen peas and carrots"
 adamw:
   betas:

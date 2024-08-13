@@ -1,3 +1,5 @@
+"""Defines MultiTaskTrainer and accessory functions for training multi-task text classifier for Center for Good Food Purchasing"""
+
 import json
 import logging
 
