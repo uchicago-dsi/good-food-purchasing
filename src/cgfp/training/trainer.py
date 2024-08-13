@@ -2,6 +2,7 @@
 
 import json
 import logging
+from typing import Any
 
 import numpy as np
 import torch
@@ -13,17 +14,29 @@ from transformers import Trainer, TrainerCallback
 from transformers.trainer_utils import EvalPrediction
 
 
-def compute_metrics(pred, model, threshold=0.5, basic_type_idx=BASIC_TYPE_IDX):
-    """Extract the predictions and labels for each task
+def compute_metrics(
+    pred: Any, model: str, threshold: float = 0.5, basic_type_idx: int = BASIC_TYPE_IDX
+) -> dict[str, Any]:
+    """Extracts the predictions and labels for each task and computes metrics.
 
-    For distilbert:
-    pred.predictions: (num_heads, batch_size, num_classes) » note: this is a list
-    pred.label_ids: (batch_size, num_columns, 1) » note: this is a tensor
+    Note:
+        For distilbert:
+        - pred.predictions: (num_heads, batch_size, num_classes) (note: this is a list)
+        - pred.label_ids: (batch_size, num_columns, 1) (note: this is a tensor)
 
-    For roberta:
-    pred.predictions: tuple of shape (num_heads, batch_size)
-    - First element is list of shape: (num_heads, batch_size, num_classes)
-    - Second element is numpy array of shape: (batch_size, hidden_dim) — output logits?
+        For roberta:
+        - pred.predictions: tuple of shape (num_heads, batch_size)
+          - First element is a list of shape: (num_heads, batch_size, num_classes)
+          - Second element is a numpy array of shape: (batch_size, hidden_dim) (output logits)
+
+    Args:
+        pred: The predictions and labels from the model, structure depends on the model type.
+        model: The name of the model being used ("distilbert" or "roberta").
+        threshold: The threshold to apply for binary classification tasks. Defaults to 0.5.
+        basic_type_idx: The index of the basic type to use for evaluation. Defaults to BASIC_TYPE_IDX.
+
+    Returns:
+        A dictionary containing the computed metrics for each task.
     """
     batch_size = pred.label_ids.shape[0]
     num_tasks = len(model.classification_heads)
@@ -90,7 +103,18 @@ def compute_metrics(pred, model, threshold=0.5, basic_type_idx=BASIC_TYPE_IDX):
 
 
 class SaveBestModelCallback(TrainerCallback):
-    def __init__(self, model, tokenizer, device, best_model_metric, eval_prompt):
+    """A custom callback for saving the best model during training based on a specified evaluation metric.
+
+    Args:
+        model: The model being trained, which will be saved when the specified metric improves.
+        tokenizer: The tokenizer associated with the model, to be saved alongside the model.
+        device: The device (e.g., 'cpu' or 'cuda') on which the model is being trained.
+        best_model_metric: The metric used to determine the best model. The model is saved if this metric improves.
+        eval_prompt: The evaluation prompt or function used during the evaluation phase.
+    """
+
+    def __init__(self, model: Any, tokenizer: Any, device: str, best_model_metric: str, eval_prompt: Any):
+        """Initializes the SaveBestModelCallback."""
         self.model = model
         self.tokenizer = tokenizer
         self.device = device
@@ -99,21 +123,32 @@ class SaveBestModelCallback(TrainerCallback):
         self.best_epoch = None
         self.eval_prompt = eval_prompt
 
-    def on_evaluate(self, args, state, control, metrics=None, **kwargs):
-        if state.epoch is not None:
-            logging.info(f"### EPOCH: {int(state.epoch)} ###")
-        # Note: "eval_" is prepended to the keys in metrics
-        current_metric = metrics["eval_" + self.best_model_metric]
-        pretty_metrics = json.dumps(metrics, indent=4)
-        logging.info(pretty_metrics)
-        if state.epoch is not None:
-            if state.epoch % 5 == 0 or current_metric > self.best_metric:
-                prompt = "frozen peas and carrots"
-                test_inference(self.model, self.tokenizer, prompt, self.device)
-        if current_metric > self.best_metric:
-            self.best_metric = current_metric
-            self.best_epoch = state.epoch
-            logging.info(f"Best model updated at epoch: {state.epoch} with metric ({current_metric})")
+
+def on_evaluate(self, args: Any, state: Any, control: Any, metrics: dict[str, Any] = None, **kwargs: Any) -> None:
+    """Callback function executed during the evaluation phase.
+
+    Args:
+        self: The instance of the class.
+        args: Arguments related to the evaluation process.
+        state: The current state of the training process.
+        control: Control flow for the training loop.
+        metrics: A dictionary of evaluation metrics. Defaults to None.
+        **kwargs: Additional keyword arguments.
+    """
+    if state.epoch is not None:
+        logging.info(f"### EPOCH: {int(state.epoch)} ###")
+    # Note: "eval_" is prepended to the keys in metrics
+    current_metric = metrics["eval_" + self.best_model_metric]
+    pretty_metrics = json.dumps(metrics, indent=4)
+    logging.info(pretty_metrics)
+    if state.epoch is not None:
+        if state.epoch % 5 == 0 or current_metric > self.best_metric:
+            prompt = "frozen peas and carrots"
+            test_inference(self.model, self.tokenizer, prompt, self.device)
+    if current_metric > self.best_metric:
+        self.best_metric = current_metric
+        self.best_epoch = state.epoch
+        logging.info(f"Best model updated at epoch: {state.epoch} with metric ({current_metric})")
 
     def on_train_end(self, args, state, control, **kwargs):
         if self.best_epoch is not None:
@@ -121,9 +156,16 @@ class SaveBestModelCallback(TrainerCallback):
             logging.info(f"The best result was {self.best_model_metric}: {self.best_metric}")
 
 
-# TODO: How does logging work here?
 class MultiTaskTrainer(Trainer):
-    def __init__(self, *args, **kwargs):
+    """A custom trainer class for handling multi-task training with the Hugging Face Trainer API.
+
+    Args:
+        *args: Positional arguments passed to the base Trainer class.
+        **kwargs: Keyword arguments passed to the base Trainer class.
+    """
+
+    def __init__(self, *args: Any, **kwargs: Any):
+        """Initializes the MultiTaskTrainer with any arguments required by the base Trainer class."""
         super().__init__(*args, **kwargs)
         # Note: Model dicts are different — kind of ugly way to get the weights we want
         if self.model.config.model_type == "distilbert":
@@ -146,18 +188,47 @@ class MultiTaskTrainer(Trainer):
             "Sub-Types Classification Head": self.model.classification_heads["Sub-Types"][0].weight,
         }
 
-    def compute_metrics(self, p: EvalPrediction):
+    def compute_metrics(self, p: EvalPrediction) -> dict[str, Any]:
+        """Computes and returns evaluation metrics based on model predictions.
+
+        Args:
+            self: The instance of the class.
+            p: An EvalPrediction object containing predictions and label_ids.
+
+        Returns:
+            A dictionary containing the computed metrics.
+        """
         return compute_metrics(p, self.model)
 
-    def log_gradients(self, name, param):
-        """Safely compute the sum of gradients for a given parameter."""
+    def log_gradients(self, name: str, param: Any) -> None:
+        """Computes and logs the sum of gradients for a given parameter.
+
+        Args:
+            self: The instance of the class.
+            name: The name of the parameter whose gradients are being logged.
+            param: The parameter object, which may or may not have gradients.
+
+        Returns:
+            None
+        """
         value = param.grad.sum() if param.grad is not None else 0
         logging.info(f"Gradient sum for {name}: {value}")
 
-    def training_step(self, model, inputs):
+    def training_step(self, model: Any, inputs: Any, interval: int = 5) -> torch.Tensor:
+        """Performs a single training step and logs gradients every 5 epochs.
+
+        Args:
+            self: The instance of the class.
+            model: The model being trained.
+            inputs: The input data for the training step.
+            interval: The epoch interval on which to log gradients
+
+        Returns:
+            A tensor representing the loss for the current training step.
+        """
         loss = super().training_step(model, inputs)
 
-        if (self.state.epoch) % 5 == 0 and self.state.epoch != 0:
+        if (self.state.epoch) % interval == 0 and self.state.epoch != 0:
             logging.info(f"## Gradients at Epoch {int(self.state.epoch)} ##")
             for name, param in self.logging_params.items():
                 self.log_gradients(name, param)
