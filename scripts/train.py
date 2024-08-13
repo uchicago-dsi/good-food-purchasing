@@ -1,3 +1,5 @@
+"""Trains multitask classification model for the Center for Good Food Purchasing"""
+
 import json
 import logging
 import os
@@ -30,7 +32,18 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
 
-def read_data(input_col, labels, data_path, smoke_test=False):
+def read_data(input_col: str, labels: list[str], data_path: str, smoke_test: bool = False) -> pd.DataFrame:
+    """Reads data from a CSV file, filters out rows with null values in specified columns, and returns a cleaned DataFrame with specified columns.
+
+    Args:
+        input_col: The name of the input column to be read and cleaned.
+        labels: A list of column names to be included in the returned DataFrame.
+        data_path: The path to the CSV file containing the data.
+        smoke_test: If True, limits the number of rows to read for testing purposes.
+
+    Returns:
+        A cleaned DataFrame containing only the specified columns.
+    """
     nrows = 1000 if smoke_test else None
     df_cgfp = pd.read_csv(data_path, na_values=["NULL"], nrows=nrows)
 
@@ -53,13 +66,34 @@ def read_data(input_col, labels, data_path, smoke_test=False):
     return df_cleaned
 
 
-def get_encoder(unique_categories):
+def get_encoder(unique_categories: list[str]) -> LabelEncoder:
+    """Initializes and fits a LabelEncoder on the provided unique categories.
+
+    Args:
+        unique_categories: A list of unique categories to fit the encoder.
+
+    Returns:
+        A fitted LabelEncoder instance.
+    """
     encoder = LabelEncoder()
     encoder.fit(unique_categories)
     return encoder
 
 
-def get_encoders_and_counts(df, labels=LABELS):
+def get_encoders_and_counts(
+    df: pd.DataFrame, labels: list[str] = LABELS
+) -> tuple[dict[str, LabelEncoder], dict[str, dict]]:
+    """Generates LabelEncoders and counts for specified label columns in a DataFrame.
+
+    Args:
+        df: The DataFrame containing the data.
+        labels: A list of label columns to generate encoders and counts for.
+
+    Returns:
+        A tuple containing:
+        - A dictionary of LabelEncoders for the specified label columns.
+        - A dictionary of value counts for the specified label columns.
+    """
     encoders = {}
     counts = {}
     subtype_counts = pd.Series(dtype=int)
@@ -90,8 +124,15 @@ def get_encoders_and_counts(df, labels=LABELS):
     return encoders, counts
 
 
-def get_decoders(encoders):
-    # Create decoders to save to model config
+def get_decoders(encoders: dict[str, LabelEncoder]) -> list[tuple[str, dict[str, str]]]:
+    """Generates decoders from the provided encoders for saving to a model config.
+
+    Args:
+        encoders: A dictionary of LabelEncoders for different columns.
+
+    Returns:
+        A list of tuples where each tuple contains a column name and its corresponding decoding dictionary.
+    """
     decoders = []
     for col, encoder in encoders.items():
         # Note: Huggingface is picky with config.json...a list of tuples works
@@ -100,13 +141,22 @@ def get_decoders(encoders):
     return decoders
 
 
-def get_inference_masks(df, encoders):
-    """Save valid basic types for each food product group"""
+def get_inference_masks(df_cgfp: pd.DataFrame, encoders: dict[str, LabelEncoder]) -> dict[str, list[int]]:
+    """Generates inference masks for valid basic types within each food product group.
+
+    Args:
+        df_cgfp: The DataFrame containing the CGFP input data.
+        encoders: A dictionary of LabelEncoders for different columns.
+
+    Returns:
+        A dictionary where each key is a food product group, and the value is a list representing
+        a mask of valid basic types.
+    """
     inference_masks = {}
-    basic_types = df["Basic Type"].unique().tolist()
-    food_product_groups = df["Food Product Group"].unique().tolist()
+    basic_types = df_cgfp["Basic Type"].unique().tolist()
+    food_product_groups = df_cgfp["Food Product Group"].unique().tolist()
     for fpg in food_product_groups:
-        valid_basic_types = df[df["Food Product Group"] == fpg]["Basic Type"].unique().tolist()
+        valid_basic_types = df_cgfp[df_cgfp["Food Product Group"] == fpg]["Basic Type"].unique().tolist()
         basic_type_indices = encoders["Basic Type"].transform(valid_basic_types)
         mask = np.zeros(len(basic_types))
         mask[basic_type_indices] = 1
@@ -114,7 +164,16 @@ def get_inference_masks(df, encoders):
     return inference_masks
 
 
-def tokenize(example, labels=LABELS):
+def tokenize(example: dict[str, str], labels: list[str] = LABELS) -> dict[str, list]:
+    """Tokenizes the input text and transforms the specified labels using encoders.
+
+    Args:
+        example: A dictionary containing the text and label data for a single example.
+        labels: A list of label columns to be tokenized and encoded.
+
+    Returns:
+        A dictionary containing the tokenized inputs and the corresponding encoded labels.
+    """
     # Note: lowercase text since not all models are uncased and text is usually all caps
     tokenized_inputs = tokenizer(example[TEXT_FIELD].lower(), padding="max_length", truncation=True, max_length=100)
     tokenized_labels = []
