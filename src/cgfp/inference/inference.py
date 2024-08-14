@@ -239,24 +239,24 @@ def inference_handler(
     raw_results: bool = False,
     assertion: bool = False,
 ) -> Union[pd.DataFrame, pd.io.formats.style.Styler]:
-    """Handles the entire inference process on a dataset, including reading data, performing inference, and saving results.
+    """Handles the entire inference pipeline on a dataset, including reading data, performing inference, and saving results.
 
     Args:
         model: The model used for inference.
         tokenizer: The tokenizer used to preprocess the text input.
         input_path: Path to the input Excel file.
         input_column: The column name in the Excel file containing the text to classify.
-        output_filename: Optional filename for the output file. Defaults to None, in which case the input filename is used.
-        save_dir: Directory where the output file should be saved. Defaults to "/content".
-        device: The device to run inference on, e.g., 'cuda:0' or 'cpu'. Defaults to 'cuda:0' if available, otherwise 'cpu'.
-        sheet_name: The sheet name or index to read from the Excel file. Defaults to 0.
-        save: Whether to save the output file. Defaults to True.
-        highlight: Whether to highlight uncertain predictions. Defaults to False.
-        confidence_score: Whether to include confidence scores in the output. Defaults to False.
-        threshold: Threshold for determining uncertainty in predictions. Defaults to 0.85.
-        rows_to_classify: Number of rows to classify. If None, all rows are classified. Defaults to None.
-        raw_results: Whether to return raw model results instead of formatted results. Defaults to False.
-        assertion: Whether to perform additional assertions during inference. Defaults to False.
+        output_filename: Optional filename for the output file
+        save_dir: Directory where the output file should be saved
+        device: The device to run inference on
+        sheet_name: The sheet name or index to read from the Excel file
+        save: Whether to save the output file
+        highlight: Whether to highlight uncertain predictions
+        confidence_score: Whether to include confidence scores in the output
+        threshold: Threshold for determining uncertainty in predictions
+        rows_to_classify: Number of rows to classify. If None, all rows are classified.
+        raw_results: Whether to return raw model results instead of formatted results
+        assertion: Whether to perform additional assertions during inference
 
     Returns:
         Union[pd.DataFrame, pd.io.formats.style.Styler]: The processed DataFrame or a styled DataFrame if highlights are applied.
