@@ -118,10 +118,12 @@ def inference(
 
     fpg_idx = list(model.classification_heads.keys()).index("Food Product Group")
     fpc_idx = list(model.classification_heads.keys()).index("Food Product Category")
+    pfpc_idx = list(model.classification_heads.keys()).index("Primary Food Product Category")
 
     # Get predicted food product group & predicted food product category
     fpg = prediction_to_string(model, softmaxed_scores, fpg_idx)
     fpc = prediction_to_string(model, softmaxed_scores, fpc_idx)
+    pfpc = prediction_to_string(model, softmaxed_scores, pfpc_idx)
 
     inference_mask = model.inference_masks[fpg].to(device)
 
@@ -135,14 +137,15 @@ def inference(
         torch.max(score, dim=1) for score in softmaxed_scores
     ]  # Note: torch.max returns both max and argmax if you specify dim so this is a list of tuples
 
-    # assertion to make sure fpg & fpg match
-    # TODO: Maybe good assertion behavior would be something like:
-    # » If food product group + food product category + basic type don't match, ask GPT
-    # » If one of these pairs doesn't match, just highlight
-    # TODO: Add argument here to turn this behavior on and off
+    # Assertions to make sure that high level categories match (Usually catches obvious errors)
     assertion_failed = False
-    if fpc not in FPG2FPC[fpg] and assertion:
-        assertion_failed = True
+    if assertion:
+        if fpc not in FPG2FPC[fpg]:
+            assertion_failed = True
+        if fpg != "Meals" and fpc != pfpc:
+            assertion_failed = True
+        if fpg != "Meals" and pfpc not in FPG2FPC[fpg]:
+            assertion_failed = True
 
     legible_preds = {}
     for item, score in zip(model.decoders.items(), scores):
@@ -186,12 +189,6 @@ def inference(
 
     if combine_name:
         return get_combined_name(legible_preds)
-        # normalized_name = ""
-        # for col, pred in legible_preds.items():
-        #     if "_score" not in col and "Food" not in col and pred != "None":
-        #         normalized_name += pred + ", "
-        # normalized_name = normalized_name.strip().rstrip(",")
-        # return normalized_name
     return legible_preds
 
 
@@ -328,7 +325,7 @@ if __name__ == "__main__":
     SHEET_NUMBER = 0
     CONFIDENCE_SCORE = False
     ROWS_TO_CLASSIFY = None
-    RAW_RESULTS = False  # saves the raw model results rather than the formatted normalized name results
+    RAW_RESULTS = False
     ASSERTION = False
 
     INPUT_COLUMN = config["data"]["text_field"]

@@ -1,3 +1,5 @@
+"""Defines hierarchical tagging structure for CGFP tagging system"""
+
 FPG2FPC = {
     "Produce": [
         "Fruit",
@@ -5,7 +7,7 @@ FPG2FPC = {
         "Roots & Tubers",
         "Produce",
         "Legumes",
-    ],  # TODO: Wait, is produce allowed here?
+    ],
     "Milk & Dairy": ["Butter", "Cheese", "Milk", "Yogurt", "Milk & Dairy"],
     "Meat": [
         "Beef",
