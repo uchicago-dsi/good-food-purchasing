@@ -1,4 +1,4 @@
-"""Contains inference functions for converting multitask model predictions to the expected format for CGFP"""
+"""Contains inference functions for converting multitask model predictions to the expected output format for CGFP"""
 
 import json
 import logging
@@ -62,6 +62,7 @@ def inference(
     tokenizer: Any,
     text: str,
     device: str,
+    threshold: float = 0.5,
     assertion: bool = False,
     confidence_score: bool = True,
     combine_name: bool = False,
@@ -70,12 +71,13 @@ def inference(
 
     Args:
         model: The model used for inference.
-        tokenizer: The tokenizer used to preprocess the text input.
-        text: The input text to be processed by the model.
-        device: The device on which to run the inference, e.g., 'cuda:0' or 'cpu'.
-        assertion: If True, performs an additional assertion check on the predictions. Defaults to False.
-        confidence_score: If True, includes confidence scores in the predictions. Defaults to True.
-        combine_name: If True, returns a combined string representation of the predictions. Defaults to False.
+        tokenizer: The tokenizer used to preprocess the text input
+        text: The input text to be processed by the model
+        device: The device on which to run the inference
+        threshold: The probability threshold to count as a positive prediction for multilabel tasks
+        assertion: If True, performs an additional assertion check on the predictions
+        confidence_score: If True, includes confidence scores in the predictions
+        combine_name: If True, returns a combined string representation of the predictions
 
     Returns:
         A combined string of predictions if combine_name is True, otherwise a dictionary of predictions.
@@ -131,20 +133,12 @@ def inference(
         prob, idx = score
 
         if col != "Sub-Types":
-            try:
-                pred = decoder[str(idx.item())]  # decoders have been serialized so keys are strings
-                legible_preds[col] = pred if not assertion_failed else None
-                if confidence_score:
-                    legible_preds[col + "_score"] = prob.item()
-            except Exception:
-                pass
-                # TODO: what do we want to actually happen here?
-                # Can we log or print base on where we are?
-                # logging.info(f"Exception: {e}")
+            pred = decoder[str(idx.item())]  # decoders have been serialized so keys are strings
+            legible_preds[col] = pred if not assertion_failed else None
+            if confidence_score:
+                legible_preds[col + "_score"] = prob.item()
 
-    # TODO: Need to set this up in a config somehwere
-    threshold = 0.5
-
+    # Handle subtype predictions separately
     # Note: Make sure we are not predicting class "None"
     subtype_logits[:, int(model.none_subtype_idx)] = 0
     topk_values, topk_indices = torch.topk(subtype_logits, 2)
