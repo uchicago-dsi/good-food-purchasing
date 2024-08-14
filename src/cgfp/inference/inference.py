@@ -20,7 +20,7 @@ logger = logging.getLogger("inference_logger")
 logger.setLevel(logging.INFO)
 
 
-def combine_name(legible_preds: dict[str, str]) -> str:
+def get_combined_name(legible_preds: dict[str, str]) -> str:
     """Combines predictions into a single, normalized name string.
 
     Args:
@@ -51,7 +51,7 @@ def test_inference(model: Any, tokenizer: Any, prompt: str, device: str = "cuda:
         None
     """
     preds_dict = inference(model, tokenizer, prompt, device)
-    normalized_name = combine_name(preds_dict)
+    normalized_name = get_combined_name(preds_dict)
     logging.info(f"Example output for 'frozen peas and carrots': {normalized_name}")
     pretty_preds = json.dumps(preds_dict, indent=4)
     logging.info(pretty_preds)
@@ -185,7 +185,7 @@ def inference(
         legible_preds[f"Sub-Type {i+1}"] = subtype
 
     if combine_name:
-        return combine_name(legible_preds)
+        return get_combined_name(legible_preds)
         # normalized_name = ""
         # for col, pred in legible_preds.items():
         #     if "_score" not in col and "Food" not in col and pred != "None":
