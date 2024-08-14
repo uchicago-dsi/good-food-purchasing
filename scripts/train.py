@@ -459,7 +459,6 @@ if __name__ == "__main__":
         device=device,
         sheet_name=0,
         input_column=TEXT_FIELD,
-        highlight=False,
         confidence_score=False,
         raw_results=False,
         assertion=False,
