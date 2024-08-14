@@ -32,7 +32,7 @@ def get_combined_name(legible_preds: dict[str, str]) -> str:
     normalized_name = ""
     # TODO: Reorder this to be in the expected column output order
     for col, pred in legible_preds.items():
-        if "_score" not in col and "Food" not in col and pred != "None":
+        if "_score" not in col and "Food" not in col and pred != "None" and pred is not None:
             normalized_name += pred + ", "
     normalized_name = normalized_name.strip().rstrip(",")
     return normalized_name
@@ -166,7 +166,7 @@ def inference(
     mask.scatter_(1, topk_indices, 1)
     subtype_logits = subtype_logits * mask
     subtype_preds = (sigmoid(subtype_logits) > threshold).int()
-    predicted_subtype_indices = torch.nonzero(subtype_preds.squeeze())
+    predicted_subtype_indices = torch.nonzero(subtype_preds.squeeze()) if not assertion_failed else torch.tensor([])
 
     num_subtype_columns = sum(1 for key in model.config.columns.keys() if "Sub-Type" in key)
     predicted_subtype_tuples = []
