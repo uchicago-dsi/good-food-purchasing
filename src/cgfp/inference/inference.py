@@ -49,7 +49,7 @@ def prediction_to_string(model: Any, scores: torch.Tensor, idx: int) -> str:
         idx: The index of the prediction to convert.
 
     Returns:
-        str: The string representation of the prediction.
+        The string representation of the prediction.
     """
     max_idx = torch.argmax(scores[idx])
     # Note: decoders are a tuple of column name and actual decoding dictionary
@@ -78,7 +78,7 @@ def inference(
         combine_name: If True, returns a combined string representation of the predictions. Defaults to False.
 
     Returns:
-        Union[str, dict[str, Any]]: A combined string of predictions if combine_name is True, otherwise a dictionary of predictions.
+        A combined string of predictions if combine_name is True, otherwise a dictionary of predictions.
     """
     inputs = tokenizer(text.lower(), padding=True, truncation=True, return_tensors="pt")
 
@@ -184,23 +184,6 @@ def inference(
     return legible_preds
 
 
-def highlight_uncertain_preds(df, threshold=0.85):
-    """Creates a styles dictionary for underconfident predictions"""
-    styles_dict = {}
-    for col_idx, dtype in enumerate(df.dtypes):
-        # TODO: this is fragile - fix it later
-        if dtype == "object":  # Skip non-float columns
-            continue
-        else:
-            try:
-                styles_dict[df.columns[col_idx - 1]] = df.iloc[:, col_idx].apply(
-                    lambda x: "background-color: yellow" if x < threshold else ""
-                )
-            except:
-                print(f"Tried to find uncertainty in a a non-float column! {df.iloc[:,col_idx].head(5)}")
-    return styles_dict
-
-
 def save_output(df_classified: pd.DataFrame, filename: Union[str, Path], data_dir: Union[str, Path]) -> None:
     """Saves a DataFrame to an Excel file in the specified directory, replacing "None" values with NaN.
 
@@ -232,14 +215,13 @@ def inference_handler(
     device: Optional[str] = None,
     sheet_name: Union[int, str] = 0,
     save: bool = True,
-    highlight: bool = False,
     confidence_score: bool = False,
     threshold: float = 0.85,
-    rows_to_classify: Optional[int] = None,
+    num_rows_to_classify: Optional[int] = None,
     raw_results: bool = False,
     assertion: bool = False,
-) -> Union[pd.DataFrame, Any]:
-    """Handles the entire inference pipeline on a dataset, including reading data, performing inference, and saving results.
+) -> pd.DataFrame:
+    """Handles the inference pipeline on a dataset, including reading data, performing inference, and saving results.
 
     Args:
         model: The model used for inference.
@@ -251,15 +233,14 @@ def inference_handler(
         device: The device to run inference on
         sheet_name: The sheet name or index to read from the Excel file
         save: Whether to save the output file
-        highlight: Whether to highlight uncertain predictions
         confidence_score: Whether to include confidence scores in the output
         threshold: Threshold for determining uncertainty in predictions
-        rows_to_classify: Number of rows to classify. If None, all rows are classified.
+        num_rows_to_classify: Number of rows to classify. If None, all rows are classified.
         raw_results: Whether to return raw model results instead of formatted results
         assertion: Whether to perform additional assertions during inference
 
     Returns:
-        Union[pd.DataFrame, pd.io.formats.style.Styler]: The processed DataFrame or a styled DataFrame if highlights are applied.
+        The DataFrame containing predictions from the model
     """
     if device is None:
         device = "cuda:0" if torch.cuda.is_available() else "cpu"
@@ -274,8 +255,8 @@ def inference_handler(
     df_input.columns = [col.lower() for col in df_input.columns]
     df_input = df_input.rename(columns=lower2label)
 
-    if rows_to_classify:
-        df_input = df_input.head(rows_to_classify)
+    if num_rows_to_classify:
+        df_input = df_input.head(num_rows_to_classify)
 
     output = (
         df_input[input_column]
@@ -302,30 +283,20 @@ def inference_handler(
         else:
             results_full[col] = pd.Series([None] * len(results))
 
-        # Add confidence score (needed for highlights)
+        # Add confidence score
         score_col = col + "_score"
         if score_col in results:
             results_full[score_col] = results[score_col]
 
-    # Create highlights
-    # Logic here is a bit odd since applying styles gives you a Styler
-    # object...not a dataframe
-    if highlight:
-        styles_dict = highlight_uncertain_preds(results_full, threshold)
-        styles_df = pd.DataFrame(styles_dict)
-
     if not confidence_score:
         results_full = results_full[[col for col in df_input.columns if "_score" not in col]]
-
-    # Actually apply the styles here
-    df_formatted = results_full.style.apply(lambda x: styles_df, axis=None) if highlight else results_full
 
     if output_filename is None:
         output_filename = input_path
 
     if save:
-        save_output(df_formatted, output_filename, save_dir)
-    return df_formatted
+        save_output(results_full, output_filename, save_dir)
+    return results_full
 
 
 if __name__ == "__main__":
@@ -344,7 +315,6 @@ if __name__ == "__main__":
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
     SHEET_NUMBER = 0
-    HIGHLIGHT = False
     CONFIDENCE_SCORE = False
     ROWS_TO_CLASSIFY = None
     RAW_RESULTS = False  # saves the raw model results rather than the formatted normalized name results
@@ -360,8 +330,7 @@ if __name__ == "__main__":
         device=device,
         sheet_name=SHEET_NUMBER,
         input_column=INPUT_COLUMN,
-        rows_to_classify=ROWS_TO_CLASSIFY,
-        highlight=HIGHLIGHT,
+        num_rows_to_classify=ROWS_TO_CLASSIFY,
         confidence_score=CONFIDENCE_SCORE,
         raw_results=RAW_RESULTS,
         assertion=ASSERTION,
