@@ -4,6 +4,7 @@ import json
 import logging
 import os
 from pathlib import Path
+from typing import Any, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -19,7 +20,18 @@ logger = logging.getLogger("inference_logger")
 logger.setLevel(logging.INFO)
 
 
-def test_inference(model, tokenizer, prompt, device="cuda:0"):
+def test_inference(model: Any, tokenizer: Any, prompt: str, device: str = "cuda:0") -> None:
+    """Performs inference on a given prompt using the specified model and tokenizer, logging the results.
+
+    Args:
+        model: The model used for inference.
+        tokenizer: The tokenizer used to preprocess the prompt.
+        prompt: The text input to be processed by the model.
+        device: The device on which to run the inference, e.g., 'cuda:0' or 'cpu'. Defaults to 'cuda:0'.
+
+    Returns:
+        None
+    """
     normalized_name = inference(model, tokenizer, prompt, device, combine_name=True)
     logging.info(f"Example output for 'frozen peas and carrots': {normalized_name}")
     # TODO: I should set this up so I only do the forward pass once...
@@ -28,22 +40,46 @@ def test_inference(model, tokenizer, prompt, device="cuda:0"):
     logging.info(pretty_preds)
 
 
-def prediction_to_string(model, scores, idx):
+def prediction_to_string(model: Any, scores: torch.Tensor, idx: int) -> str:
+    """Converts a model's prediction scores to a string representation using the appropriate decoder.
+
+    Args:
+        model: The model containing the configuration and decoders.
+        scores: A tensor of prediction scores.
+        idx: The index of the prediction to convert.
+
+    Returns:
+        str: The string representation of the prediction.
+    """
     max_idx = torch.argmax(scores[idx])
-    # decoders are a tuple of column name and actual decoding dictionary
+    # Note: decoders are a tuple of column name and actual decoding dictionary
     _, decoder = model.config.decoders[idx]
     return decoder[str(max_idx.item())]
 
 
 def inference(
-    model,
-    tokenizer,
-    text,
-    device,
-    assertion=False,
-    confidence_score=True,
-    combine_name=False,
-):
+    model: Any,
+    tokenizer: Any,
+    text: str,
+    device: str,
+    assertion: bool = False,
+    confidence_score: bool = True,
+    combine_name: bool = False,
+) -> Union[str, dict[str, Any]]:
+    """Performs inference on the provided text using the specified model and tokenizer, returning either a combined name or a dictionary of predictions.
+
+    Args:
+        model: The model used for inference.
+        tokenizer: The tokenizer used to preprocess the text input.
+        text: The input text to be processed by the model.
+        device: The device on which to run the inference, e.g., 'cuda:0' or 'cpu'.
+        assertion: If True, performs an additional assertion check on the predictions. Defaults to False.
+        confidence_score: If True, includes confidence scores in the predictions. Defaults to True.
+        combine_name: If True, returns a combined string representation of the predictions. Defaults to False.
+
+    Returns:
+        Union[str, dict[str, Any]]: A combined string of predictions if combine_name is True, otherwise a dictionary of predictions.
+    """
     inputs = tokenizer(text.lower(), padding=True, truncation=True, return_tensors="pt")
 
     inputs = inputs.to(device)
@@ -165,56 +201,88 @@ def highlight_uncertain_preds(df, threshold=0.85):
     return styles_dict
 
 
-def save_output(df, filename, data_dir):
+def save_output(df_classified: pd.DataFrame, filename: Union[str, Path], data_dir: Union[str, Path]) -> None:
+    """Saves a DataFrame to an Excel file in the specified directory, replacing "None" values with NaN.
+
+    Args:
+        df_classified: The DataFrame to be saved.
+        filename: The name of the file to save the output as. Can be a string or Path object.
+        data_dir: The directory where the file should be saved. Can be a string or Path object.
+
+    Returns:
+        None
+    """
     if not isinstance(filename, Path):
         filename = Path(filename)
     os.chdir(data_dir)  # ensures this saves in the expected directory in Colab
     output_path = filename.with_name(filename.stem + "_classified.xlsx")
-    df = df.replace("None", np.nan)
-    df.to_excel(output_path, index=False)
+    df_classified = df_classified.replace("None", np.nan)
+    df_classified.to_excel(output_path, index=False)
     print(f"Classification completed! File saved to {output_path}")
     return
 
 
 def inference_handler(
-    model,
-    tokenizer,
-    input_path,
-    input_column,
-    output_filename=None,
-    save_dir="/content",
-    device=None,
-    sheet_name=0,
-    save=True,
-    highlight=False,
-    confidence_score=False,
-    threshold=0.85,
-    rows_to_classify=None,
-    raw_results=False,
-    assertion=False,
-):
+    model: Any,
+    tokenizer: Any,
+    input_path: Union[str, Path],
+    input_column: str,
+    output_filename: Optional[Union[str, Path]] = None,
+    save_dir: Union[str, Path] = "/content",
+    device: Optional[str] = None,
+    sheet_name: Union[int, str] = 0,
+    save: bool = True,
+    highlight: bool = False,
+    confidence_score: bool = False,
+    threshold: float = 0.85,
+    rows_to_classify: Optional[int] = None,
+    raw_results: bool = False,
+    assertion: bool = False,
+) -> Union[pd.DataFrame, pd.io.formats.style.Styler]:
+    """Handles the entire inference process on a dataset, including reading data, performing inference, and saving results.
+
+    Args:
+        model: The model used for inference.
+        tokenizer: The tokenizer used to preprocess the text input.
+        input_path: Path to the input Excel file.
+        input_column: The column name in the Excel file containing the text to classify.
+        output_filename: Optional filename for the output file. Defaults to None, in which case the input filename is used.
+        save_dir: Directory where the output file should be saved. Defaults to "/content".
+        device: The device to run inference on, e.g., 'cuda:0' or 'cpu'. Defaults to 'cuda:0' if available, otherwise 'cpu'.
+        sheet_name: The sheet name or index to read from the Excel file. Defaults to 0.
+        save: Whether to save the output file. Defaults to True.
+        highlight: Whether to highlight uncertain predictions. Defaults to False.
+        confidence_score: Whether to include confidence scores in the output. Defaults to False.
+        threshold: Threshold for determining uncertainty in predictions. Defaults to 0.85.
+        rows_to_classify: Number of rows to classify. If None, all rows are classified. Defaults to None.
+        raw_results: Whether to return raw model results instead of formatted results. Defaults to False.
+        assertion: Whether to perform additional assertions during inference. Defaults to False.
+
+    Returns:
+        Union[pd.DataFrame, pd.io.formats.style.Styler]: The processed DataFrame or a styled DataFrame if highlights are applied.
+    """
     if device is None:
         device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
     try:
-        df = pd.read_excel(input_path, sheet_name=sheet_name)
+        df_input = pd.read_excel(input_path, sheet_name=sheet_name)
     except FileNotFoundError:
         print("FileNotFound: {e}\n. Please double check the filename: {input_path}")
         raise
 
     # Force columns to have capitalization consistent with expected output
-    df.columns = [col.lower() for col in df.columns]
-    df = df.rename(columns=lower2label)
+    df_input.columns = [col.lower() for col in df_input.columns]
+    df_input = df_input.rename(columns=lower2label)
 
     if rows_to_classify:
-        df = df.head(rows_to_classify)
+        df_input = df_input.head(rows_to_classify)
 
     output = (
-        df[input_column]
+        df_input[input_column]
         .apply(lambda text: inference(model, tokenizer, text, device, assertion=assertion))
         .apply(pd.Series)
     )
-    results = pd.concat([df[input_column], output], axis=1)
+    results = pd.concat([df_input[input_column], output], axis=1)
     results = results.replace("None", pd.NA)
 
     if raw_results:
@@ -226,11 +294,11 @@ def inference_handler(
     # Assumes that the input dataframe is in the expected name normalization format
     # TODO: Add a check for that
     results_full = pd.DataFrame()
-    for col in df.columns:
+    for col in df_input.columns:
         if col in results:
             results_full[col] = results[col]
         elif col == "Center Product ID":
-            results_full[col] = df[col]
+            results_full[col] = df_input[col]
         else:
             results_full[col] = pd.Series([None] * len(results))
 
@@ -247,7 +315,7 @@ def inference_handler(
         styles_df = pd.DataFrame(styles_dict)
 
     if not confidence_score:
-        results_full = results_full[[col for col in df.columns if "_score" not in col]]
+        results_full = results_full[[col for col in df_input.columns if "_score" not in col]]
 
     # Actually apply the styles here
     df_formatted = results_full.style.apply(lambda x: styles_df, axis=None) if highlight else results_full
