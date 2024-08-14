@@ -123,34 +123,45 @@ class SaveBestModelCallback(TrainerCallback):
         self.best_epoch = None
         self.eval_prompt = eval_prompt
 
+    def on_evaluate(self, args: Any, state: Any, control: Any, metrics: dict[str, Any] = None, **kwargs: Any) -> None:
+        """Callback function executed during the evaluation phase.
 
-def on_evaluate(self, args: Any, state: Any, control: Any, metrics: dict[str, Any] = None, **kwargs: Any) -> None:
-    """Callback function executed during the evaluation phase.
+        Args:
+            self: The instance of the class.
+            args: Arguments related to the evaluation process.
+            state: The current state of the training process.
+            control: Control flow for the training loop.
+            metrics: A dictionary of evaluation metrics. Defaults to None.
+            **kwargs: Additional keyword arguments.
+        """
+        if state.epoch is not None:
+            logging.info(f"### EPOCH: {int(state.epoch)} ###")
+        # Note: "eval_" is prepended to the keys in metrics
+        current_metric = metrics["eval_" + self.best_model_metric]
+        pretty_metrics = json.dumps(metrics, indent=4)
+        logging.info(pretty_metrics)
+        if state.epoch is not None:
+            if state.epoch % 5 == 0 or current_metric > self.best_metric:
+                prompt = "frozen peas and carrots"
+                test_inference(self.model, self.tokenizer, prompt, self.device)
+        if current_metric > self.best_metric:
+            self.best_metric = current_metric
+            self.best_epoch = state.epoch
+            logging.info(f"Best model updated at epoch: {state.epoch} with metric ({current_metric})")
 
-    Args:
-        self: The instance of the class.
-        args: Arguments related to the evaluation process.
-        state: The current state of the training process.
-        control: Control flow for the training loop.
-        metrics: A dictionary of evaluation metrics. Defaults to None.
-        **kwargs: Additional keyword arguments.
-    """
-    if state.epoch is not None:
-        logging.info(f"### EPOCH: {int(state.epoch)} ###")
-    # Note: "eval_" is prepended to the keys in metrics
-    current_metric = metrics["eval_" + self.best_model_metric]
-    pretty_metrics = json.dumps(metrics, indent=4)
-    logging.info(pretty_metrics)
-    if state.epoch is not None:
-        if state.epoch % 5 == 0 or current_metric > self.best_metric:
-            prompt = "frozen peas and carrots"
-            test_inference(self.model, self.tokenizer, prompt, self.device)
-    if current_metric > self.best_metric:
-        self.best_metric = current_metric
-        self.best_epoch = state.epoch
-        logging.info(f"Best model updated at epoch: {state.epoch} with metric ({current_metric})")
+    def on_train_end(self, args: Any, state: Any, control: Any, **kwargs: Any) -> None:
+        """Callback function executed at the end of training.
 
-    def on_train_end(self, args, state, control, **kwargs):
+        Args:
+            self: The instance of the class.
+            args: Arguments related to the training process.
+            state: The current state of the training process.
+            control: Control flow for the training loop.
+            **kwargs: Additional keyword arguments.
+
+        Returns:
+            None
+        """
         if self.best_epoch is not None:
             logging.info(f"The best model was saved from epoch: {self.best_epoch}")
             logging.info(f"The best result was {self.best_model_metric}: {self.best_metric}")

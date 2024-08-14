@@ -2,7 +2,7 @@
 config:
   smoke_test: false
   checkpoints_dir: "/net/projects/cgfp/checkpoints/"
-  run_title: "raw_distilbert"
+  run_title: "subtypes_sft"
 data:
   text_field: "Product Type"
   data_dir: "/net/projects/cgfp/data/"
@@ -11,8 +11,8 @@ data:
   test_filename: "TestData_11.22.23.xlsx"
 model:
   model_name: "distilbert" # Choices: distilbert, roberta
-  starting_checkpoint: null
-  # starting_checkpoint: "/net/projects/cgfp/model-files/roberta_20240727_2111_subtypes_only_sft" # null to train the off-the-shelf huggingface model
+  # starting_checkpoint: null
+  starting_checkpoint: "/net/projects/cgfp/model-files/distilbert_20240813_1603_raw_distilbert" # null to train the off-the-shelf huggingface model
   eval_checkpoint: "/net/projects/cgfp/model-files/roberta_20240726_0823_heads_only_uncased"
   model_dir: "/net/projects/cgfp/model-files/"
   classification_head_type: "mlp" # Choices: "mlp", "linear"
@@ -21,7 +21,7 @@ model:
   freeze_base: false # Freezes the base model and only trains the classification heads
   reset_classification_heads: false # Renitializes the classification heads
   attached_heads: # If null, attaches all heads to computation graph. If not null, attaches only the specified heads
-    - "Basic Type"
+    - "Sub-Types"
   combine_subtypes: true # Combine sub-type columns for multi-label training
   update_config: true # Update the model config with new counts, etc. from data (set to false to prevent smoke test from updating)
 training:
@@ -29,7 +29,7 @@ training:
   epochs: 80 # Recommended: 80 for full model training, 20 for classification head training
   train_batch_size: 32
   eval_batch_size: 64
-  metric_for_best_model: "basic_type_accuracy" # Choices: "mean_f1_score", "basic_type_accuracy"
+  metric_for_best_model: "mean_f1_score" # Choices: "mean_f1_score", "basic_type_accuracy"
   eval_prompt: "frozen peas and carrots"
 adamw:
   betas:
