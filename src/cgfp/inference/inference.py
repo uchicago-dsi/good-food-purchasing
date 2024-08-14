@@ -20,22 +20,39 @@ logger = logging.getLogger("inference_logger")
 logger.setLevel(logging.INFO)
 
 
+def combine_name(legible_preds: dict[str, str]) -> str:
+    """Combines predictions into a single, normalized name string.
+
+    Args:
+        legible_preds: A dictionary of predictions where keys are column names and values are the predicted strings.
+
+    Returns:
+        A combined, comma-separated string of the predicted normalized name
+    """
+    normalized_name = ""
+    # TODO: Reorder this to be in the expected column output order
+    for col, pred in legible_preds.items():
+        if "_score" not in col and "Food" not in col and pred != "None":
+            normalized_name += pred + ", "
+    normalized_name = normalized_name.strip().rstrip(",")
+    return normalized_name
+
+
 def test_inference(model: Any, tokenizer: Any, prompt: str, device: str = "cuda:0") -> None:
     """Performs inference on a given prompt using the specified model and tokenizer, logging the results.
 
     Args:
-        model: The model used for inference.
-        tokenizer: The tokenizer used to preprocess the prompt.
-        prompt: The text input to be processed by the model.
-        device: The device on which to run the inference, e.g., 'cuda:0' or 'cpu'. Defaults to 'cuda:0'.
+        model: The model used for inference
+        tokenizer: The tokenizer used to preprocess the prompt
+        prompt: The text input to be processed by the model
+        device: The device on which to run the inference
 
     Returns:
         None
     """
-    normalized_name = inference(model, tokenizer, prompt, device, combine_name=True)
-    logging.info(f"Example output for 'frozen peas and carrots': {normalized_name}")
-    # TODO: I should set this up so I only do the forward pass once...
     preds_dict = inference(model, tokenizer, prompt, device)
+    normalized_name = combine_name(preds_dict)
+    logging.info(f"Example output for 'frozen peas and carrots': {normalized_name}")
     pretty_preds = json.dumps(preds_dict, indent=4)
     logging.info(pretty_preds)
 
@@ -167,14 +184,14 @@ def inference(
     for i, (_, _, subtype) in enumerate(predicted_subtype_tuples):
         legible_preds[f"Sub-Type {i+1}"] = subtype
 
-    # TODO: Reorder this to be in the expected column output order
     if combine_name:
-        normalized_name = ""
-        for col, pred in legible_preds.items():
-            if "_score" not in col and "Food" not in col and pred != "None":
-                normalized_name += pred + ", "
-        normalized_name = normalized_name.strip().rstrip(",")
-        return normalized_name
+        return combine_name(legible_preds)
+        # normalized_name = ""
+        # for col, pred in legible_preds.items():
+        #     if "_score" not in col and "Food" not in col and pred != "None":
+        #         normalized_name += pred + ", "
+        # normalized_name = normalized_name.strip().rstrip(",")
+        # return normalized_name
     return legible_preds
 
 
