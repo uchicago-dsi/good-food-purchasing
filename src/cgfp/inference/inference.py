@@ -1,3 +1,5 @@
+"""Contains inference functions for converting multitask model predictions to the expected format for CGFP"""
+
 import json
 import logging
 import os
@@ -107,7 +109,7 @@ def inference(
     # TODO: Need to set this up in a config somehwere
     threshold = 0.5
 
-    # Note: Make sure None we are not predicting class "None"
+    # Note: Make sure we are not predicting class "None"
     subtype_logits[:, int(model.none_subtype_idx)] = 0
     topk_values, topk_indices = torch.topk(subtype_logits, 2)
     mask = torch.zeros_like(subtype_logits)
