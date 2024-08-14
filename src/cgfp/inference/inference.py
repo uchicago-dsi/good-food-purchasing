@@ -238,7 +238,7 @@ def inference_handler(
     rows_to_classify: Optional[int] = None,
     raw_results: bool = False,
     assertion: bool = False,
-) -> Union[pd.DataFrame, pd.io.formats.style.Styler]:
+) -> Union[pd.DataFrame, Any]:
     """Handles the entire inference pipeline on a dataset, including reading data, performing inference, and saving results.
 
     Args:
