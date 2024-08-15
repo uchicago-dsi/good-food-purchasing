@@ -2,6 +2,7 @@
 
 import argparse
 from collections import defaultdict
+from typing import List, Optional, Tuple, Union
 
 import pandas as pd
 from ordered_set import OrderedSet
@@ -52,7 +53,12 @@ CLEAN_FILE_PREFIX = "clean_"
 SMOKE_TEST = False
 
 
-def create_parser():
+def create_parser() -> argparse.ArgumentParser:
+    """Creates and returns an argument parser for processing files.
+
+    Returns:
+        The configured argument parser.
+    """
     parser = argparse.ArgumentParser(description="Process some files.")
     parser.add_argument("--input_file", default=DEFAULT_INPUT_FILE, help="Input file path")
     parser.add_argument("--clean_folder", default="./data/clean/", help="")
@@ -67,12 +73,21 @@ def create_parser():
     return parser
 
 
-def clean_df(df_cgfp, str_len_threshold=3):
-    """Cleaning:
+def clean_df(df_cgfp: pd.DataFrame, str_len_threshold: int = 3) -> pd.DataFrame:
+    """Cleans the given DataFrame by applying several filters and transformations:
 
-    - Remove null and short (usually a mistake) Product Types
-    - Remove null and short (usually a mistake) Product Names
-    - Remove non-food items
+    - Removes rows with null or short Product Types and Product Names.
+    - Removes non-food items.
+    - Corrects typos in the "Primary Food Product Category" column.
+    - Normalizes the "Primary Food Product Category" values.
+    - Strips leading "PREQUALIFIED: " from the "Product Name" column.
+
+    Args:
+        df_cgfp: The DataFrame to clean.
+        str_len_threshold: The minimum length for "Product Type" and "Product Name"
+
+    Returns:
+        The cleaned DataFrame.
     """
     # TODO: Do we ever use "Primary Food Product Group?
     df_cgfp = df_cgfp[ADDITIONAL_COLUMNS + GROUP_COLUMNS].copy()
@@ -109,7 +124,16 @@ def clean_df(df_cgfp, str_len_threshold=3):
     return df_cgfp
 
 
-def token_handler(token, row):
+def token_handler(token: str, row: pd.Series) -> Tuple[Optional[str], pd.Series]:
+    """Handles token processing for specific edge cases in a data row.
+
+    Args:
+        token: The token to be processed.
+        row: The data row represented as a pandas Series.
+
+    Returns:
+        A tuple where the first element is either the processed token or None, and the second element is the potentially modified row.
+    """
     food_product_group, food_product_category, basic_type, sub_type_1 = (
         row["Food Product Group"],
         row["Food Product Category"],
@@ -273,15 +297,32 @@ def token_handler(token, row):
     return token, row
 
 
-def clean_token(token, token_map_dict=TOKEN_MAP_DICT):
+def clean_token(token: str, token_map_dict: dict = TOKEN_MAP_DICT) -> str:
+    """Cleans a token maps it to a corrected value
+
+    Args:
+        token: The token to be cleaned
+        token_map_dict: A dictionary that maps incorrect tokens to their correct values
+
+    Returns:
+        The cleaned and mapped token
+    """
     cleaned_token = token.strip().lower()
-    # can have multiple mappings
+    # can have multiple mappings — may be a typo that maps to another typo that is then mapped to the correct token
     while cleaned_token in token_map_dict:
         cleaned_token = token_map_dict[cleaned_token]
     return cleaned_token
 
 
 def basic_type_handler(row):
+    """Handles the processing of a row based on the "Basic Type" mapping.
+
+    Args:
+        row: The row to be processed.
+
+    Returns:
+        The modified row with updates based on the "Basic Type" mapping.
+    """
     mapping = BASIC_TYPE_MAPPING.get(row["Basic Type"], None)
 
     if mapping is None:
@@ -300,7 +341,17 @@ def basic_type_handler(row):
     return row
 
 
-def add_subtypes(row, tokens, first=False):
+def add_subtypes(row: dict, tokens: Union[str, List[str]], first: bool = False) -> dict:
+    """Adds subtypes to the "Sub-Types" field in the row, with an option to prioritize new tokens.
+
+    Args:
+        row: The row to update with subtypes.
+        tokens: The token or list of tokens to add as subtypes.
+        first: If True, adds the new tokens first before existing subtypes.
+
+    Returns:
+        The updated row with the modified "Sub-Types" field.
+    """
     # Ensure tokens is a list
     if not isinstance(tokens, list):
         tokens = [tokens]
@@ -319,7 +370,16 @@ def add_subtypes(row, tokens, first=False):
     return row
 
 
-def remove_subtypes(row, tokens):
+def remove_subtypes(row: dict, tokens: Union[str, List[str]]) -> dict:
+    """Removes specified subtypes from the "Sub-Types" field in the row.
+
+    Args:
+        row: The row to update.
+        tokens: The token or list of tokens to remove from the subtypes.
+
+    Returns:
+        The updated row with the specified subtypes removed.
+    """
     if not isinstance(tokens, list):
         tokens = [tokens]
 
@@ -333,7 +393,15 @@ def remove_subtypes(row, tokens):
     return row
 
 
-def update_subtypes(row):
+def update_subtypes(row: dict) -> dict:
+    """Updates row with subtypes in individual columns
+
+    Args:
+        row: The row to update.
+
+    Returns:
+        The updated row with subtypes distributed across the appropriate columns.
+    """
     # TODO: maybe you can zip this with the sub-type columns?
     for i, subtype in enumerate(row["Sub-Types"]):
         if i == 0:
@@ -348,7 +416,16 @@ def update_subtypes(row):
 
 
 # TODO: Set this up like basic_type_handler with a mapping dictionary
-def subtype_handler(row, token):
+def subtype_handler(row: dict, token: str) -> Tuple[Optional[str], dict]:
+    """Handles specific token cases to update the row's attributes based on predefined rules.
+
+    Args:
+        row: The row to update.
+        token: The token to process.
+
+    Returns:
+        A tuple where the first element is either a processed token or None, and the second element is the updated row.
+    """
     if token == "2% lactose free":
         row["Dietary Accommodation"] = "lactose free"
         row["Dietary Concern"] = "2%"
@@ -417,7 +494,15 @@ def subtype_handler(row, token):
     return token, row
 
 
-def postprocess_subtypes(row):
+def postprocess_subtypes(row: dict) -> dict:
+    """Applies postprocessing rules to the subtypes in the row.
+
+    Args:
+        row: The row to process.
+
+    Returns:
+        The processed row
+    """
     # TODO: Make this robust to subtype changes, change to subtype 3, etc.
     # Count occurrences of each category
     category_counts = {}
@@ -452,7 +537,15 @@ def postprocess_subtypes(row):
     return row
 
 
-def clean_name(row):
+def clean_name(row: dict) -> dict:
+    """Cleans and processes the "Product Name" in the row by handling edge cases, assigning tags, and updating subtypes based on predefined rules.
+
+    Args:
+        row: The row to clean and process.
+
+    Returns:
+        The updated row with cleaned and normalized values.
+    """
     # Note: Need to add "Sub-Types" to the row first thing
     row["Sub-Types"] = OrderedSet()
 
@@ -515,7 +608,15 @@ def clean_name(row):
     return row
 
 
-def get_category(subtype):
+def get_category(subtype: str) -> Optional[str]:
+    """Determines the category of a given subtype.
+
+    Args:
+        subtype: The subtype to categorize.
+
+    Returns:
+        The category as a string if the subtype matches a known category, otherwise None.
+    """
     # Helper function to determine the category of a subtype
     if subtype in FRUITS:
         return "fruit"
@@ -528,7 +629,15 @@ def get_category(subtype):
     return None
 
 
-def clear_row(row):
+def clear_row(row: dict) -> dict:
+    """Clears specified fields in the row, except for "Basic Type".
+
+    Args:
+        row: The row to clear.
+
+    Returns:
+        The cleared row with specified fields set to None, and "Sub-Types" and "Misc" reset.
+    """
     # Note: Don't clear Basic Type
     for col in NORMALIZED_COLUMNS[1:]:
         row[col] = None
@@ -537,7 +646,15 @@ def clear_row(row):
     return row
 
 
-def postprocess_data(row):
+def postprocess_data(row: dict) -> dict:
+    """Applies postprocessing rules to the row
+
+    Args:
+        row: The row to process for edge cases.
+
+    Returns:
+        The updated row with corrected values based on the edge case rules.
+    """
     ### Handle edge cases for mislabeled data ###
     # "spice" is always "Condiments & Snacks"
     if row["Basic Type"] == "spice" and row["Food Product Group"] != "Condiments & Snacks":
@@ -583,6 +700,16 @@ def postprocess_data(row):
 
 # TODO: Set up smoke test in config
 def process_data(df_cgfp, smoke_test=SMOKE_TEST, **options):
+    """Processes the given DataFrame by filtering, cleaning, normalizing names, and creating a diff file.
+
+    Args:
+        df_cgfp: The DataFrame to process.
+        smoke_test: If True, limits the DataFrame to the first 1000 rows for testing.
+        **options: Additional keyword arguments that can be passed to customize the processing.
+
+    Returns:
+        The processed DataFrame with normalized names and other adjustments.
+    """
     if smoke_test:
         df_cgfp = df_cgfp.head(1000)
 
@@ -650,6 +777,14 @@ def process_data(df_cgfp, smoke_test=SMOKE_TEST, **options):
 
 
 def main(argv):
+    """Main function to handle data loading, processing, and saving.
+
+    Args:
+        argv: List of command-line arguments.
+
+    Returns:
+        None
+    """
     # input
     parser = create_parser()
     # TODO: wait what is this doing?
