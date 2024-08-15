@@ -93,7 +93,6 @@ BASIC_TYPE_MAPPING = {
     },
 }
 
-# Add nuts to the mapping
 # Note: Do this separately since there is other tagging logic for all nut tags
 for nut in NUTS:
     BASIC_TYPE_MAPPING[nut] = {"Basic Type": "nut", "Sub-Types": nut}
