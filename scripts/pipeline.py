@@ -76,12 +76,6 @@ def create_parser() -> argparse.ArgumentParser:
 def clean_df(df_cgfp: pd.DataFrame, str_len_threshold: int = 3) -> pd.DataFrame:
     """Cleans the given DataFrame by applying several filters and transformations:
 
-    - Removes rows with null or short Product Types and Product Names.
-    - Removes non-food items.
-    - Corrects typos in the "Primary Food Product Category" column.
-    - Normalizes the "Primary Food Product Category" values.
-    - Strips leading "PREQUALIFIED: " from the "Product Name" column.
-
     Args:
         df_cgfp: The DataFrame to clean.
         str_len_threshold: The minimum length for "Product Type" and "Product Name"
