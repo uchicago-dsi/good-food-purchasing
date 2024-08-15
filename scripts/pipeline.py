@@ -1,7 +1,12 @@
+"""Data cleaning pipeline for raw CGFP data"""
+
 import argparse
 from collections import defaultdict
 
 import pandas as pd
+from ordered_set import OrderedSet
+from tqdm import tqdm
+
 from cgfp.constants.pipeline_constants import (
     ADDITIONAL_COLUMNS,
     COLUMNS_ORDER,
@@ -36,8 +41,6 @@ from cgfp.constants.tokens.tag_sets import (
 )
 from cgfp.constants.tokens.token_map import TOKEN_MAP_DICT
 from cgfp.util import load_to_pd, save_pd_to_csv
-from ordered_set import OrderedSet
-from tqdm import tqdm
 
 tqdm.pandas()
 
@@ -51,24 +54,16 @@ SMOKE_TEST = False
 
 def create_parser():
     parser = argparse.ArgumentParser(description="Process some files.")
-    parser.add_argument(
-        "--input_file", default=DEFAULT_INPUT_FILE, help="Input file path"
-    )
+    parser.add_argument("--input_file", default=DEFAULT_INPUT_FILE, help="Input file path")
     parser.add_argument("--clean_folder", default="./data/clean/", help="")
     parser.add_argument(
         "--clean_file",
         default=None,
         help="Clean file path. If not specified, it will be automatically generated based on the input file.",
     )
-    parser.add_argument(
-        "--misc_file", default=DEFAULT_MISC_FILE, help="Miscellaneous file path"
-    )
-    parser.add_argument(
-        "--raw_data", default="./data/raw/", help="Relative path to raw data directory"
-    )
-    parser.add_argument(
-        "--disable-output", action="store_false", dest="do_write_output", default=True
-    )
+    parser.add_argument("--misc_file", default=DEFAULT_MISC_FILE, help="Miscellaneous file path")
+    parser.add_argument("--raw_data", default="./data/raw/", help="Relative path to raw data directory")
+    parser.add_argument("--disable-output", action="store_false", dest="do_write_output", default=True)
     return parser
 
 
@@ -95,9 +90,9 @@ def clean_df(df_cgfp, str_len_threshold=3):
     category_typos = {
         "Roots & Tuber": "Roots & Tubers",
     }
-    df_cgfp["Primary Food Product Category"] = df_cgfp[
-        "Primary Food Product Category"
-    ].map(lambda x: category_typos.get(x, x))
+    df_cgfp["Primary Food Product Category"] = df_cgfp["Primary Food Product Category"].map(
+        lambda x: category_typos.get(x, x)
+    )
 
     # Replace "Whole/Minimally Processed" with the value from "Food Product Category"
     df_cgfp["Primary Food Product Category"] = df_cgfp.progress_apply(
@@ -110,9 +105,7 @@ def clean_df(df_cgfp, str_len_threshold=3):
     )
 
     # Remove leading 'PREQUALIFIED: ' string
-    df_cgfp["Product Name"] = df_cgfp["Product Name"].str.replace(
-        "^PREQUALIFIED: ", "", regex=True
-    )
+    df_cgfp["Product Name"] = df_cgfp["Product Name"].str.replace("^PREQUALIFIED: ", "", regex=True)
     return df_cgfp
 
 
@@ -125,9 +118,7 @@ def token_handler(token, row):
     )
 
     # Handle edge cases where Basic Type should change to Sub-Type
-    if (basic_type == "snack" and token == "bar") or (
-        basic_type == "herb" and token == "watercress"
-    ):
+    if (basic_type == "snack" and token == "bar") or (basic_type == "herb" and token == "watercress"):
         row["Basic Type"] = token
         return None, row
 
@@ -143,18 +134,10 @@ def token_handler(token, row):
     # Handle edge cases where a token is not allowed
     if (
         # Food product group rules
-        (
-            food_product_group == "Milk & Dairy"
-            and token in ["in brine", "nectar", "honey"]
-        )
+        (food_product_group == "Milk & Dairy" and token in ["in brine", "nectar", "honey"])
         or (food_product_group == "Meat" and token in ["ketchup", "italian"])
-        or (
-            food_product_group == "Produce"
-            and token in ["whole", "peeled", "kosher", "gluten free"]
-        )
-        or (
-            food_product_group == "Seafood" and token in ["seasoned", "stuffed", "lime"]
-        )
+        or (food_product_group == "Produce" and token in ["whole", "peeled", "kosher", "gluten free"])
+        or (food_product_group == "Seafood" and token in ["seasoned", "stuffed", "lime"])
         or (
             food_product_group == "Condiments & Snacks"
             and token in ["shredded", "non-dairy"]
@@ -177,16 +160,9 @@ def token_handler(token, row):
             or (basic_type == "bean" and token == "turtle")
             or (basic_type == "supplement" and token == "liquid")
             or (basic_type == "bar" and token in ["cereal", "cocoa", "seed"])
-            or (
-                basic_type == "ice cream"
-                and token in ["crunch", "taco", "chocolate covered", "cookie"]
-            )
+            or (basic_type == "ice cream" and token in ["crunch", "taco", "chocolate covered", "cookie"])
             or (basic_type == "salsa" and token in ["thick", "chunky", "mild"])
-            or (
-                food_product_category == "Grain Products"
-                and basic_type not in ["cereal"]
-                and token == "wheat"
-            )
+            or (food_product_category == "Grain Products" and basic_type not in ["cereal"] and token == "wheat")
             or (basic_type == "condiment" and token in ["thick", "thin", "sweet"])
             or (basic_type == "cookie" and token in ["sugar"])
             or (basic_type == "dessert" and token in ["crumb", "graham cracker"])
@@ -205,9 +181,7 @@ def token_handler(token, row):
             )
             and token in ALL_FLAVORS
         )
-        or (
-            basic_type == "bar" and token in FLAVORS
-        )  # TODO: this doesn't work since sub-type 1 is bar
+        or (basic_type == "bar" and token in FLAVORS)  # TODO: this doesn't work since sub-type 1 is bar
         or (food_product_group == "Seafood" and token in FLAVORS)
     ):
         return "flavored", row
@@ -272,9 +246,7 @@ def token_handler(token, row):
         return "nut", row
 
     # Relabel cheese type as "cheese"
-    if (
-        food_product_group == "Meals" or basic_type == "snack"
-    ) and token in CHEESE_TYPES:
+    if (food_product_group == "Meals" or basic_type == "snack") and token in CHEESE_TYPES:
         return "cheese", row
 
     # Map chocolate tokens to "chocolate" for candy
@@ -568,19 +540,13 @@ def clear_row(row):
 def postprocess_data(row):
     ### Handle edge cases for mislabeled data ###
     # "spice" is always "Condiments & Snacks"
-    if (
-        row["Basic Type"] == "spice"
-        and row["Food Product Group"] != "Condiments & Snacks"
-    ):
+    if row["Basic Type"] == "spice" and row["Food Product Group"] != "Condiments & Snacks":
         row["Food Product Group"] = "Condiments & Snacks"
         row["Food Product Category"] = "Condiments & Snacks"
         row["Primary Product Category"] = "Condiments & Snacks"
 
     # Handle "chili" as Basic Type
-    if (
-        row["Basic Type"] == "chili"
-        and row["Food Product Group"] == "Condiments & Snacks"
-    ):
+    if row["Basic Type"] == "chili" and row["Food Product Group"] == "Condiments & Snacks":
         row["Basic Type"] = "spice"
         row = add_subtypes(row, "chili", first=True)
         return row
@@ -634,15 +600,11 @@ def process_data(df_cgfp, smoke_test=SMOKE_TEST, **options):
         lambda row: ", ".join(row[NORMALIZED_COLUMNS].dropna().astype(str)),
         axis=1,
     )
-    df_normalized["Sub-Types"] = df_normalized["Sub-Types"].apply(
-        lambda x: str(list(x))
-    )
+    df_normalized["Sub-Types"] = df_normalized["Sub-Types"].apply(lambda x: str(list(x)))
 
     df_diff = df_cgfp["Product Name"].compare(df_normalized["Normalized Name"])
     df_diff["Product Type"] = df_cgfp["Product Type"]
-    df_diff = df_diff[
-        ["Product Type"] + [col for col in df_diff.columns if col != "Product Type"]
-    ]
+    df_diff = df_diff[["Product Type"] + [col for col in df_diff.columns if col != "Product Type"]]
     df_diff = df_diff.sort_values(by="self")
 
     # Reset index for future sorting
@@ -678,14 +640,10 @@ def process_data(df_cgfp, smoke_test=SMOKE_TEST, **options):
         "Sub-Type 2",
     ]
 
-    df_scoring = df_normalized.drop(columns=["Product Name"]).rename(
-        columns={"Normalized Name": "Product Name"}
-    )
+    df_scoring = df_normalized.drop(columns=["Product Name"]).rename(columns={"Normalized Name": "Product Name"})
     df_scoring = df_scoring[ADDITIONAL_COLUMNS + COLUMNS_ORDER]
 
-    df_normalized = df_normalized[COLUMNS_ORDER + ["Sub-Types"]].sort_values(
-        by=TAGS_SORT_ORDER
-    )
+    df_normalized = df_normalized[COLUMNS_ORDER + ["Sub-Types"]].sort_values(by=TAGS_SORT_ORDER)
 
     # return processed assets to main
     return df_normalized, misc, df_diff, df_scoring
@@ -735,11 +693,7 @@ def main(argv):
         del counts_dict[col]
 
     counts_dict["Sub-Types"] = pd.Series(
-        dict(
-            sorted(
-                combined_subtype_counts.items(), key=lambda item: item[1], reverse=True
-            )
-        )
+        dict(sorted(combined_subtype_counts.items(), key=lambda item: item[1], reverse=True))
     )
 
     sorted_counts_dict = {}
