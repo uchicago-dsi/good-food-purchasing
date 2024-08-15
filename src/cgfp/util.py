@@ -1,12 +1,9 @@
-from pathlib import Path
 import os
+from pathlib import Path
 
 import pandas as pd
 
-from cgfp.constants.pipeline_constants import RUN_FOLDER, CLEAN_FILE_PREFIX
-
-
-# Files
+from cgfp.constants.pipeline_constants import CLEAN_FILE_PREFIX, RUN_FOLDER
 
 
 def load_to_pd(raw_data: str, input_file: str, **options):
@@ -17,11 +14,7 @@ def load_to_pd(raw_data: str, input_file: str, **options):
     INPUT_PATH = Path(raw_data) / input_file
     if not INPUT_PATH.exists():
         raise GoodFoodDataException(f"Could not find input file {INPUT_PATH}")
-    df = (
-        pd.read_excel(INPUT_PATH)
-        if INPUT_PATH.suffix in [".xls", ".xlsx"]
-        else pd.read_csv(INPUT_PATH)
-    )
+    df = pd.read_excel(INPUT_PATH) if INPUT_PATH.suffix in [".xls", ".xlsx"] else pd.read_csv(INPUT_PATH)
     return df
 
 
