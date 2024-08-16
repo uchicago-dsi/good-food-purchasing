@@ -127,7 +127,7 @@ def clean_df(df_cgfp: pd.DataFrame, str_len_threshold: int = 3) -> pd.DataFrame:
 
 
 def token_handler(token: str, row: pd.Series) -> Tuple[Optional[str], pd.Series]:
-    """Handles token processing for specific edge cases in a data row.
+    """Handles token processing for specific edge cases
 
     Args:
         token: The token to be processed.
@@ -293,7 +293,7 @@ def token_handler(token: str, row: pd.Series) -> Tuple[Optional[str], pd.Series]
         return "ss", row
 
     # Skip outdated tokens from old name normalization format
-    # Do this last since some rules override this
+    # Note: Do this last since some rules override this
     if token in SKIP_TOKENS:
         return None, row
     return token, row
@@ -772,7 +772,9 @@ def process_data(df_cgfp, smoke_test=SMOKE_TEST, **options):
         "Sub-Type 2",
     ]
 
-    df_scoring = df_normalized.drop(columns=["Product Name"]).rename(columns={"Normalized Name": "Product Name"})
+    df_scoring = df_normalized.drop(columns=["Product Name"]).rename(
+        columns={"Normalized Name": "Product Name", "Origin Detail": "Producer/Processor"}
+    )
     df_scoring = df_scoring[ADDITIONAL_COLUMNS + COLUMNS_ORDER]
 
     df_normalized = df_normalized[COLUMNS_ORDER].sort_values(by=TAGS_SORT_ORDER)
@@ -800,7 +802,6 @@ def main(argv):
     df_processed, misc, df_diff, df_scoring = process_data(df_loaded, **options)
 
     # output
-    # TODO: I...don't get this
     print("Saving files...")
     save_pd_to_csv(df_processed, **options)
     save_pd_to_csv(
@@ -857,4 +858,5 @@ def main(argv):
 if __name__ == "__main__":
     import sys
 
+    # Note: Passes any args to main where they are parsed
     main(sys.argv[1:])
