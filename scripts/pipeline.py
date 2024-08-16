@@ -387,11 +387,12 @@ def remove_subtypes(row: dict, tokens: Union[str, List[str]]) -> dict:
     return row
 
 
-def update_subtypes(row: dict) -> dict:
+def update_subtypes(row: dict, num_subtype_cols: int = 2) -> dict:
     """Updates row with subtypes in individual columns
 
     Args:
         row: The row to update.
+        num_subtype_cols: The number of subtype columns
 
     Returns:
         The updated row with subtypes distributed across the appropriate columns.
@@ -405,7 +406,7 @@ def update_subtypes(row: dict) -> dict:
         else:
             # Not enough room!
             break
-    row["Misc"] = list(row["Sub-Types"])[2:] if len(row["Sub-Types"]) > 2 else []
+    row["Misc"] = list(row["Sub-Types"])[num_subtype_cols:] if len(row["Sub-Types"]) > num_subtype_cols else []
     return row
 
 
