@@ -173,13 +173,8 @@ VEGETABLES = {
     "onion",
     "green bean",
     "wax bean",
+    "edamame",
 }
-
-# TODO: make sure this ends up correct PEAS AND CARROTS. FROZEN,  APPROX 2-1/2 LB. PKG.	vegetable, blend, pea, carrot, frozen	vegetable, blend, pea, frozen
-# TODO: The issue may actually be the "vegetable blend"  basic type?
-
-# TODO: edamame?
-# VEG BLEND EDAMAME SUCCOTASH	vegetable, blend, edamame, succotash	vegetable, blend, edamame
 
 NUTS = {"almond", "cashew", "pecan", "pistachio"}
 

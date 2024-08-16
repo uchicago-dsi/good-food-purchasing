@@ -405,16 +405,19 @@ def update_subtypes(row: dict, num_subtype_cols: int = 2) -> dict:
     Returns:
         The updated row with subtypes distributed across the appropriate columns.
     """
-    # TODO: maybe you can zip this with the sub-type columns?
-    for i, subtype in enumerate(row["Sub-Types"]):
-        if i == 0:
-            row["Sub-Type 1"] = subtype
-        elif i == 1:
-            row["Sub-Type 2"] = subtype
+    subtypes = list(row["Sub-Types"])
+
+    for i in range(num_subtype_cols):
+        subtype_col = f"Sub-Type {i + 1}"
+        if i < len(subtypes):
+            row[subtype_col] = subtypes[i]
+        # Note: Clear extra subtypes (edge case for postprocessing rules)
         else:
-            # Not enough room!
-            break
+            row[subtype_col] = None
+
+    # Assign the remaining subtypes to "Misc"
     row["Misc"] = list(row["Sub-Types"])[num_subtype_cols:] if len(row["Sub-Types"]) > num_subtype_cols else []
+
     return row
 
 
@@ -510,8 +513,9 @@ def postprocess_subtypes(row: dict, subtype_mapping: dict = SUBTYPE_REPLACEMENT_
     # TODO: Make this robust to subtype changes, change to subtype 3, etc.
     # Count occurrences of each category
     category_counts = {}
-    for subtype in SUBTYPE_COLUMNS:
-        category = get_category(row[subtype])
+    # for subtype in SUBTYPE_COLUMNS:
+    for subtype in row["Sub-Types"]:
+        category = get_category(subtype)
         if category:
             if category in category_counts:
                 category_counts[category] += 1
@@ -522,21 +526,23 @@ def postprocess_subtypes(row: dict, subtype_mapping: dict = SUBTYPE_REPLACEMENT_
     # Replace subtypes if more than one belongs to the same category
     for category, count in category_counts.items():
         if count > 1:
+            # Note: use "fruit" if fruit is not the category, otherwise use "blend"
             if category == "fruit" and row["Food Product Category"] == "Fruit":
                 replacement_value = "blend"
             else:
                 replacement_value = subtype_mapping.get(category)
 
+            subtypes_to_remove = set()
             replaced = False
-            for subtype in SUBTYPE_COLUMNS:
-                if get_category(row[subtype]) == category:
-                    row["Sub-Types"].discard(row[subtype])
+            for subtype in list(row["Sub-Types"]):  # Iterate over a copy to avoid mutation issues
+                if get_category(subtype) == category:
+                    subtypes_to_remove.add(subtype)
                     if not replaced:
                         row["Sub-Types"].add(replacement_value)
-                        row[subtype] = replacement_value
                         replaced = True
-                    else:
-                        row[subtype] = None
+
+            # Remove subtypes after iteration
+            row["Sub-Types"].difference_update(subtypes_to_remove)
     row = update_subtypes(row)
     return row
 
