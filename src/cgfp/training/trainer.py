@@ -6,16 +6,19 @@ from typing import Any
 
 import numpy as np
 import torch
-from cgfp.constants.training_constants import BASIC_TYPE_IDX
-from cgfp.inference.inference import test_inference
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 from torch.nn.functional import sigmoid
 from transformers import Trainer, TrainerCallback
 from transformers.trainer_utils import EvalPrediction
 
+from cgfp.inference.inference import test_inference
+
 
 def compute_metrics(
-    pred: Any, model: str, threshold: float = 0.5, basic_type_idx: int = BASIC_TYPE_IDX
+    # pred: Any, model: str, threshold: float = 0.5, basic_type_idx: int = BASIC_TYPE_IDX
+    pred: Any,
+    model: str,
+    threshold: float = 0.5,
 ) -> dict[str, Any]:
     """Extracts the predictions and labels for each task and computes metrics.
 
@@ -32,8 +35,8 @@ def compute_metrics(
     Args:
         pred: The predictions and labels from the model, structure depends on the model type.
         model: The name of the model being used ("distilbert" or "roberta").
-        threshold: The threshold to apply for binary classification tasks. Defaults to 0.5.
-        basic_type_idx: The index of the basic type to use for evaluation. Defaults to BASIC_TYPE_IDX.
+        threshold: The threshold to apply for binary classification tasks
+        basic_type_idx: The index of the basic type to use for evaluation
 
     Returns:
         A dictionary containing the computed metrics for each task.
