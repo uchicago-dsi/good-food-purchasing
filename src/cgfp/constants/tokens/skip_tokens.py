@@ -1,3 +1,5 @@
+"""Defines a set of tokens to skip during CGFP pipeline"""
+
 SKIP_TOKENS = {
     ## GENERAL ##
     "organic",
@@ -63,7 +65,6 @@ SKIP_TOKENS = {
     "mini",
     "snack",
     ## PRODUCE ##
-    "with pits",
     "cob",
     ## SAUSAGE TYPES ##
     "andouille",
@@ -112,7 +113,6 @@ SKIP_TOKENS = {
     "penne rigate",
     "pennette",
     "rigate",
-    "rigatoni",
     "rotini",
     "shell",
     "spaetzle",
@@ -298,7 +298,6 @@ SKIP_TOKENS = {
     "hock",
     "holiday variety",
     "home fry",
-    "homestyle",
     "no sauce",
     "no top",
     "no tops",
@@ -349,7 +348,6 @@ SKIP_TOKENS = {
     "ginger spice",
     "gingerbread",
     "gingersnap",
-    "granulated",
     "alegria",
     "cotton",
     "devil's food",

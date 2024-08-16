@@ -1,3 +1,5 @@
+"""Defines a mapping dictionary for typos and inconsistencies in CGFP data pipeline"""
+
 # TODO: Maybe I should pull out some of the common mappings like "cut" and include some sort of set membership check
 TOKEN_MAP_DICT = {
     ## TYPOS ##

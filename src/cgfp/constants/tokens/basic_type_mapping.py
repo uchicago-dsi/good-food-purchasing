@@ -1,3 +1,5 @@
+"""Defines basic type mappings for specific tokens in CGFP tagging system"""
+
 from cgfp.constants.tokens.tag_sets import NUTS
 
 BASIC_TYPE_MAPPING = {

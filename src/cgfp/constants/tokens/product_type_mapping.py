@@ -1,3 +1,5 @@
+"""Defines product type mappings for edge cases in CGFP tagging system"""
+
 PRODUCT_TYPE_MAPPING = {
     "HAWAIIAN PUNCH CANS": {"Basic Type": "drink", "Sub-Types": ["fruit punch"]},
     "Concentrate Chipotle S/O": {"Basic Type": "chipotle", "Shape": "concentrate"},
