@@ -772,10 +772,10 @@ def process_data(df_cgfp, smoke_test=SMOKE_TEST, **options):
         "Sub-Type 2",
     ]
 
-    df_scoring = df_normalized.drop(columns=["Product Name"]).rename(
-        columns={"Normalized Name": "Product Name", "Origin Detail": "Producer/Processor"}
-    )
+    df_scoring = df_normalized.drop(columns=["Product Name"]).rename(columns={"Normalized Name": "Product Name"})
     df_scoring = df_scoring[ADDITIONAL_COLUMNS + COLUMNS_ORDER]
+    # Note: Hacky rename to match scoring platform without changing ADDITIONAL_COLUMNS
+    df_scoring = df_scoring.rename(columns={"Origin Detail": "Producer/Processor"})
 
     df_normalized = df_normalized[COLUMNS_ORDER].sort_values(by=TAGS_SORT_ORDER)
 

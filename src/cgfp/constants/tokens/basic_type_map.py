@@ -4,6 +4,9 @@ from cgfp.constants.tokens.tag_sets import NUTS
 
 BASIC_TYPE_MAP = {
     "sea salt": {"Basic Type": "salt"},
+    "apple. Gala": {"Basic Type": "apple", "Sub-Types": "gala"},
+    "apple. gala": {"Basic Type": "apple", "Sub-Types": "gala"},
+    "apple golden delicious": {"Basic Type": "apple", "Sub-Types": "golden delicious"},
     "almond": {"Basic Type": "nut", "Sub-Types": "almond"},
     "baba ganoush": {"Basic Type": "spread", "Sub-Types": "baba ganoush"},
     "baklava": {"Basic Type": "pastry", "Sub-Types": "baklava"},
@@ -65,6 +68,7 @@ BASIC_TYPE_MAP = {
     "trail mix": {"Basic Type": "snack", "Sub-Types": "trail mix"},
     "turnip greens": {"Basic Type": "turnip", "Sub-Types": "greens"},
     "vegetable mix": {"Basic Type": "vegetable", "Sub-Types": "blend"},
+    "vegetable blend": {"Basic Type": "vegetable", "Sub-Types": "blend"},
     "whipped cream": {"Basic Type": "topping", "Sub-Types": "whipped cream"},
     "cantaloupe": {"Basic Type": "melon", "Sub-Types": "cantaloupe"},
     "blend": {"Basic Type": "vegetable", "Sub-Types": "blend"},

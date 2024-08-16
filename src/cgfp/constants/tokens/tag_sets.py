@@ -68,8 +68,6 @@ FLAVORS = {
     "mint",
     ## SNACKS ##
     "chocolate",
-    ### TODO: What should I do with the other subtypes, etc?
-    # Should I migrate those from the token map or?
     "glacier freeze",
 }
 
@@ -139,7 +137,6 @@ FLAVORED_BASIC_TYPES = {
 #  YOGURT ASSORTED RASPBERRY/PEACH L/F G/F	yogurt, rapsberry, peach, low fat	yogurt, rapsberry, flavored, low fat
 
 ### SHAPE ###
-# TODO: Document the logic here
 
 SKIP_SHAPE = {"chip", "candy"}
 
@@ -210,7 +207,6 @@ SUBTYPE_REPLACEMENT_MAP = {
 }
 
 ### MISC ###
-# TODO: is this ok?
 CHOCOLATE = {"dark chocolate", "chocolate covered"}
 
 CORN_CERAL = {
@@ -229,7 +225,7 @@ WHEAT_CEREAL = {
     "fruit whirls",
 }
 
-OAT_CEREAL = {"fruity cheerios"}
+OAT_CEREAL = {"fruity cheerios", "cheerios"}
 
 FRUIT_SNACKS = {
     "fruit roll up",

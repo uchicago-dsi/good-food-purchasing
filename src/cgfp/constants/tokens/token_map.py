@@ -1,6 +1,5 @@
 """Defines a mapping dictionary for typos and inconsistencies in CGFP data pipeline"""
 
-# TODO: Maybe I should pull out some of the common mappings like "cut" and include some sort of set membership check
 TOKEN_MAP_DICT = {
     ## TYPOS ##
     "talpia": "tilapia",
@@ -26,9 +25,6 @@ TOKEN_MAP_DICT = {
     "peeled & deveined": "peeled and deveined",
     "mangu": "mango",
     "siced": "sliced",
-    "apple golden delicious": "apple",
-    "apple. Gala": "apple",
-    "apple. gala": "apple",  # TODO: apple type is allowed so handle these differently
     "bicsuit": "biscuit",
     "brussel": "brussels sprout",
     "brussel spout": "brussels sprout",
@@ -98,12 +94,11 @@ TOKEN_MAP_DICT = {
     "decaffienated": "decaffeinated",
     "decaffinated": "decaffeinated",
     "decafienated": "decaffeinated",
-    # TODO: red ti leaf
     ## INCONSISTENCIES ##
     "cheeks": "cheek",
     "cheez it": "cheez-it",
     "cheez-its": "cheez-it",
-    "non-fat": "nonfat",  # TODO: which do we want to do? Make sure to change the misc tags
+    "non-fat": "nonfat",
     "skin-on": "skin on",
     "carrots": "carrot",
     "gluten-free": "gluten free",
@@ -247,10 +242,10 @@ TOKEN_MAP_DICT = {
     ## SMOKED ##
     "pecanwood smoked": "smoked",
     ## MIXED VEGGIES ##
-    "vegetable blend": "vegetable",  # TODO: maybe we need this in basic type handler
     "vegetable cup": "vegetable",
     ## PASTA TYPES ##
     "penne rigate": "pasta",
+    "rigatoni": "pasta",
     ## PASTRIES ##
     "sweet roll": "pastry",
     ## DIETARY CONCERN ##
