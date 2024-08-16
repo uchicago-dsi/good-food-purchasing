@@ -49,16 +49,10 @@ tqdm.pandas()
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 DATA_DIR = SCRIPT_DIR / "../data"
+RAW_DIR = DATA_DIR / "raw"
 
 with Path.open(SCRIPT_DIR / "config_pipeline.yaml") as file:
     config = yaml.safe_load(file)
-
-# DEFAULT_INPUT_FILE = "CONFIDENTIAL_CGFP bulk data_073123.xlsx"
-# DEFAULT_MISC_FILE = "misc.csv"
-# CLEAN_FILE_PREFIX = "clean_"
-
-# TODO: Set up a config or something
-# SMOKE_TEST = False
 
 SMOKE_TEST = config["config"]["smoke_test"]
 DEFAULT_INPUT_FILE = config["input_data"]["input_file"]
@@ -72,16 +66,17 @@ def create_parser() -> argparse.ArgumentParser:
     Returns:
         The configured argument parser.
     """
+    clean_folder = DATA_DIR / "clean"
     parser = argparse.ArgumentParser(description="Process some files.")
     parser.add_argument("--input_file", default=DEFAULT_INPUT_FILE, help="Input file path")
-    parser.add_argument("--clean_folder", default=DATA_DIR / "clean", help="")
+    parser.add_argument("--clean_folder", default=clean_folder, help="")
     parser.add_argument(
         "--clean_file",
         default=None,
         help="Clean file path. If not specified, it will be automatically generated based on the input file.",
     )
     parser.add_argument("--misc_file", default=DEFAULT_MISC_FILE, help="Miscellaneous file path")
-    parser.add_argument("--raw_data", default="./data/raw/", help="Relative path to raw data directory")
+    parser.add_argument("--raw_data", default=RAW_DIR, help="Relative path to raw data directory")
     parser.add_argument("--disable-output", action="store_false", dest="do_write_output", default=True)
     return parser
 
@@ -797,7 +792,6 @@ def main(argv):
     """
     # input
     parser = create_parser()
-    # TODO: wait what is this doing?
     options = vars(parser.parse_args(argv))
 
     # processing
