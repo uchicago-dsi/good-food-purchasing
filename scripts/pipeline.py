@@ -2,9 +2,11 @@
 
 import argparse
 from collections import defaultdict
+from pathlib import Path
 from typing import List, Optional, Tuple, Union
 
 import pandas as pd
+import yaml
 from ordered_set import OrderedSet
 from tqdm import tqdm
 
@@ -45,12 +47,23 @@ from cgfp.util import load_to_pd, save_pd_to_csv
 
 tqdm.pandas()
 
-DEFAULT_INPUT_FILE = "CONFIDENTIAL_CGFP bulk data_073123.xlsx"
-DEFAULT_MISC_FILE = "misc.csv"
-CLEAN_FILE_PREFIX = "clean_"
+SCRIPT_DIR = Path(__file__).resolve().parent
+DATA_DIR = SCRIPT_DIR / "../data"
+
+with Path.open(SCRIPT_DIR / "config_pipeline.yaml") as file:
+    config = yaml.safe_load(file)
+
+# DEFAULT_INPUT_FILE = "CONFIDENTIAL_CGFP bulk data_073123.xlsx"
+# DEFAULT_MISC_FILE = "misc.csv"
+# CLEAN_FILE_PREFIX = "clean_"
 
 # TODO: Set up a config or something
-SMOKE_TEST = False
+# SMOKE_TEST = False
+
+SMOKE_TEST = config["config"]["smoke_test"]
+DEFAULT_INPUT_FILE = config["input_data"]["input_file"]
+DEFAULT_MISC_FILE = config["output_data"]["misc_file"]
+CLEAN_FILE_PREFIX = config["output_data"]["clean_file_prefix"]
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -61,7 +74,7 @@ def create_parser() -> argparse.ArgumentParser:
     """
     parser = argparse.ArgumentParser(description="Process some files.")
     parser.add_argument("--input_file", default=DEFAULT_INPUT_FILE, help="Input file path")
-    parser.add_argument("--clean_folder", default="./data/clean/", help="")
+    parser.add_argument("--clean_folder", default=DATA_DIR / "clean", help="")
     parser.add_argument(
         "--clean_file",
         default=None,

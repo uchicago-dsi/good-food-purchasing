@@ -9,11 +9,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import torch
+import wandb
 import yaml
-from cgfp.constants.training_constants import LABELS
-from cgfp.inference.inference import inference_handler, test_inference
-from cgfp.training.models import MultiTaskConfig, MultiTaskModel
-from cgfp.training.trainer import MultiTaskTrainer, SaveBestModelCallback, compute_metrics
 from datasets import Dataset
 from sklearn.preprocessing import LabelEncoder
 from torch.optim import AdamW
@@ -26,7 +23,10 @@ from transformers import (
     TrainingArguments,
 )
 
-import wandb
+from cgfp.constants.training_constants import LABELS
+from cgfp.inference.inference import inference_handler, test_inference
+from cgfp.training.models import MultiTaskConfig, MultiTaskModel
+from cgfp.training.trainer import MultiTaskTrainer, SaveBestModelCallback, compute_metrics
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
