@@ -17,9 +17,9 @@ from cgfp.constants.pipeline_constants import (
     RUN_FOLDER,
     SUBTYPE_COLUMNS,
 )
-from cgfp.constants.tokens.basic_type_mapping import BASIC_TYPE_MAPPING
+from cgfp.constants.tokens.basic_type_map import BASIC_TYPE_MAP
 from cgfp.constants.tokens.misc_tags import NON_SUBTYPE_TAGS_FPC
-from cgfp.constants.tokens.product_type_mapping import PRODUCT_TYPE_MAPPING
+from cgfp.constants.tokens.product_type_map import PRODUCT_TYPE_MAP
 from cgfp.constants.tokens.skip_tokens import SKIP_TOKENS
 from cgfp.constants.tokens.tag_sets import (
     ALL_FLAVORS,
@@ -36,7 +36,7 @@ from cgfp.constants.tokens.tag_sets import (
     SHAPE_EXTRAS,
     SKIP_FLAVORS,
     SKIP_SHAPE,
-    SUBTYPE_REPLACEMENT_MAPPING,
+    SUBTYPE_REPLACEMENT_MAP,
     VEGETABLES,
     WHEAT_CEREAL,
 )
@@ -317,7 +317,7 @@ def basic_type_handler(row):
     Returns:
         The modified row with updates based on the "Basic Type" mapping.
     """
-    mapping = BASIC_TYPE_MAPPING.get(row["Basic Type"], None)
+    mapping = BASIC_TYPE_MAP.get(row["Basic Type"], None)
 
     if mapping is None:
         return row
@@ -489,11 +489,12 @@ def subtype_handler(row: dict, token: str) -> Tuple[Optional[str], dict]:
     return token, row
 
 
-def postprocess_subtypes(row: dict) -> dict:
+def postprocess_subtypes(row: dict, subtype_mapping: dict = SUBTYPE_REPLACEMENT_MAP) -> dict:
     """Applies postprocessing rules to the subtypes in the row.
 
     Args:
         row: The row to process.
+        subtype_mapping: A dictionary that maps subtypes to replacement values.
 
     Returns:
         The processed row
@@ -516,7 +517,7 @@ def postprocess_subtypes(row: dict) -> dict:
             if category == "fruit" and row["Food Product Category"] == "Fruit":
                 replacement_value = "blend"
             else:
-                replacement_value = SUBTYPE_REPLACEMENT_MAPPING.get(category)
+                replacement_value = subtype_mapping.get(category)
 
             replaced = False
             for subtype in SUBTYPE_COLUMNS:
@@ -532,25 +533,26 @@ def postprocess_subtypes(row: dict) -> dict:
     return row
 
 
-def clean_name(row: dict) -> dict:
+def clean_name(row: dict, product_type_map: dict = PRODUCT_TYPE_MAP) -> dict:
     """Cleans and processes the "Product Name" in the row by handling edge cases, assigning tags, and updating subtypes based on predefined rules.
 
     Args:
         row: The row to clean and process.
+        product_type_map: A dictionary that maps cases for Product Type to specific tags
 
     Returns:
         The updated row with cleaned and normalized values.
     """
-    # Note: Need to add "Sub-Types" to the row first thing
+    # Note: Need to add "Sub-Types" column first so it always exists
     row["Sub-Types"] = OrderedSet()
 
     # Handle product type edge cases — short-circuit if a mapping exists
-    if row["Product Type"] in PRODUCT_TYPE_MAPPING:
-        mapping = PRODUCT_TYPE_MAPPING[row["Product Type"]]
-        for key, value in mapping.items():
+    if row["Product Type"] in product_type_map:
+        output = product_type_map[row["Product Type"]]
+        for key, value in output.items():
             if key != "Sub-Types":
                 row[key] = value
-        subtypes = mapping.get("Sub-Types", [])
+        subtypes = output.get("Sub-Types", [])
         row = add_subtypes(row, subtypes)
         row = update_subtypes(row)
         return row
@@ -765,7 +767,7 @@ def process_data(df_cgfp, smoke_test=SMOKE_TEST, **options):
     df_scoring = df_normalized.drop(columns=["Product Name"]).rename(columns={"Normalized Name": "Product Name"})
     df_scoring = df_scoring[ADDITIONAL_COLUMNS + COLUMNS_ORDER]
 
-    df_normalized = df_normalized[COLUMNS_ORDER + ["Sub-Types"]].sort_values(by=TAGS_SORT_ORDER)
+    df_normalized = df_normalized[COLUMNS_ORDER].sort_values(by=TAGS_SORT_ORDER)
 
     # return processed assets to main
     return df_normalized, misc, df_diff, df_scoring

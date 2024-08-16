@@ -202,7 +202,7 @@ CHEESE_TYPES = {
 
 MELON_TYPES = {"cantaloupe", "honeydew", "watermelon", "galia"}
 
-SUBTYPE_REPLACEMENT_MAPPING = {
+SUBTYPE_REPLACEMENT_MAP = {
     "fruit": "fruit",
     "cheese": "blend",
     "vegetable": "blend",

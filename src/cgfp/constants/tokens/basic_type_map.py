@@ -2,7 +2,7 @@
 
 from cgfp.constants.tokens.tag_sets import NUTS
 
-BASIC_TYPE_MAPPING = {
+BASIC_TYPE_MAP = {
     "sea salt": {"Basic Type": "salt"},
     "almond": {"Basic Type": "nut", "Sub-Types": "almond"},
     "baba ganoush": {"Basic Type": "spread", "Sub-Types": "baba ganoush"},
@@ -97,4 +97,4 @@ BASIC_TYPE_MAPPING = {
 
 # Note: Do this separately since there is other tagging logic for all nut tags
 for nut in NUTS:
-    BASIC_TYPE_MAPPING[nut] = {"Basic Type": "nut", "Sub-Types": nut}
+    BASIC_TYPE_MAP[nut] = {"Basic Type": "nut", "Sub-Types": nut}
