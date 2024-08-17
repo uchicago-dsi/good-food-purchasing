@@ -10,11 +10,12 @@ import numpy as np
 import pandas as pd
 import torch
 import yaml
+from torch.nn.functional import sigmoid
+from transformers import DistilBertTokenizerFast
+
 from cgfp.constants.tokens.misc_tags import FPG2FPC
 from cgfp.constants.training_constants import lower2label
 from cgfp.training.models import MultiTaskModel
-from torch.nn.functional import sigmoid
-from transformers import DistilBertTokenizerFast
 
 logger = logging.getLogger("inference_logger")
 logger.setLevel(logging.INFO)

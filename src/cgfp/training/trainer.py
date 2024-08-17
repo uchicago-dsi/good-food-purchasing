@@ -15,7 +15,6 @@ from cgfp.inference.inference import test_inference
 
 
 def compute_metrics(
-    # pred: Any, model: str, threshold: float = 0.5, basic_type_idx: int = BASIC_TYPE_IDX
     pred: Any,
     model: str,
     threshold: float = 0.5,
