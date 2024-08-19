@@ -73,14 +73,16 @@ We have infrastructure to train both RoBERTa and DistilBERT models.
 To get good results for all columns, we need to do a multi-stage fine-tuning process.
 
 - First, clean a dataset using the [data pipeline](#pipeline). Upload this dataset to wherever you'll be training your model.
-- Upload a validation set and a test set as well
+- Upload a validation set and a test set
+  - [Validation set](https://docs.google.com/spreadsheets/d/1pyEBLXbNEDH4D0k7y94jR3pG2z29qgxD3Iqmyfjiblc/edit?usp=sharing)
+  - [Test set](https://docs.google.com/spreadsheets/d/1em0DvmnjTu3h7NfTjf1DdJtl8axuLeL3/edit?usp=sharing&ouid=114633865943391212776&rtpof=true&sd=true) (Note: this is not a "true" test set, but is used at the end of training to run inference with the trained model)
 - Update ```scripts/config_train.yaml``` with the location of your training, validation, and testing datasets and the location where you'd like to save your models
   - You can also choose training options in this yaml file. Most of the defaults should work well.
 - Build the conda environment in ```environment.yaml```
 ```bash 
 conda env create -f environment.yml
 ```
-- If you are using the UChicago DSI cluster, set up a ```slurm``` script. Example script:
+- If you are using the UChicago DSI cluster, set up a ```slurm``` script. Here's an example script:
 ```
 #!/usr/bin/bash
 #SBATCH --job-name=cgfp-train
@@ -98,4 +100,29 @@ make train
 
 ### Inference
 
+We will typically be running inference on a spreadsheet of food labels. The output is set up to match CGFP's name normalization helper.
+
+To run inference:
+- Load the model and tokenizer:
+```
+model = MultiTaskModel.from_pretrained("uchicago-dsi/cgfp-roberta")
+tokenizer = AutoTokenizer.from_pretrained("uchicago-dsi/cgfp-roberta")
+```
+- Use the ```inference_handler``` function:
+```
+inference_handler(model, tokenizer, input_path=INPUT_PATH, save_dir=DATA_DIR, device=device, sheet_name=SHEET_NUMBER, input_column="Product Type", assertion=True)
+```
+
+An example Colab notebook to run inference is [available here](https://colab.research.google.com/drive/1c8_WGWxeVCY60-luqWPiRPQr6omdbfzK?usp=sharing).
+
+#### Inference-Time Assertions
+
+The model occasionally makes absurd predictions. These are usually from inputs that are outside of anything it has seen during training. We can usually catch these by noticing when "Food Product Group", "Food Product Category" & "Primary Food Product Category" do not make sense together.
+
+If ```assertion=True``` is passed to ```inference_handler```, a blank row will be outupt for any prediction where any of the outputs for  "Food Product Group", "Food Product Category", and "Primary Food Product Category" are mismatched. Pass ```assertion=False``` to disable this behavior.
+
 ### Updating the Production Model
+
+We host the production versions of the models on huggingface at ```uchicago-dsi/cgfp-distilbert``` and ```uchicago-dsi/cgfp-roberta```.
+
+There are commands in the ```Makefile``` to update the models hosted on Huggingface. Make sure the performance on these is good and stable before updating since CGFP is actively using these models!
