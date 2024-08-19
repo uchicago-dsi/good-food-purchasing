@@ -98,6 +98,44 @@ make train
 ```
   - If you are not using the UChicago DSI cluster, activate the ```cgfp``` conda environment and run ```scripts/train.py```
 
+#### Multi-Stage Fine-Tuning
+
+To get good performance across tasks, we run a multi-stage fine-tuning process where we freeze and unfreeze the base model while also attaching different classification heads to the computation graph. We can configure all of this in the ```config_train.yaml```.
+
+We start by training the entire model on "Basic Type" while detaching all other classification heads from the computation graph (so they do not impact the representations from the base model). To do this, we set the following settings in ```config_train.yaml```:
+
+```
+model:
+  freeze_base: false
+  attached_heads:
+    - "Basic Type"
+```
+
+Next, we load the model trained on "Basic Type" only and train the full model on "Sub-Types".
+
+```
+model:
+  starting_checkpoint: path/to/basic/type/trained/model
+  freeze_base: false
+  attached_heads:
+    - "Sub-Types"
+```
+
+The results after these two steps are usually quite good.
+
+#### Training Just the Classification Heads
+
+If we have further cleaned the data and would like to just retrain the classification heads (without retraining the base model), we can train the model with the following settings:
+
+```
+model:
+  starting_checkpoint: path/to/fine/tuned/model
+  freeze_base: true
+  reset_classification_heads: true
+  attached_heads: null  # Doesn't matter since base is frozen
+```
+
+
 ### Inference
 
 We will typically be running inference on a spreadsheet of food labels. The output is set up to match CGFP's name normalization helper.
