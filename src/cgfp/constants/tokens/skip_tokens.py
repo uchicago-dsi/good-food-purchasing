@@ -1,3 +1,5 @@
+"""Defines a set of tokens to skip during CGFP pipeline"""
+
 SKIP_TOKENS = {
     ## GENERAL ##
     "organic",
@@ -31,8 +33,7 @@ SKIP_TOKENS = {
     ## BONELESS ##
     "boneless",
     ## CEREAL TYPES ##
-    "cheerios",  # TODO: wait, some cereal names are allowed?
-    "chex",
+    "chex",  # TODO: This can be multiple types of cereal
     "spooners",
     "kids stuff",
     "homestyle",
@@ -63,7 +64,6 @@ SKIP_TOKENS = {
     "mini",
     "snack",
     ## PRODUCE ##
-    "with pits",
     "cob",
     ## SAUSAGE TYPES ##
     "andouille",
@@ -112,7 +112,6 @@ SKIP_TOKENS = {
     "penne rigate",
     "pennette",
     "rigate",
-    "rigatoni",
     "rotini",
     "shell",
     "spaetzle",
@@ -298,7 +297,6 @@ SKIP_TOKENS = {
     "hock",
     "holiday variety",
     "home fry",
-    "homestyle",
     "no sauce",
     "no top",
     "no tops",
@@ -349,7 +347,6 @@ SKIP_TOKENS = {
     "ginger spice",
     "gingerbread",
     "gingersnap",
-    "granulated",
     "alegria",
     "cotton",
     "devil's food",

@@ -1,39 +1,53 @@
+"""Utils for CGFP pipline"""
+
 from pathlib import Path
-import os
 
 import pandas as pd
 
-from cgfp.constants.pipeline_constants import RUN_FOLDER, CLEAN_FILE_PREFIX
+from cgfp.constants.pipeline_constants import CLEAN_FILE_PREFIX, RUN_FOLDER
 
 
-# Files
+def load_to_pd(raw_data: str, input_file: str, **options) -> pd.DataFrame:
+    """Loads the data with minimal transformations and returns a DataFrame.
 
+    Assumes input data fits comfortably in memory.
 
-def load_to_pd(raw_data: str, input_file: str, **options):
-    """Loads the data with minimal transformations returning dataframe
+    Args:
+        raw_data: The directory containing the raw data.
+        input_file: The name of the input file.
+        **options: Additional keyword arguments for future extensions.
 
-    Assumes input data fits confortably in memory.
+    Returns:
+        The loaded DataFrame.
     """
     INPUT_PATH = Path(raw_data) / input_file
     if not INPUT_PATH.exists():
         raise GoodFoodDataException(f"Could not find input file {INPUT_PATH}")
-    df = (
-        pd.read_excel(INPUT_PATH)
-        if INPUT_PATH.suffix in [".xls", ".xlsx"]
-        else pd.read_csv(INPUT_PATH)
-    )
-    return df
+    df_raw = pd.read_excel(INPUT_PATH) if INPUT_PATH.suffix in [".xls", ".xlsx"] else pd.read_csv(INPUT_PATH)
+    return df_raw
 
 
 def save_pd_to_csv(
-    df: pd.DataFrame,
+    df,
     clean_folder,
     do_write_output,
     output_file=None,
     input_file=None,
     **options,
-):
-    """Writes dataframe to csv with given name or automatically based on input"""
+) -> None:
+    """Writes the DataFrame to a CSV file with the specified or automatically generated name.
+
+    Args:
+        df: The DataFrame to save.
+        clean_folder: The directory to save the cleaned data.
+        do_write_output: Flag to determine whether to write the output.
+        output_file: The name of the output file. If not provided, it will be generated based on the input file.
+        input_file: The name of the input file used to generate the output file name if output_file is not provided.
+        **options: Additional keyword arguments for future extensions.
+
+    Returns:
+        None
+    """
     if not output_file and not input_file:
         raise GoodFoodDataException(
             f"Not enough information to write data to {clean_folder}. Provide either output_file or input_file to be modified."
@@ -41,7 +55,10 @@ def save_pd_to_csv(
     if not output_file:
         output_file = CLEAN_FILE_PREFIX + input_file
 
-    filename, ext = os.path.splitext(output_file)
+    output_path = Path(output_file)
+    filename = output_path.stem
+    ext = output_path.suffix
+
     if ext.lower() != ".csv":
         output_file = filename + ".csv"
 
@@ -52,9 +69,6 @@ def save_pd_to_csv(
     clean_file_path = Path(str(clean_file_path).replace(" ", "_"))
     if do_write_output:
         df.to_csv(clean_file_path, index=False)
-
-
-# Exceptions
 
 
 class GoodFoodBaseException(RuntimeError):

@@ -1,3 +1,5 @@
+"""Define sets of tags that have special rules for token mapping for CGFP pipeline"""
+
 # More complicated conditional rules
 # TODO: Find rules for converting flavors to "flavored"
 # TODO: some of the cheese is incorrect in the dataset » or wait, this is all "milk & dairy"
@@ -47,8 +49,6 @@ FLAVORS = {
     "vinegar",
     "dill pickle",
     "jalapeno cheddar",
-    ## CONDIMENT (SYRUP, ETC.) ##
-    "maple",
     ## CEREAL ##
     "brown sugar",
     "apple cinnamon",
@@ -68,8 +68,6 @@ FLAVORS = {
     "mint",
     ## SNACKS ##
     "chocolate",
-    ### TODO: What should I do with the other subtypes, etc?
-    # Should I migrate those from the token map or?
     "glacier freeze",
 }
 
@@ -116,12 +114,9 @@ SKIP_FLAVORS = {
     "cracker",
     "dessert",
     "pastry",
-    "cracker",
     "cookie",
     "cake",
     "danish",
-    "pastry",
-    "dessert",
 }
 
 # For these basic types, tag anything that includes a FLAVORS tag as "flavored"
@@ -142,7 +137,6 @@ FLAVORED_BASIC_TYPES = {
 #  YOGURT ASSORTED RASPBERRY/PEACH L/F G/F	yogurt, rapsberry, peach, low fat	yogurt, rapsberry, flavored, low fat
 
 ### SHAPE ###
-# TODO: Document the logic here
 
 SKIP_SHAPE = {"chip", "candy"}
 
@@ -167,13 +161,11 @@ SHAPE_EXTRAS = {
 ### BLENDS/VARIETY/ETC ###
 # These are tags that should be relabeled if there are multiple tags from the same category
 
-
 # TODO: Maybe dynamically generate fruits and vegetables
 VEGETABLES = {
     "produce",
     "carrot",
     "cauliflower",
-    "carrot",
     "pea",
     "celery",
     "broccoli",
@@ -181,13 +173,8 @@ VEGETABLES = {
     "onion",
     "green bean",
     "wax bean",
+    "edamame",
 }
-
-# TODO: make sure this ends up correct PEAS AND CARROTS. FROZEN,  APPROX 2-1/2 LB. PKG.	vegetable, blend, pea, carrot, frozen	vegetable, blend, pea, frozen
-# TODO: The issue may actually be the "vegetable blend"  basic type?
-
-# TODO: edamame?
-# VEG BLEND EDAMAME SUCCOTASH	vegetable, blend, edamame, succotash	vegetable, blend, edamame
 
 NUTS = {"almond", "cashew", "pecan", "pistachio"}
 
@@ -207,7 +194,7 @@ CHEESE_TYPES = {
 
 MELON_TYPES = {"cantaloupe", "honeydew", "watermelon", "galia"}
 
-SUBTYPE_REPLACEMENT_MAPPING = {
+SUBTYPE_REPLACEMENT_MAP = {
     "fruit": "fruit",
     "cheese": "blend",
     "vegetable": "blend",
@@ -215,7 +202,6 @@ SUBTYPE_REPLACEMENT_MAPPING = {
 }
 
 ### MISC ###
-# TODO: is this ok?
 CHOCOLATE = {"dark chocolate", "chocolate covered"}
 
 CORN_CERAL = {
@@ -234,7 +220,7 @@ WHEAT_CEREAL = {
     "fruit whirls",
 }
 
-OAT_CEREAL = {"fruity cheerios"}
+OAT_CEREAL = {"fruity cheerios", "cheerios"}
 
 FRUIT_SNACKS = {
     "fruit roll up",

@@ -1,4 +1,5 @@
-# TODO: Maybe I should pull out some of the common mappings like "cut" and include some sort of set membership check
+"""Defines a mapping dictionary for typos and inconsistencies in CGFP data pipeline"""
+
 TOKEN_MAP_DICT = {
     ## TYPOS ##
     "talpia": "tilapia",
@@ -24,9 +25,6 @@ TOKEN_MAP_DICT = {
     "peeled & deveined": "peeled and deveined",
     "mangu": "mango",
     "siced": "sliced",
-    "apple golden delicious": "apple",
-    "apple. Gala": "apple",
-    "apple. gala": "apple",  # TODO: apple type is allowed so handle these differently
     "bicsuit": "biscuit",
     "brussel": "brussels sprout",
     "brussel spout": "brussels sprout",
@@ -48,7 +46,6 @@ TOKEN_MAP_DICT = {
     "pummelo": "pomelo",
     "rasberry": "raspberry",
     "shelll": "shell",
-    "stawberry": "strawberry",
     "tamato": "tomato",
     "1 island": "1000 island",
     "alfafa": "alfalfa",
@@ -97,12 +94,11 @@ TOKEN_MAP_DICT = {
     "decaffienated": "decaffeinated",
     "decaffinated": "decaffeinated",
     "decafienated": "decaffeinated",
-    # TODO: red ti leaf
     ## INCONSISTENCIES ##
     "cheeks": "cheek",
     "cheez it": "cheez-it",
     "cheez-its": "cheez-it",
-    "non-fat": "nonfat",  # TODO: which do we want to do? Make sure to change the misc tags
+    "non-fat": "nonfat",
     "skin-on": "skin on",
     "carrots": "carrot",
     "gluten-free": "gluten free",
@@ -161,7 +157,6 @@ TOKEN_MAP_DICT = {
     "autumn roasted": "cooked",
     "blanched": "cooked",
     "char-broiled": "cooked",
-    "charbroiled": "cooked",
     ## RENAME ##
     "aprium": "pluot",
     "banana pepper": "pepper",
@@ -196,7 +191,6 @@ TOKEN_MAP_DICT = {
     "crinkle cut": "cut",
     "florette": "cut",
     "filet": "cut",
-    "chunk": "cut",
     "portion": "cut",
     "rectangle": "cut",
     "coin": "cut",
@@ -219,7 +213,6 @@ TOKEN_MAP_DICT = {
     "parcooked": "cooked",
     "broiled": "cooked",
     "parbaked": "cooked",
-    "broiled": "cooked",
     "parfried": "cooked",
     "blackened": "cooked",
     "flame broiled": "cooked",
@@ -249,10 +242,10 @@ TOKEN_MAP_DICT = {
     ## SMOKED ##
     "pecanwood smoked": "smoked",
     ## MIXED VEGGIES ##
-    "vegetable blend": "vegetable",  # TODO: maybe we need this in basic type handler
     "vegetable cup": "vegetable",
     ## PASTA TYPES ##
     "penne rigate": "pasta",
+    "rigatoni": "pasta",
     ## PASTRIES ##
     "sweet roll": "pastry",
     ## DIETARY CONCERN ##

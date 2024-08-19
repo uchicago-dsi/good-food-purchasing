@@ -1,3 +1,5 @@
+"""Constans and configurations for the CGFP pipeline."""
+
 from datetime import datetime
 from pathlib import Path
 

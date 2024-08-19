@@ -1,0 +1,8 @@
+config:
+  smoke_test: false
+input_data:
+  input_file: "CONFIDENTIAL_CGFP bulk data_073123.xlsx"
+output_data:
+  misc_file: "misc.csv"
+  clean_file_prefix: "clean_"
+pipeline:

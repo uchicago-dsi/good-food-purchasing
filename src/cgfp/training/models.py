@@ -2,7 +2,7 @@
 
 import json
 import logging
-from typing import List, Union
+from typing import Any, List, Union
 
 import torch
 import torch.nn as nn
@@ -18,8 +18,16 @@ from transformers.modeling_outputs import SequenceClassifierOutput
 
 # TODO: This doesn't actually work very well...
 class FocalLoss(nn.Module):
-    # TODO: add documentation for the alpha and gamma parameters
+    """Focal Loss function, commonly used for addressing class imbalance in classification tasks.
+
+    Args:
+        alpha: A balancing factor for the class weights. Can be a list of weights for each class or None.
+        gamma: The focusing parameter that adjusts the rate at which easy examples are down-weighted.
+        num_classes: The number of classes in the classification task. Used to shape the loss function.
+    """
+
     def __init__(self, alpha=None, gamma=2.0, num_classes=None):
+        """Initializes the FocalLoss with alpha and gamma parameters."""
         super().__init__()
         self.gamma = gamma
         # TODO: set alpha based on class frequency
@@ -32,7 +40,17 @@ class FocalLoss(nn.Module):
                 raise ValueError("Alpha vector size must match number of classes.")
         self.alpha = self.alpha.cuda() if self.alpha is not None else None
 
-    def forward(self, inputs, targets):
+    def forward(self, inputs: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+        """Computes the forward pass of the Focal Loss function.
+
+        Args:
+            self: The instance of the FocalLoss class.
+            inputs: The predicted logits or probabilities from the model, typically of shape (batch_size, num_classes).
+            targets: The ground truth labels, typically of shape (batch_size).
+
+        Returns:
+            A tensor representing the computed Focal Loss.
+        """
         # Compute the cross entropy loss
         ce_loss = F.cross_entropy(inputs, targets, reduction="none")
 
@@ -52,6 +70,21 @@ class FocalLoss(nn.Module):
 
 
 class MultiTaskConfig(PretrainedConfig):
+    """Configuration class for multi-task models, extending from PretrainedConfig.
+
+    Args:
+        model_type: The type of model to use (e.g., "distilbert")
+        classification: The type of classification head to use (e.g., "linear")
+        decoders: A dictionary of decoders to use for each task.
+        columns: A dictionary mapping task names to data columns.
+        counts: A dictionary containing the counts of classes for each task.
+        inference_masks: A dictionary of masks used for inference, indicating valid outputs for each task.
+        loss: The loss function to use (e.g., "cross_entropy")
+        combine_subtypes: A boolean indicating whether to combine subtypes during training
+        subtype_orders: The order in which subtypes should be processed, if applicable.
+        **kwargs: Additional keyword arguments passed to the PretrainedConfig.
+    """
+
     def __init__(
         self,
         model_type="distilbert",
@@ -65,9 +98,11 @@ class MultiTaskConfig(PretrainedConfig):
         subtype_orders=None,
         **kwargs,
     ):
+        """Initializes the PreTrainedConfig with the passed parameters"""
         super().__init__(**kwargs)
         self.model_type = model_type
 
+        # Note: distilbert has some unconventionally named config options
         if model_type == "distilbert":
             self.attribute_map = {
                 "hidden_size": "dim",
@@ -86,18 +121,39 @@ class MultiTaskConfig(PretrainedConfig):
         self.inference_masks = inference_masks
         self.combine_subtypes = combine_subtypes
 
-    def __getattr__(self, name):
-        """DistilBert has some non-standard attribute names so we need to look up mapped names"""
+    def __getattr__(self, name: str) -> Any:
+        """Handles attribute access for non-standard attribute names by looking up mapped names.
+
+        Args:
+            self: The instance of the class.
+            name: The name of the attribute being accessed.
+
+        Returns:
+            The value of the requested attribute, either from the mapped name or by calling the superclass's __getattr__.
+
+        Raises:
+            AttributeError: If the attribute is not found in either the mapped names or the superclass.
+        """
         if name in self.attribute_map:
             mapped_name = self.attribute_map[name]
             return getattr(self.base_config, mapped_name)
         else:
             try:
                 return super().__getattr__(name)
-            except AttributeError:
-                raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
+            except AttributeError as e:
+                raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'") from e
 
-    def __setattr__(self, name, value):
+    def __setattr__(self, name: str, value: Any) -> None:
+        """Handles setting attributes, mapping non-standard attribute names to their corresponding base configuration attributes.
+
+        Args:
+            self: The instance of the class.
+            name: The name of the attribute being set.
+            value: The value to assign to the attribute.
+
+        Returns:
+            None
+        """
         if name in self.attribute_map:
             mapped_name = self.attribute_map[name]
             setattr(self.base_config, mapped_name, value)
