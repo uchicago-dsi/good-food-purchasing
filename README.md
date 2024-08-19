@@ -23,8 +23,10 @@ Also, our text classifier is a multi-task classifer, that performs classificatio
 The data pipeline takes in the normalized name (eg ```taquito, egg, turkey sausage, cheese, potato, frozen```) and splits it into multiple columns following the structure in CGFP's [name normalization helper](https://docs.google.com/spreadsheets/d/18Gvb_PlcRyOWidXCmgaIEgpsnvqVJYyC/edit?usp=sharing&ouid=114633865943391212776&rtpof=true&sd=true).
 
 ### Quickstart
-
-TODO
+- Build the Docker container to run the pipeline (see the [Docker](#docker) section)
+- Download the raw data you wish to clean (see the [Raw Data](#raw-data) section)
+- Update ```scripts/config_pipeline.yaml``` with the filename and location of the data you wish to clean
+- Run ```scripts/pipeline.py```
 
 ### Understanding the Data Pipeline
 
@@ -36,10 +38,11 @@ The basic intuition goes something like this:
   - The first tag in a normalized name is always "Basic Type"
   - Different columns have different allowed tags based on the product's Food Product Group and Food Product Category: we check if a tag is allowed in any of the other columns, and, if so, allocate it to that column
   - If a tag is not allocated to any of the other columns, allocate it to a "Sub-Type" column
+  - Throughout the process, we check for edge cases and directly apply any rules associated with these edge cases
 
 The allowed tags for each column are saved in ```misc_tags.py```
 
-Much of the rest of the pipeline code is handling edge cases. Many of the edge cases and pipeline rules are saved in ```src/cgfp/constants/tokens```
+Much of the rest of the pipeline code is handling edge cases. Most of these rules are saved as dictionaries in ```src/cgfp/constants/tokens```
 
 ### Docker
 
@@ -55,9 +58,39 @@ We've been using the pipeline to clean these two data sets:
 - [CONFIDENTIAL_CGFP bulk data_073123](https://docs.google.com/spreadsheets/d/1c5v7nBhqQpjOb7HE7pqDUx_xMc8r1imc/edit?usp=sharing&ouid=114633865943391212776&rtpof=true&sd=true)
 - [New_Raw_Data_030724](https://docs.google.com/spreadsheets/d/1PziC9jR8yHQex9RB49JoH5s4nXd1fLoK/edit?usp=sharing&ouid=114633865943391212776&rtpof=true&sd=true)
 
+## Text Classifier
 
+We use Huggingface to train a multi-task text classifier on the name normalization task.
 
-# Quickstart
+We take in an example's Product Type as input (eg ```CRANBERRIES, DRIED, INDIVIDUALLY PACKAGED (1.16 oz./pkg.)```) and we output a classification for each column in CGFP's [name normalization tool](https://docs.google.com/spreadsheets/d/18Gvb_PlcRyOWidXCmgaIEgpsnvqVJYyC/edit?usp=sharing&ouid=114633865943391212776&rtpof=true&sd=true).
+
+Note that, other than "Food Product Group", "Food Product Category", "Primary Food Product Category", and "Basic Type", all of the other columns can be (and usually are) empty.
+
+We have infrastructure to train both RoBERTa and DistilBERT models.
+
+### Training the Classifier
+
+To get good results for all columns, we need to do a multi-stage fine-tuning process.
+
+- First, clean a dataset using the [data pipeline](#pipeline). Upload this dataset to wherever you'll be training your model.
+- Upload a validation set and a test set as well
+- Update ```scripts/config_train.yaml``` with the location of your training, validation, and testing datasets and the location where you'd like to save your models
+  - You can also choose training options in this yaml file. Most of the defaults should work well.
+- Build the conda environment in ```environment.yaml```
+```bash 
+conda env create -f environment.yml
+```
+- If you are using the UChicago DSI cluster, train the model using
+```bash
+make train
+```
+  - If you are not using the UChicago DSI cluster, activate the ```cgfp``` conda environment and run ```scripts/train.py```
+
+### Inference
+
+### Updating the Production Model
+
+# OLD README: Quickstart
 
 Run the command `make train` to beging training on a GPU node with 64gb RAM.
 By default this will train on the dataset `bulk_data.csv` in the `data` folder.
