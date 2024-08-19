@@ -80,7 +80,17 @@ To get good results for all columns, we need to do a multi-stage fine-tuning pro
 ```bash 
 conda env create -f environment.yml
 ```
-- If you are using the UChicago DSI cluster, train the model using
+- If you are using the UChicago DSI cluster, set up a ```slurm``` script. Example script:
+```
+#!/usr/bin/bash
+#SBATCH --job-name=cgfp-train
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --mail-type=END
+
+python scripts/train.py
+```
+- Then, train the model using
 ```bash
 make train
 ```
@@ -89,26 +99,3 @@ make train
 ### Inference
 
 ### Updating the Production Model
-
-# OLD README: Quickstart
-
-Run the command `make train` to beging training on a GPU node with 64gb RAM.
-By default this will train on the dataset `bulk_data.csv` in the `data` folder.
-
-To see the logs for the current or most recent run, run the command `make last-errs` (logging statements are printed to the error log, while print statements appear to be printed to the output log, so the logging I added goes to errors).
-
-Running `make train` performs some logging setup and runs an `sbatch` command that creates a job for `./scripts/train.slurm`.
-The script `./scripts/train.slurm` simply runs `./scripts/train.py`.
-Checkpoints will be saved in `./results`.
-
-For one off commands, preface your command with `conda run -p ./tmp/conda/cgfp ...`. For instance:
-
-```conda run -p ./tmp/conda/cgfp conda list```
-
-to list all packages in the conda environment.
-Alternatively, you can start the environment.
-
-# Environment
-Libraries are installed inside a conda environment saved at `./tmp/conda/cgfp`.
-Make commands (largely inspired by [this Makefile](https://github.com/conda/conda-build/blob/main/Makefile) will ensure that (a) the environment is started and the proper command is executed inside of it, (b) all changes to `environment.yml` are pushed to the conda environment, (c) dev requirements recorded in `requirements.dev.txt` are applied to the environment, and (d) local packages saved inside of `src` are installed inside the conda environment.
-The PHONY target `env` ensures everything is up to date, and commands I want to execute in the conda environment (eg. `test` and `train`) simply take `env` as a prerequesite.
