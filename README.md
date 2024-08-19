@@ -109,6 +109,8 @@ model:
   freeze_base: false
   attached_heads:
     - "Basic Type"
+training:
+  metric_for_best_model: "basic_type_accuracy"
 ```
 
 Next, we load the model trained on "Basic Type" only and train the full model on "Sub-Types".
@@ -119,6 +121,8 @@ model:
   freeze_base: false
   attached_heads:
     - "Sub-Types"
+training:
+  metric_for_best_model: "mean_f1_score"
 ```
 
 The results after these two steps are usually quite good.
@@ -133,8 +137,9 @@ model:
   freeze_base: true
   reset_classification_heads: true
   attached_heads: null  # Doesn't matter since base is frozen
+training:
+  metric_for_best_model: "mean_f1_score"
 ```
-
 
 ### Inference
 
