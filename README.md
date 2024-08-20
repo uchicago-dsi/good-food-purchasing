@@ -158,6 +158,18 @@ inference_handler(model, tokenizer, input_path=INPUT_PATH, save_dir=DATA_DIR, de
 
 An example Colab notebook to run inference is [available here](https://colab.research.google.com/drive/1c8_WGWxeVCY60-luqWPiRPQr6omdbfzK?usp=sharing).
 
+### Additional Training Notes
+
+#### Multi-Task & Multi-Label Training
+
+The CGFP model is set up to predict multiple different columns from a single input string. For most of these columns, the model will make a single prediction (often including leaving the column empty).
+
+However, for Sub-Types, we are doing [multi-label prediction](https://machinelearningmastery.com/multi-label-classification-with-deep-learning/). This is because a single item can have multiple sub-types, and, while there is some ordering to the sub-types, it is inconsistent. So, we have a single Sub-Types multi-label classification head that can predict multiple sub-types. Any predicted sub-types are allocated to sub-type columns during inference.
+
+Note that Huggingface is set up reasonably well to handle multi-task classification and multi-label classification separately, but combining the two required some customization.
+
+We tried to document the logic for doing this, but there are several non-standard things happening in the ```forward``` method of the model (and the loss functions) in order to do multi-task learning with one head being a multi-label head.
+
 #### Inference-Time Assertions
 
 The model occasionally makes absurd predictions. These are usually from inputs that are outside of anything it has seen during training. We can usually catch these by noticing when "Food Product Group", "Food Product Category" & "Primary Food Product Category" do not make sense together.
