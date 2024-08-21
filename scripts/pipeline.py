@@ -423,14 +423,14 @@ def update_subtypes(row: dict, num_subtype_cols: int = 2) -> dict:
 
 # TODO: Set this up like basic_type_handler with a mapping dictionary
 def subtype_handler(row: dict, token: str) -> Tuple[Optional[str], dict]:
-    """Handles specific token cases to update the row's attributes based on predefined rules.
+    """Handles edge cases for subtypes. Sometimes updates the row with new values.
 
     Args:
         row: The row to update.
         token: The token to process.
 
     Returns:
-        A tuple where the first element is either a processed token or None, and the second element is the updated row.
+        A tuple where the first element is either a processed subtype token or None, and the second element is the updated row.
     """
     if token == "2% lactose free":
         row["Dietary Accommodation"] = "lactose free"
@@ -482,6 +482,9 @@ def subtype_handler(row: dict, token: str) -> Tuple[Optional[str], dict]:
     if token == "gravy master":
         row["Basic Type"] = "sauce"
         return "browning", row
+
+    if (token == "variety" or token == "mix") and row["Basic Type"] == "vegetable":
+        return "blend", row
 
     if token in FRUIT_SNACKS:
         row["Basic Type"] = "fruit snack"
@@ -535,7 +538,7 @@ def postprocess_subtypes(row: dict, subtype_mapping: dict = SUBTYPE_REPLACEMENT_
             subtypes_to_remove = set()
             replaced = False
             for subtype in list(row["Sub-Types"]):  # Iterate over a copy to avoid mutation issues
-                if get_category(subtype) == category:
+                if get_category(subtype) == category and category != "vegetable":
                     subtypes_to_remove.add(subtype)
                     if not replaced:
                         row["Sub-Types"].add(replacement_value)

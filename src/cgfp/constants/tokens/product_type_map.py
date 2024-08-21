@@ -1,6 +1,7 @@
 """Defines product type mappings for edge cases in CGFP tagging system"""
 
 PRODUCT_TYPE_MAP = {
+    "TOMATO HEIRLOOM CHERRY MIX 12 PT": {"Basic Type": "tomato", "Sub-Types": ["cherry"]},
     "HAWAIIAN PUNCH CANS": {"Basic Type": "drink", "Sub-Types": ["fruit punch"]},
     "Concentrate Chipotle S/O": {"Basic Type": "chipotle", "Shape": "concentrate"},
     "OREGANO AQUARESIN (7.5LB/PL)": {
@@ -36,6 +37,9 @@ PRODUCT_TYPE_MAP = {
         "WG/WGR": "whole grain rich",
     },
     "EDAMAME SUCCOTASH BLEND": {
+        "Food Product Group": "Produce",
+        "Food Product Category": "Vegetables",
+        "Primary Food Product Category": "Vegetables",
         "Basic Type": "vegetable",
         "Sub-Types": ["blend", "edamame", "succotash"],
     },
