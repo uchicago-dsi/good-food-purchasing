@@ -8,3 +8,4 @@ ruff~=0.4
 ordered_set
 tqdm
 pyyaml
+ipykernel

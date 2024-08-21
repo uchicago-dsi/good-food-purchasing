@@ -139,6 +139,9 @@ MISC_COLUMN_TAGS = {
         "Dietary Concern": {"1%", "2%"},
         "Dietary Accommodation": {"lactose free"},
     },
+    "Produce": {
+        "Processing": {"in brine"},
+    },
     ### FOOD PRODUCT CATEGORIES ###
     "Fruit": {"Seed/Bone": {"pitted"}, "Processing": {"in juice"}},
     "Cheese": {"Shape": {"crumble"}},

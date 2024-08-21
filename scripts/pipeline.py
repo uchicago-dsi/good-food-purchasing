@@ -597,8 +597,12 @@ def clean_name(row: dict, product_type_map: dict = PRODUCT_TYPE_MAP) -> dict:
             # Note: Skip "Basic Type" column since it's already set
             for col in NON_SUBTYPE_COLUMNS:
                 if token in NON_SUBTYPE_TAGS_FPC[food_product_category][col]:
-                    # Duplicate entry for column, add to subtypes
                     if row[col] is not None:
+                        # Note: Make sure column isn't empty before setting value
+                        if row[col] == token:
+                            # Note: Token already in column, mark as matched and move on
+                            matched = True
+                        # If this is a new allowed token, add to subtypes
                         break
                     row[col] = token
                     matched = True

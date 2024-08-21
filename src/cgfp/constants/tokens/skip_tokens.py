@@ -350,4 +350,5 @@ SKIP_TOKENS = {
     "alegria",
     "cotton",
     "devil's food",
+    "arcadian harvest",
 }
