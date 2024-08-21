@@ -100,7 +100,6 @@ def clean_df(df_cgfp: pd.DataFrame, str_len_threshold: int = 3) -> pd.DataFrame:
     df_cgfp = df_cgfp[
         (df_cgfp["Product Type"].str.len() >= str_len_threshold)
         & (df_cgfp["Product Name"].str.len() >= str_len_threshold)
-        & (df_cgfp["Food Product Group"] != "Non-Food")
     ].reset_index(drop=True)
 
     # Handle typos in Primary Food Product Category
@@ -483,6 +482,11 @@ def subtype_handler(row: dict, token: str) -> Tuple[Optional[str], dict]:
         row["Basic Type"] = "sauce"
         return "browning", row
 
+    if token == "whole grain rich ss":
+        row["WG/WGR"] = "whole grain rich"
+        row["Packaging"] = "ss"
+        return None, row
+
     if (token == "variety" or token == "mix") and row["Basic Type"] == "vegetable":
         return "blend", row
 
@@ -731,7 +735,7 @@ def process_data(df_cgfp, smoke_test=SMOKE_TEST, **options):
     if smoke_test:
         df_cgfp = df_cgfp.head(1000)
 
-    # Filter missing data and non-food items, handle typos in Category and Group columns
+    # Filter missing data, handle typos in Category and Group columns
     df_cgfp = clean_df(df_cgfp)
 
     # Create normalized name

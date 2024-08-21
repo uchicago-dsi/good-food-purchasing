@@ -351,4 +351,7 @@ SKIP_TOKENS = {
     "cotton",
     "devil's food",
     "arcadian harvest",
+    "no salt added",
+    "no salt",
+    "salt free",
 }
