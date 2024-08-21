@@ -550,7 +550,7 @@ def postprocess_subtypes(row: dict, subtype_mapping: dict = SUBTYPE_REPLACEMENT_
     return row
 
 
-def clean_name(row: dict, product_type_map: dict = PRODUCT_TYPE_MAP) -> dict:
+def clean_name(row: pd.Series, product_type_map: dict = PRODUCT_TYPE_MAP) -> pd.Series:
     """Cleans and processes the "Product Name" in the row by handling edge cases, assigning tags, and updating subtypes based on predefined rules.
 
     Args:
