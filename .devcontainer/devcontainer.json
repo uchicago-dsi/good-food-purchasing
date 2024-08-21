@@ -6,34 +6,34 @@
 		"args": {}
 	},
 	// Set *default* container specific settings.json values on container create.
-    "customizations": {
-        "vscode": {
-            "settings": {
-                "terminal.integrated.profiles.linux": {
-                    "bash": {
-                        "path": "/bin/bash"
-                    }
-                },
-                "python.defaultInterpreterPath": "/usr/local/bin/python3",
-                "python.languageServer": "None", // Prevent Pylance warnings - using Ruff
-                "editor.formatOnSave": true,
-                "editor.codeActionsOnSave": {
-                    "source.organizeImports": true
-                },
-            },
-            "extensions": [
-                "ms-python.debugpy",
-                "charliermarsh.ruff",
-                "ms-vscode-remote.remote-containers",
-                "ms-toolsai.jupyter",
-                "ms-toolsai.jupyter-renderers",
-            ]
-        }
-    },
+	"customizations": {
+		"vscode": {
+			"settings": {
+				"terminal.integrated.profiles.linux": {
+					"bash": {
+						"path": "/bin/bash"
+					}
+				},
+				"python.defaultInterpreterPath": "/usr/local/bin/python3",
+				"python.languageServer": "Pylance",
+				"editor.formatOnSave": true,
+				"editor.codeActionsOnSave": {
+					"source.organizeImports": true
+				}
+			},
+			"extensions": [
+				"ms-python.debugpy",
+				"charliermarsh.ruff",
+				"ms-vscode-remote.remote-containers",
+				"ms-toolsai.jupyter",
+				"ms-toolsai.jupyter-renderers"
+			]
+		}
+	},
 	"runArgs": [
 		"--shm-size=16gb"
-        // "--env-file",
-        // ".env"
+		// "--env-file",
+		// ".env"
 	],
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [9000],
