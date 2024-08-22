@@ -69,6 +69,9 @@ FLAVORS = {
     ## SNACKS ##
     "chocolate",
     "glacier freeze",
+    ## FRUIT FLAVORS ##
+    "guava pear",
+    "guava strawberry",
 }
 
 # Note: fruits are separated since there is separate logic for "fruit, blend"
@@ -228,4 +231,5 @@ FRUIT_SNACKS = {
     "fruit rolls",
     "fruit rollup",
     "fruit snack",
+    "gusher",
 }

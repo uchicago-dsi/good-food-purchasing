@@ -52,11 +52,11 @@ SKIP_TOKENS = {
     "light red",
     "dark red",
     "yellow",
-    "green",
+    # "green",  # TODO: This is allowed for tea...maybe this needs to be handled for peppers, etc.
     "gold",
     "white",  # TODO: What about white wine? White vinegar?
     "blue",
-    "black",
+    "black",  # TODO: Is this allowed for tea?
     "brown",
     "orange",  # basic type will still be set to orange since it doesn't pass through token handler
     "grey",
@@ -354,4 +354,6 @@ SKIP_TOKENS = {
     "no salt added",
     "no salt",
     "salt free",
+    "green tip",
+    "greens",
 }

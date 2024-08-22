@@ -94,6 +94,7 @@ TOKEN_MAP_DICT = {
     "decaffienated": "decaffeinated",
     "decaffinated": "decaffeinated",
     "decafienated": "decaffeinated",
+    "habiscus": "hibiscus",
     ## INCONSISTENCIES ##
     "cheeks": "cheek",
     "cheez it": "cheez-it",
@@ -149,6 +150,7 @@ TOKEN_MAP_DICT = {
     "chili relleno": "chile relleno",
     "relleno chile": "chile relleno",
     "beverage": "drink",
+    "hachiya": "persimmon",
     ## COOKED ##
     "au jus": "cooked",
     "charbroiled": "cooked",
@@ -157,6 +159,8 @@ TOKEN_MAP_DICT = {
     "autumn roasted": "cooked",
     "blanched": "cooked",
     "char-broiled": "cooked",
+    "grill": "cooked",
+    "hadwood smoked": "cooked",
     ## RENAME ##
     "aprium": "pluot",
     "banana pepper": "pepper",
@@ -171,6 +175,7 @@ TOKEN_MAP_DICT = {
     "hasu": "lotus root",
     "satsuma": "mandarin",
     "white rice": "rice",
+    "half and half lemonade": "lemonade",
     ## CUT ##
     "sliced": "cut",
     "diced": "cut",
@@ -270,4 +275,6 @@ TOKEN_MAP_DICT = {
     "french red": "french",
     "fresco rancher": "queso fresco",
     "garlic pepper steak": "garlic pepper",
+    "green jasmine": "green",
+    "green lotus blossom": "green",
 }

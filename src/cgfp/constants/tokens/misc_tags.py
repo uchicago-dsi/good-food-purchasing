@@ -112,6 +112,7 @@ MISC_COLUMN_TAGS = {
             "patty",
             "salami",
             "crumble",
+            "guanciale",
         },
         "Skin": {"skin on"},
         "Seed/Bone": {"bone-in"},

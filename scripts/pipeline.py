@@ -720,7 +720,6 @@ def postprocess_data(row: dict) -> dict:
     return row
 
 
-# TODO: Set up smoke test in config
 def process_data(df_cgfp, smoke_test=SMOKE_TEST, **options):
     """Processes the given DataFrame by filtering, cleaning, normalizing names, and creating a diff file.
 
