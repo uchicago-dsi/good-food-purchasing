@@ -438,29 +438,12 @@ def subtype_handler(row: dict, token: str, subtype_map: dict = SUBTYPE_MAP) -> T
     if mapping is not None:
         row.update(mapping)
 
-    # if token == "2% lactose free":
-    #     row["Dietary Accommodation"] = "lactose free"
-    #     row["Dietary Concern"] = "2%"
-    #     return None, row
-
-    if token == "apple juice":
-        row["Basic Type"] = "juice"
-        return "apple", row
-
+    # One off rules and edge cases
     if token == "applesauce" and row["Basic Type"] != "baby food":
         return None, row
 
-    if token == "cheez-it":
-        row["Basic Type"] = "cracker"
-        return "cheese", row
-
     if token == "earl grey" and row["Food Product Category"] != "Beverages":
         return "flavored", row
-
-    # TODO: Maybe move the other subtype rules here?
-    if token == "french toast bread":
-        row["Basic Type"] = "french toast"
-        return None, row
 
     if token == "fried onion":
         row["Basic Type"] = "topping"
@@ -474,29 +457,13 @@ def subtype_handler(row: dict, token: str, subtype_map: dict = SUBTYPE_MAP) -> T
     if token == "fruit medley" and row["Basic Type"] == "juice":
         return "blend", row
 
-    if token == "fruit bar":
-        row["Basic Type"] = "popsicle"
-        return "fruit", row
-
     if token == "funnel cake" and row["Basic Type"] == "dessert":
         return "cake", row
-
-    if token == "gherkin":
-        row["Basic Type"] = "condiment"
-        return "pickle", row
-
-    if token == "gravy master":
-        row["Basic Type"] = "sauce"
-        return "browning", row
-
-    if token == "whole grain rich ss":
-        row["WG/WGR"] = "whole grain rich"
-        row["Packaging"] = "ss"
-        return None, row
 
     if (token == "variety" or token == "mix") and row["Basic Type"] == "vegetable":
         return "blend", row
 
+    # Group membership rules
     if token in FRUIT_SNACKS:
         row["Basic Type"] = "fruit snack"
         return None, row

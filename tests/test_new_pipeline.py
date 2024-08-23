@@ -21,8 +21,7 @@ test_args = [
     # (input_file, raw_data, sample)  # (name of input file with no path, path to folder or test folder acting as raw data source, whether to sample)
     ("test_input_1.csv", "./tests/assets/", False),
     ("test_input_2.csv", "./tests/assets/", False),
-    ("CONFIDENTIAL_CGFP bulk data_073123.xlsx", "./data/raw/", True),
-    # ("CONFIDENTIAL_CGFP bulk data_073123.xlsx", "./data/raw/", False),
+    ("CONFIDENTIAL_CGFP bulk data_073123.xlsx", "./data/raw/", False),
 ]
 
 
