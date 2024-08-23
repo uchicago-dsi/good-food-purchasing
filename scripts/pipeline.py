@@ -316,17 +316,17 @@ def clean_token(token: str, token_map_dict: dict = TOKEN_MAP_DICT) -> str:
     return cleaned_token
 
 
-def basic_type_handler(row):
+def basic_type_handler(row: pd.Series, basic_type_map: dict = BASIC_TYPE_MAP) -> pd.Series:
     """Handles the processing of a row based on the "Basic Type" mapping.
 
     Args:
         row: The row to be processed.
+        basic_type_map: A dictionary that maps basic types to specific tags in the row
 
     Returns:
         The modified row with updates based on the "Basic Type" mapping.
     """
-    # TODO: Pass this in as an argument
-    mapping = BASIC_TYPE_MAP.get(row["Basic Type"], None)
+    mapping = basic_type_map.get(row["Basic Type"], None)
 
     if mapping is None:
         return row
@@ -422,21 +422,26 @@ def update_subtypes(row: dict, num_subtype_cols: int = 2) -> dict:
     return row
 
 
-# TODO: Set this up like basic_type_handler with a mapping dictionary
 def subtype_handler(row: dict, token: str, subtype_map: dict = SUBTYPE_MAP) -> Tuple[Optional[str], dict]:
     """Handles edge cases for subtypes. Sometimes updates the row with new values.
 
     Args:
         row: The row to update.
         token: The token to process.
+        subtype_map: A dictionary that maps subtypes to specific tags in the row.
 
     Returns:
         A tuple where the first element is either a processed subtype token or None, and the second element is the updated row.
     """
-    if token == "2% lactose free":
-        row["Dietary Accommodation"] = "lactose free"
-        row["Dietary Concern"] = "2%"
-        return None, row
+    token, mapping = subtype_map.get(token, (token, None))
+
+    if mapping is not None:
+        row.update(mapping)
+
+    # if token == "2% lactose free":
+    #     row["Dietary Accommodation"] = "lactose free"
+    #     row["Dietary Concern"] = "2%"
+    #     return None, row
 
     if token == "apple juice":
         row["Basic Type"] = "juice"
