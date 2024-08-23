@@ -23,6 +23,7 @@ from cgfp.constants.tokens.basic_type_map import BASIC_TYPE_MAP
 from cgfp.constants.tokens.misc_tags import NON_SUBTYPE_TAGS_FPC
 from cgfp.constants.tokens.product_type_map import PRODUCT_TYPE_MAP
 from cgfp.constants.tokens.skip_tokens import SKIP_TOKENS
+from cgfp.constants.tokens.subtype_map import SUBTYPE_MAP
 from cgfp.constants.tokens.tag_sets import (
     ALL_FLAVORS,
     CHEESE_TYPES,
@@ -324,6 +325,7 @@ def basic_type_handler(row):
     Returns:
         The modified row with updates based on the "Basic Type" mapping.
     """
+    # TODO: Pass this in as an argument
     mapping = BASIC_TYPE_MAP.get(row["Basic Type"], None)
 
     if mapping is None:
@@ -421,7 +423,7 @@ def update_subtypes(row: dict, num_subtype_cols: int = 2) -> dict:
 
 
 # TODO: Set this up like basic_type_handler with a mapping dictionary
-def subtype_handler(row: dict, token: str) -> Tuple[Optional[str], dict]:
+def subtype_handler(row: dict, token: str, subtype_map: dict = SUBTYPE_MAP) -> Tuple[Optional[str], dict]:
     """Handles edge cases for subtypes. Sometimes updates the row with new values.
 
     Args:

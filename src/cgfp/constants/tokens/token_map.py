@@ -277,4 +277,6 @@ TOKEN_MAP_DICT = {
     "garlic pepper steak": "garlic pepper",
     "green jasmine": "green",
     "green lotus blossom": "green",
+    "hanging tender": "tender",
+    "ham hock": "ham",
 }
