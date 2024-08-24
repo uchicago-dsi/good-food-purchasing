@@ -91,6 +91,7 @@ SKIP_TOKENS = {
     ## PASTA TYPES ##
     "elbow",
     "elbow macaroni",
+    "bowtie",
     "rigatoni",
     "angel hair",
     "acini de pepe",
@@ -159,7 +160,6 @@ SKIP_TOKENS = {
     "liquid",
     ## ETHNICITIES ##
     "Persian",
-    "Cuban",
     ## MISC ##
     "sea salt",
     ## OLD MISC COLUMNS TAGS ##
@@ -526,4 +526,20 @@ SKIP_TOKENS = {
     "white chocolate raspberry",
     "southwest",
     "southwestern",
+    "apple nut",
+    "apple fritter",
+    "apple cinnamon",
+    "apple cinnamon pecan",
+    "apple cinnnamon" "apple cranberry",
+    "apple peach",
+    "apple smoked",
+    "apple strawberry",
+    "apple strawberry banana",
+    "apple walnut",
+    "apple whirls",
+    "apache blue",
+    "anti-browning solution",
+    "animal",
+    "amber",
+    "americano",
 }

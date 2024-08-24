@@ -140,6 +140,9 @@ FLAVORS = {
     "wild berry",
     "white grape peach",
     "white grape cherry",
+    "apple and ginger",
+    "apple berry",
+    "apple cherry",
     ## CANDY FLAVORS ##
     "sour apple",
     "sour ball",
@@ -207,6 +210,14 @@ FLAVORS = {
     "sour patch kids",
     "sour raspberry",
     "sour watermelon",
+    "apple peach",
+    "apple smoked",
+    "apple strawberry",
+    "apple strawberry banana",
+    "apple walnut",
+    "apple whirls",
+    "apple ginger",
+    "amaretto",
 }
 
 # Note: fruits are separated since there is separate logic for "fruit, blend"
@@ -348,6 +359,7 @@ CORN_CERAL = {
     "frosted flakes",
     "honey nut chex",
     "trix",
+    "froot loops",
 }
 
 RICE_CEREAL = {"special k"}
