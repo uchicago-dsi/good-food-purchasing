@@ -436,6 +436,7 @@ def subtype_handler(row: dict, token: str, subtype_map: dict = SUBTYPE_MAP) -> T
     token, mapping = subtype_map.get(token, (token, None))
 
     if mapping is not None:
+        # TODO: There are rare edge cases where info can be overwritten. Check if empty first?
         row.update(mapping)
 
     # One off rules and edge cases
@@ -475,6 +476,10 @@ def subtype_handler(row: dict, token: str, subtype_map: dict = SUBTYPE_MAP) -> T
 
     if token == "pea & carrot" or token == "pea and carrot":
         row = add_subtypes(row, ["pea", "carrot"])
+        return None, row
+
+    if token == "vanilla chocolate almond":
+        row = add_subtypes(row, ["nut"])  # This shows up for ice cream, so no "flavored"
         return None, row
 
     # Group membership rules

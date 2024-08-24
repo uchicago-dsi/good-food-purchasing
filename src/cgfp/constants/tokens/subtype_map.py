@@ -14,4 +14,5 @@ SUBTYPE_MAP = {
     "low fat ss": (None, {"Dietary Concern": "low fat", "Packaging": "ss"}),
     "mucho queso": ("cheese", {"Basic Type": "sauce"}),
     "nutter butter": ("cookie", {"Basic Type": "snack"}),
+    "vegan mayonnaise": ("mayonnaise", {"Dietary Accommodation": "vegan"}),
 }

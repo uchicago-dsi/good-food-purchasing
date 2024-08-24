@@ -107,6 +107,8 @@ MISC_COLUMN_TAGS = {
             "marrow bone",
             "neck",
             "neck bone",
+            "rib",
+            "teres major",
         },
         "Shape": {
             "bacon",
