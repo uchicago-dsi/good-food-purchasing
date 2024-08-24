@@ -323,9 +323,11 @@ VEGETABLES = {
     "green bean",
     "wax bean",
     "edamame",
+    "eggplant",
+    "zucchini",
 }
 
-NUTS = {"almond", "cashew", "pecan", "pistachio"}
+NUTS = {"almond", "cashew", "pecan", "pistachio", "hazelnut", "walnut"}
 
 CHEESE_TYPES = {
     "cheddar",
@@ -339,6 +341,8 @@ CHEESE_TYPES = {
     "gouda",
     "muenster",
     "white cheddar",
+    "feta",
+    "gorgonzola",
 }
 
 MELON_TYPES = {"cantaloupe", "honeydew", "watermelon", "galia"}

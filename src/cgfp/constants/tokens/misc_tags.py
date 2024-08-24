@@ -125,7 +125,7 @@ MISC_COLUMN_TAGS = {
         },
         "Skin": {"skin on"},
         "Seed/Bone": {"bone-in"},
-        "Processing": {"corned"},
+        "Processing": {"corned", "stuffed"},
         "Cooked/Cleaned": {"smoked"},
     },
     "Seafood": {
