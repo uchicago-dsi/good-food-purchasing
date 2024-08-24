@@ -52,9 +52,12 @@ MISC_COLUMN_TAGS = {
             "dried",
             "in oil",
             "in water",
+            "in sauce",
             "puree",
             "seasoned",
             "whipped",
+            "in vegetable broth",
+            "in vinegar",
         },
         "Cooked/Cleaned": {"cooked"},
         "WG/WGR": {"whole grain rich"},
@@ -100,6 +103,10 @@ MISC_COLUMN_TAGS = {
             "ham",
             "round",
             "butt",
+            "tripe",
+            "marrow bone",
+            "neck",
+            "neck bone",
         },
         "Shape": {
             "bacon",
@@ -125,7 +132,7 @@ MISC_COLUMN_TAGS = {
         "Cooked/Cleaned": {"smoked"},
     },
     "Condiments & Snacks": {
-        "Processing": {"dehydrated", "powder", "in juice"},
+        "Processing": {"dehydrated", "powder", "in juice", "in syrup"},
         "Seed/Bone": {"pitted"},
         "Dietary Accommodation": {"non-dairy"},
     },
@@ -144,12 +151,14 @@ MISC_COLUMN_TAGS = {
         "Processing": {"in brine"},
     },
     ### FOOD PRODUCT CATEGORIES ###
-    "Fruit": {"Seed/Bone": {"pitted"}, "Processing": {"in juice"}},
+    "Fruit": {"Seed/Bone": {"pitted"}, "Processing": {"in juice", "in gel", "in syrup", "in light syrup"}},
     "Cheese": {"Shape": {"crumble"}},
     "Milk": {"Shape": {"thickened"}},
     "Yogurt": {"Shape": {"thickened"}},
     "Legumes": {"Processing": {"dehydrated"}},
     "Roots & Tubers": {"Processing": {"dehydrated"}},
+    "Eggs": {"Processing": {"hard boiled"}},
+    "Pork": {"Shape": {"iberico"}},
 }
 
 # Note: Tags are aggregated on the Food Product Category level so we can easily check if a tag

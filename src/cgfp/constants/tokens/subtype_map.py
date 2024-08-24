@@ -9,4 +9,9 @@ SUBTYPE_MAP = {
     "gherkin": ("pickle", {"Basic Type": "condiment"}),
     "gravy master": ("browning", {"Basic Type": "sauce"}),
     "whole grain rich ss": (None, {"WG/WGR": "whole grain rich", "Packaging": "ss"}),
+    "ham diced": ("ham", {"Basic Type": "pork", "Shape": "cut"}),
+    "hanger steak": ("steak", {"Basic Type": "beef", "Shape": "cut"}),
+    "low fat ss": (None, {"Dietary Concern": "low fat", "Packaging": "ss"}),
+    "mucho queso": ("cheese", {"Basic Type": "sauce"}),
+    "nutter butter": ("cookie", {"Basic Type": "snack"}),
 }

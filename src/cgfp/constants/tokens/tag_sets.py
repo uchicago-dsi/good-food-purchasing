@@ -14,6 +14,9 @@ FLAVORS = {
     ## BEVERAGES & DRINKS ##
     # sweet drinks #
     "mocha",
+    "hazelnut and cream",
+    "hazelnut cream",
+    "mocha latte",
     # spices #
     "vanilla",
     "cinnamon",
@@ -26,6 +29,7 @@ FLAVORS = {
     "m&m",
     "toffee",
     "milk",
+    "moosetracks",
     ## BREAD ###
     "garlic",
     "chili",
@@ -69,9 +73,49 @@ FLAVORS = {
     ## SNACKS ##
     "chocolate",
     "glacier freeze",
+    ## TEA FLAVORS ##
+    "orange and spice",
+    "orange blossom",
+    "orange carrot",
+    "orange cherry grape",
+    "orange citrus",
+    "orange cream",
+    "orange dulce",
+    "orange guava passion",
+    "orange mango",
+    "orange medley",
+    "peach ginger",
     ## FRUIT FLAVORS ##
     "guava pear",
     "guava strawberry",
+    "mixed berry",
+    "mixed fruit",
+    "orange pineapple cherry",
+    "orange pineapple crème",
+    "paradise punch",
+    "passion fruit pineapple",
+    "passion orange",
+    "passion orange guava",
+    "peach hibiscus",
+    "peach mango",
+    "peach pineapple",
+    "peach tea",
+    "pear ginger",
+    ## MISC ##
+    "herb and garlic",
+    "honey barbecue",
+    "honey barbecue glaze",
+    "honey barbeque",
+    "honey brown sugar",
+    "mango chili lime",
+    "mango hibiscus",
+    "mango lime",
+    "mango peach",
+    "mango pineapple",
+    "mango sticky rice",
+    "mango strawberry pomegranate",
+    "peanut butter chocolate butterscotch",
+    "peanut butter crème",
 }
 
 # Note: fruits are separated since there is separate logic for "fruit, blend"
@@ -211,7 +255,9 @@ CORN_CERAL = {
     "frosted corn flakes",
     "frosted flake",
     "frosted flakes",
+    "honey nut chex",
 }
+
 WHEAT_CEREAL = {
     "frosted mini spooner",
     "frosted mini spooners",
@@ -221,9 +267,20 @@ WHEAT_CEREAL = {
     "frosted wheat",
     "frosted wheats",
     "fruit whirls",
+    "kashi",
+    "mini spooners",
+    "mini spooner",
 }
 
-OAT_CEREAL = {"fruity cheerios", "cheerios"}
+OAT_CEREAL = {
+    "fruity cheerios",
+    "cheerios",
+    "honey nut cheerios",
+    "honey scooters",
+    "lucky charms",
+    "multigrain o",
+    "multigrain oats",
+}
 
 FRUIT_SNACKS = {
     "fruit roll up",

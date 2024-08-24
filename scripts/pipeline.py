@@ -445,12 +445,6 @@ def subtype_handler(row: dict, token: str, subtype_map: dict = SUBTYPE_MAP) -> T
     if token == "earl grey" and row["Food Product Category"] != "Beverages":
         return "flavored", row
 
-    if token == "fried onion":
-        row["Basic Type"] = "topping"
-        # TODO: Wait should "fried" be in one of the processing cols?
-        row = add_subtypes(row, ["onion", "fried"], first=True)
-        return None, row
-
     if token == "fruit and vegetable" and row["Food Product Group"] == "Beverages":
         return "fruit punch", row
 
@@ -462,6 +456,26 @@ def subtype_handler(row: dict, token: str, subtype_map: dict = SUBTYPE_MAP) -> T
 
     if (token == "variety" or token == "mix") and row["Basic Type"] == "vegetable":
         return "blend", row
+
+    if token == "peanut butter and jelly":
+        if row["Food Product Group"] == "Meals":
+            return token, row
+        return None, row
+
+    # Multipe subtypes
+    if token == "fried onion":
+        row["Basic Type"] = "topping"
+        # TODO: Wait should "fried" be in one of the processing cols?
+        row = add_subtypes(row, ["onion", "fried"], first=True)
+        return None, row
+
+    if token == "long grain and wild":
+        row = add_subtypes(row, ["long grain", "wild"])
+        return None, row
+
+    if token == "pea & carrot" or token == "pea and carrot":
+        row = add_subtypes(row, ["pea", "carrot"])
+        return None, row
 
     # Group membership rules
     if token in FRUIT_SNACKS:
@@ -524,6 +538,13 @@ def postprocess_subtypes(row: dict, subtype_mapping: dict = SUBTYPE_REPLACEMENT_
 
             # Remove subtypes after iteration
             row["Sub-Types"].difference_update(subtypes_to_remove)
+
+    # Make sure that "blend", etc are first
+    for token in ["blend", "variety"]:
+        if token in row["Sub-Types"]:
+            row["Sub-Types"].discard(token)
+            row["Sub-Types"] = OrderedSet([token]) | row["Sub-Types"]
+
     row = update_subtypes(row)
     return row
 
