@@ -1,4 +1,4 @@
-"""Defines a set of tokens to skip during CGFP pipeline"""
+"""Defines a set of tokens to skip during CGFP pipeline. Note that Basic Type isn't filtered through this."""
 
 SKIP_TOKENS = {
     ## GENERAL ##
@@ -90,6 +90,7 @@ SKIP_TOKENS = {
     "chewy",
     ## PASTA TYPES ##
     "elbow",
+    "elbow macaroni",
     "rigatoni",
     "angel hair",
     "acini de pepe",
@@ -461,4 +462,24 @@ SKIP_TOKENS = {
     "pearled",
     "pee wee",
     "peppermint s'mores",
+    "holland",
+    "artichoke parmesan",
+    "arlis",
+    "arbol",
+    "arabica",
+    "almond joy",
+    "african nectar",
+    "zucchini bread",
+    "zucchini carrot",
+    "zesty",
+    "yo dots",
+    "ya",
+    "with top",
+    "with corn",
+    "with backbone",
+    "winter",
+    "wine and beer",
+    "wildflower",
+    "wild swan",
+    "white rose",
 }

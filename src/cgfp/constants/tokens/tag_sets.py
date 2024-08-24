@@ -17,6 +17,9 @@ FLAVORS = {
     "hazelnut and cream",
     "hazelnut cream",
     "mocha latte",
+    "arnold palmer",
+    # sports drinks #
+    "arctic blitz",
     # spices #
     "vanilla",
     "cinnamon",
@@ -101,6 +104,9 @@ FLAVORS = {
     "peach pineapple",
     "peach tea",
     "pear ginger",
+    "yumberry pomegranate",
+    "wildberry",
+    "wild cherry",
     ## MISC ##
     "herb and garlic",
     "honey barbecue",
@@ -116,6 +122,7 @@ FLAVORS = {
     "mango strawberry pomegranate",
     "peanut butter chocolate butterscotch",
     "peanut butter crème",
+    "wild white nacho",
 }
 
 # Note: fruits are separated since there is separate logic for "fruit, blend"
