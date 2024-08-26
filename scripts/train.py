@@ -5,6 +5,7 @@ import logging
 import os
 from datetime import datetime
 from pathlib import Path
+from typing import List, Union
 
 import numpy as np
 import pandas as pd
@@ -32,6 +33,24 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
 
+def get_paths(directory: Path, filenames: Union[str, List[str]]) -> List[Path]:
+    """Generates a list of file paths by combining directory and filenames.
+
+    This function handles both single filenames and lists of filenames. Used to handle filepaths from config
+
+    Args:
+        directory: The base directory where the files are located.
+        filenames: A single filename or a list of filenames to be combined with the directory.
+
+    Returns:
+        A list of Path objects corresponding to the provided filenames.
+    """
+    if isinstance(filenames, list):
+        return [directory / filename for filename in filenames]
+    else:
+        return [directory / filenames]
+
+
 def read_data(input_col: str, labels: list[str], data_path: str, smoke_test: bool = False) -> pd.DataFrame:
     """Reads data from a CSV file, filters out rows with null values in specified columns, and returns a cleaned DataFrame with specified columns.
 
@@ -45,6 +64,15 @@ def read_data(input_col: str, labels: list[str], data_path: str, smoke_test: boo
         A cleaned DataFrame containing only the specified columns.
     """
     nrows = 1000 if smoke_test else None
+
+    file_extension = Path(data_path).suffix.lower()
+    if file_extension == ".csv":
+        df_cgfp = pd.read_csv(data_path, na_values=["NULL"], nrows=nrows)
+    elif file_extension in [".xls", ".xlsx"]:
+        df_cgfp = pd.read_excel(data_path, na_values=["NULL"], nrows=nrows)
+    else:
+        raise ValueError(f"Unsupported file format: {file_extension}")
+
     df_cgfp = pd.read_csv(data_path, na_values=["NULL"], nrows=nrows)
 
     # Drop duplicate input column rows for more balanced dataset
@@ -207,8 +235,9 @@ if __name__ == "__main__":
     Path.mkdir(RAW_DIR, exist_ok=True, parents=True)
     Path.mkdir(TEST_DIR, exist_ok=True, parents=True)
 
-    TRAIN_DATA_PATH = CLEAN_DIR / config["data"]["train_filename"]
-    EVAL_DATA_PATH = CLEAN_DIR / config["data"]["eval_filename"]
+    train_data_paths = get_paths(CLEAN_DIR, config["data"]["train_filenames"])
+    eval_data_paths = get_paths(CLEAN_DIR, config["data"]["eval_filenames"])
+
     TEST_DATA_PATH = RAW_DIR / config["data"]["test_filename"]
 
     TEXT_FIELD = config["data"]["text_field"]
@@ -291,11 +320,17 @@ if __name__ == "__main__":
     logging.info(f"Predicting categorical fields : {LABELS}")
 
     ### DATA PREP ###
-    logging.info(f"Reading training data from path : {TRAIN_DATA_PATH}")
-    df_train = read_data(TEXT_FIELD, LABELS, TRAIN_DATA_PATH, smoke_test=SMOKE_TEST)
+    logging.info(f"Reading training data from path : {train_data_paths}")
+    df_train = pd.concat(
+        [read_data(TEXT_FIELD, LABELS, df_train_part, smoke_test=SMOKE_TEST) for df_train_part in train_data_paths],
+        ignore_index=True,
+    )
 
-    logging.info(f"Reading eval data from path : {TRAIN_DATA_PATH}")
-    df_eval = read_data(TEXT_FIELD, LABELS, EVAL_DATA_PATH, smoke_test=SMOKE_TEST)
+    logging.info(f"Reading eval data from path : {train_data_paths}")
+    df_eval = pd.concat(
+        [read_data(TEXT_FIELD, LABELS, df_eval_part, smoke_test=SMOKE_TEST) for df_eval_part in eval_data_paths],
+        ignore_index=True,
+    )
 
     labels_dict = {label: i for i, label in enumerate(LABELS)}
 
