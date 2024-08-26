@@ -6,7 +6,9 @@ config:
 data:
   text_field: "Product Type"
   data_dir: "/net/projects/cgfp/data/"
-  train_filenames: "clean_CONFIDENTIAL_CGFP_bulk_data_073123.csv"  # Note: takes lists or single filenames
+  train_filenames: # Note: takes lists or single filenames
+    - "clean_CONFIDENTIAL_CGFP_bulk_data_073123.csv" 
+    - "Non-food Items_082024.xlsx"
   eval_filenames: "combined_eval_set.csv"  # Note: takes lists or single filenames
   test_filename: "TestData_11.22.23.xlsx"  # This should just be a single filename
 model:

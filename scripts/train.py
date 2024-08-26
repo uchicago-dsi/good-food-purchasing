@@ -63,6 +63,7 @@ def read_data(input_col: str, labels: list[str], data_path: str, smoke_test: boo
     Returns:
         A cleaned DataFrame containing only the specified columns.
     """
+    logging.info(f"Reading data from {data_path}")
     nrows = 1000 if smoke_test else None
 
     file_extension = Path(data_path).suffix.lower()
@@ -72,8 +73,6 @@ def read_data(input_col: str, labels: list[str], data_path: str, smoke_test: boo
         df_cgfp = pd.read_excel(data_path, na_values=["NULL"], nrows=nrows)
     else:
         raise ValueError(f"Unsupported file format: {file_extension}")
-
-    df_cgfp = pd.read_csv(data_path, na_values=["NULL"], nrows=nrows)
 
     # Drop duplicate input column rows for more balanced dataset
     prev_height = df_cgfp.shape[0]
@@ -322,13 +321,13 @@ if __name__ == "__main__":
     ### DATA PREP ###
     logging.info(f"Reading training data from path : {train_data_paths}")
     df_train = pd.concat(
-        [read_data(TEXT_FIELD, LABELS, df_train_part, smoke_test=SMOKE_TEST) for df_train_part in train_data_paths],
+        [read_data(TEXT_FIELD, LABELS, train_path, smoke_test=SMOKE_TEST) for train_path in train_data_paths],
         ignore_index=True,
     )
 
     logging.info(f"Reading eval data from path : {train_data_paths}")
     df_eval = pd.concat(
-        [read_data(TEXT_FIELD, LABELS, df_eval_part, smoke_test=SMOKE_TEST) for df_eval_part in eval_data_paths],
+        [read_data(TEXT_FIELD, LABELS, eval_path, smoke_test=SMOKE_TEST) for eval_path in eval_data_paths],
         ignore_index=True,
     )
 
