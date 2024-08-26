@@ -613,6 +613,9 @@ def clean_name(row: pd.Series, product_type_map: dict = PRODUCT_TYPE_MAP) -> pd.
             # Note: Skip "Basic Type" column since it's already set
             for col in NON_SUBTYPE_COLUMNS:
                 if token in NON_SUBTYPE_TAGS_FPC[food_product_category][col]:
+                    if token == "pepperoni" and food_product_category == "Meals":
+                        # Note: Edge case for pepperoni pizza (don't put in Shape)
+                        continue
                     if row[col] is not None:
                         # Note: Make sure column isn't empty before setting value
                         if row[col] == token:
