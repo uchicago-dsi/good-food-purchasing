@@ -82,7 +82,7 @@ PRODUCT_TYPE_MAP = {
     },
     "ORANGE, BLOOD CNCNT FZN": {
         "Basic Type": "orange",
-        "Shape": ["concentrate"],
+        "Shape": "concentrate",
         "Frozen": "frozen",
     },
     "GRAIN, WHEAT RED BRRY": {
