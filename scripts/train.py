@@ -10,6 +10,7 @@ from typing import List, Union
 import numpy as np
 import pandas as pd
 import torch
+import wandb
 import yaml
 from datasets import Dataset
 from sklearn.preprocessing import LabelEncoder
@@ -23,7 +24,6 @@ from transformers import (
     TrainingArguments,
 )
 
-import wandb
 from cgfp.constants.training_constants import LABELS
 from cgfp.inference.inference import inference_handler, test_inference
 from cgfp.training.models import MultiTaskConfig, MultiTaskModel
@@ -73,12 +73,6 @@ def read_data(input_col: str, labels: list[str], data_path: str, smoke_test: boo
         df_cgfp = pd.read_excel(data_path, na_values=["NULL"], nrows=nrows)
     else:
         raise ValueError(f"Unsupported file format: {file_extension}")
-
-    # Drop duplicate input column rows for more balanced dataset
-    prev_height = df_cgfp.shape[0]
-    df_cgfp = df_cgfp.drop_duplicates(subset=[input_col])
-    new_height = df_cgfp.shape[0]
-    logging.info(f"Dropped {prev_height - new_height} duplicate rows based on the column '{input_col}'.")
 
     # Filter out rows with null values in specific columns
     for col in [input_col, "Food Product Group", "Food Product Category", "Primary Food Product Category"]:
@@ -324,12 +318,22 @@ if __name__ == "__main__":
         [read_data(TEXT_FIELD, LABELS, train_path, smoke_test=SMOKE_TEST) for train_path in train_data_paths],
         ignore_index=True,
     )
+    # Drop duplicate input column rows for more balanced dataset
+    prev_height = df_train.shape[0]
+    df_train = df_train.drop_duplicates(subset=[TEXT_FIELD])
+    new_height = df_train.shape[0]
+    logging.info(f"Dropped {prev_height - new_height} duplicate rows based on the column '{TEXT_FIELD}'.")
 
     logging.info(f"Reading eval data from path : {train_data_paths}")
     df_eval = pd.concat(
         [read_data(TEXT_FIELD, LABELS, eval_path, smoke_test=SMOKE_TEST) for eval_path in eval_data_paths],
         ignore_index=True,
     )
+
+    prev_height = df_eval.shape[0]
+    df_eval = df_eval.drop_duplicates(subset=[TEXT_FIELD])
+    new_height = df_train.shape[0]
+    logging.info(f"Dropped {prev_height - new_height} duplicate rows based on the column '{TEXT_FIELD}'.")
 
     labels_dict = {label: i for i, label in enumerate(LABELS)}
 
