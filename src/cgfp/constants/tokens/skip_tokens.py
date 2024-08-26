@@ -542,4 +542,11 @@ SKIP_TOKENS = {
     "animal",
     "amber",
     "americano",
+    "snickerdoodle",
+    "tiramisu",
+    "sourdough",
+    "rye",
+    "oat bran",
+    "oatmeal cream pie",
+    "mousse",
 }

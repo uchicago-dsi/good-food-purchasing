@@ -482,6 +482,18 @@ def subtype_handler(row: dict, token: str, subtype_map: dict = SUBTYPE_MAP) -> T
         row = add_subtypes(row, ["nut"])  # This shows up for ice cream, so no "flavored"
         return None, row
 
+    if token == "fruit and nut":
+        row = add_subtypes(row, ["fruit", "nut"])
+        return None, row
+
+    if token == "ham and cheese":
+        row = add_subtypes(row, ["ham", "cheese"])
+        return None, row
+
+    if token == "mozzarella provolone":
+        row = add_subtypes(row, ["mozzarella", "provolone"])
+        return None, row
+
     # Group membership rules
     if token in FRUIT_SNACKS:
         row["Basic Type"] = "fruit snack"

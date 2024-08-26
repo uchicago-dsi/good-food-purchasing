@@ -122,6 +122,8 @@ MISC_COLUMN_TAGS = {
             "salami",
             "crumble",
             "guanciale",
+            "mortadella",
+            "pastrami",
         },
         "Skin": {"skin on"},
         "Seed/Bone": {"bone-in"},
