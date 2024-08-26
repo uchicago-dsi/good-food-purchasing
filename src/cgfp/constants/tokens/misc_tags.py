@@ -32,6 +32,7 @@ FPG2FPC = {
     "Beverages": ["Beverages"],
     "Meals": ["Meals"],
     "Condiments & Snacks": ["Condiments & Snacks"],
+    "Non-Food": ["Non-Food"],
 }
 
 FPC2FPG = {}

@@ -16,7 +16,7 @@ from cgfp.constants.pipeline_constants import (
     GROUP_COLUMNS,
     NON_SUBTYPE_COLUMNS,
     NORMALIZED_COLUMNS,
-    RUN_FOLDER,
+    RUN_PATH,
     SUBTYPE_COLUMNS,
 )
 from cgfp.constants.tokens.basic_type_map import BASIC_TYPE_MAP
@@ -840,11 +840,11 @@ def main(argv):
     )
 
     # Save file for new scoring platform
-    scoring_file = RUN_FOLDER / "scoring.csv"
+    scoring_file = RUN_PATH / "scoring.csv"
     df_scoring.to_csv(scoring_file, index=False)
 
     # Save diff file
-    diff_file = RUN_FOLDER / "normalized_name_diff.csv"
+    diff_file = RUN_PATH / "normalized_name_diff.csv"
     df_diff.to_csv(diff_file, index=False)
 
     # Combine counts for each column
@@ -873,7 +873,7 @@ def main(argv):
         elif column != "Sub-Types":
             sorted_counts_dict[column] = counts_dict[column]
 
-    counts_file = RUN_FOLDER / "value_counts.xlsx"
+    counts_file = RUN_PATH / "value_counts.xlsx"
 
     # Write the counts to an Excel file
     with pd.ExcelWriter(counts_file) as writer:

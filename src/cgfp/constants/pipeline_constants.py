@@ -9,12 +9,12 @@ DATA_FOLDER = project_root / "data"
 RAW_FOLDER = DATA_FOLDER / "raw"
 CLEAN_FOLDER = DATA_FOLDER / "clean"
 RUN_FOLDER = f"pipeline-{datetime.now().strftime('%Y-%m-%d %H-%M')}/".replace(" ", "_")
-RUN_FOLDER = CLEAN_FOLDER / RUN_FOLDER
+RUN_PATH = CLEAN_FOLDER / RUN_FOLDER
 
 DATA_FOLDER.mkdir(parents=True, exist_ok=True)
 RAW_FOLDER.mkdir(parents=True, exist_ok=True)
 CLEAN_FOLDER.mkdir(parents=True, exist_ok=True)
-RUN_FOLDER.mkdir(parents=True, exist_ok=True)
+RUN_PATH.mkdir(parents=True, exist_ok=True)
 
 CLEAN_FILE_PREFIX = "clean_"
 

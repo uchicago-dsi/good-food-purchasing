@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from cgfp.constants.pipeline_constants import CLEAN_FILE_PREFIX, RUN_FOLDER
+from cgfp.constants.pipeline_constants import CLEAN_FILE_PREFIX, RUN_PATH
 
 
 def load_to_pd(raw_data: str, input_file: str, **options) -> pd.DataFrame:
@@ -62,7 +62,7 @@ def save_pd_to_csv(
     if ext.lower() != ".csv":
         output_file = filename + ".csv"
 
-    run_folder_path = Path(clean_folder) / RUN_FOLDER
+    run_folder_path = Path(clean_folder) / RUN_PATH
     run_folder_path.mkdir(parents=True, exist_ok=True)
 
     clean_file_path = run_folder_path / output_file
