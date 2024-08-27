@@ -247,7 +247,6 @@ if __name__ == "__main__":
     RESET_CLASSIFICATION_HEADS = config["model"]["reset_classification_heads"]
     ATTACHED_HEADS = config["model"]["attached_heads"]
     FREEZE_BASE = config["model"]["freeze_base"]
-    COMBINE_SUBTYPES = config["model"]["combine_subtypes"]
     UPDATE_CONFIG = config["model"]["update_config"]
 
     pretrained_checkpoint = config["model"]["starting_checkpoint"]

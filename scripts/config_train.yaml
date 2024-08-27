@@ -1,7 +1,7 @@
 config:
-  smoke_test: false
+  smoke_test: true
   checkpoints_dir: "/net/projects/cgfp/checkpoints/"
-  run_title: "non_food_items_subtypes_full_sft"
+  run_title: "conifg_saving_test"
 data:
   text_field: "Product Type"
   data_dir: "/net/projects/cgfp/data/"
@@ -16,17 +16,15 @@ data:
 model:
   model_name: "roberta" # Choices: distilbert, roberta
   starting_checkpoint: "/net/projects/cgfp/huggingface/cgfp-roberta"
-  # starting_checkpoint: "/net/projects/cgfp/model-files/distilbert_20240813_1603_raw_distilbert" # null to train the off-the-shelf huggingface model
-  eval_checkpoint: "/net/projects/cgfp/model-files/roberta_20240726_0823_heads_only_uncased"
+  # starting_checkpoint: "/net/projects/cgfp/model-files/roberta_20240826_2054_non_food_items_basic_type_full_sft" # null to train the off-the-shelf huggingface model
   model_dir: "/net/projects/cgfp/model-files/"
   classification_head_type: "mlp" # Choices: "mlp", "linear"
   loss: "cross_entropy" # Choices: "cross_entropy"
   save_best: true # Model saving strategy. If set to false, saves last model.
   freeze_base: false # Freezes the base model and only trains the classification heads
-  reset_classification_heads: true # Renitializes the classification heads
+  reset_classification_heads: false # Renitializes the classification heads
   attached_heads: # If null, attaches all heads to computation graph. If not null, attaches only the specified heads
     - "Sub-Types"
-  combine_subtypes: true # Combine sub-type columns for multi-label training
   update_config: true # Update the model config with new counts, etc. from data (set to false to prevent smoke test from updating)
 training:
   lr: 2e-5 # .001 for distilbert, 2e-5 for roberta
@@ -45,3 +43,5 @@ scheduler: # CosineAnnealingWarmRestarts
   T_0: 2000 # Number of iterations before first restart
   T_mult: 1 # Multiplicative factor by which to increase T after each restart
   eta_min_constant: .1 # Minimum learning rate constant
+eval:
+  eval_checkpoint: "/net/projects/cgfp/model-files/roberta_20240726_0823_heads_only_uncased"
