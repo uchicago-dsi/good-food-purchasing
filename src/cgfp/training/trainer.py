@@ -49,9 +49,9 @@ def compute_metrics(
     recalls = {}
 
     # Note: Distilbert returns just preds, Roberta returns preds and logits
-    if model.config.model_type == "distilbert":
+    if model.config.base_model_type == "distilbert":
         predictions = pred.predictions
-    elif model.config.model_type == "roberta":
+    elif model.config.base_model_type == "roberta":
         predictions = pred.predictions[0]
 
     for i, task in enumerate(model.classification_heads.keys()):

@@ -110,6 +110,7 @@ MISC_COLUMN_TAGS = {
             "neck bone",
             "rib",
             "teres major",
+            "cheek",
         },
         "Shape": {
             "bacon",

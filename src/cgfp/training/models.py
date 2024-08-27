@@ -73,7 +73,7 @@ class MultiTaskConfig(PretrainedConfig):
     """Configuration class for multi-task models, extending from PretrainedConfig.
 
     Args:
-        model_type: The type of model to use (e.g., "distilbert")
+        base_model_type: The type of model to use (e.g., "distilbert")
         classification: The type of classification head to use (e.g., "linear")
         decoders: A dictionary of decoders to use for each task.
         columns: A dictionary mapping task names to data columns.
@@ -87,7 +87,7 @@ class MultiTaskConfig(PretrainedConfig):
 
     def __init__(
         self,
-        model_type="distilbert",
+        base_model_type="roberta",
         classification="linear",
         decoders=None,
         columns=None,
@@ -100,10 +100,10 @@ class MultiTaskConfig(PretrainedConfig):
     ):
         """Initializes the PreTrainedConfig with the passed parameters"""
         super().__init__(**kwargs)
-        self.model_type = model_type
+        self.base_model_type = base_model_type
 
         # Note: distilbert has some unconventionally named config options
-        if model_type == "distilbert":
+        if base_model_type == "distilbert":
             self.attribute_map = {
                 "hidden_size": "dim",
                 "num_attention_heads": "n_heads",

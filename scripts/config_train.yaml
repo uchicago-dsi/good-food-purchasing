@@ -1,7 +1,7 @@
 config:
   smoke_test: true
   checkpoints_dir: "/net/projects/cgfp/checkpoints/"
-  run_title: "conifg_saving_test"
+  run_title: "config_saving_test"
 data:
   text_field: "Product Type"
   data_dir: "/net/projects/cgfp/data/"

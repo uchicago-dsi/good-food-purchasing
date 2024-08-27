@@ -10,7 +10,6 @@ from typing import List, Union
 import numpy as np
 import pandas as pd
 import torch
-import wandb
 import yaml
 from datasets import Dataset
 from sklearn.preprocessing import LabelEncoder
@@ -24,6 +23,7 @@ from transformers import (
     TrainingArguments,
 )
 
+import wandb
 from cgfp.constants.training_constants import LABELS
 from cgfp.inference.inference import inference_handler, test_inference
 from cgfp.training.models import MultiTaskConfig, MultiTaskModel
@@ -401,7 +401,7 @@ if __name__ == "__main__":
             multi_task_config.inference_masks = json.dumps(inference_masks)
             multi_task_config.counts = json.dumps(counts)
             multi_task_config.loss = loss
-            multi_task_config.model_type = MODEL_NAME
+            multi_task_config.base_model_type = MODEL_NAME
 
         # Note: ignore_mismatched_sizes since we are often loading from checkpoints with different numbers of categories
         model = MultiTaskModel.from_pretrained(
