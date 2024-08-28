@@ -449,7 +449,6 @@ TOKEN_MAP_DICT = {
     "orange pomegranate cocktail": "cocktail",
     "maple almond butter": "almond butter",
     "orange cocktail": "cocktail",
-    "fajita": "seasoned",
     "garlic and herb": "seasoned",
     "garlic cheddar": "seasoned",
     "garlic herb": "seasoned",

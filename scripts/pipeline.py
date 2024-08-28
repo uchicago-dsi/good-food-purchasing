@@ -463,6 +463,12 @@ def subtype_handler(row: dict, token: str, subtype_map: dict = SUBTYPE_MAP) -> T
             return token, row
         return None, row
 
+    if token == "fajita":
+        if row["Basic Type"] == "vegetable":
+            return "blend", row
+        else:
+            return "seasoned", row
+
     # Multipe subtypes
     if token == "fried onion":
         row["Basic Type"] = "topping"

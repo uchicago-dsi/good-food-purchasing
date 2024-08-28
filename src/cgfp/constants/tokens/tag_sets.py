@@ -445,6 +445,7 @@ CORN_CERAL = {
     "honey nut chex",
     "trix",
     "froot loops",
+    "chex",
 }
 
 RICE_CEREAL = {"special k"}

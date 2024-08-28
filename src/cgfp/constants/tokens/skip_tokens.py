@@ -33,7 +33,6 @@ SKIP_TOKENS = {
     ## BONELESS ##
     "boneless",
     ## CEREAL TYPES ##
-    "chex",  # TODO: This can be multiple types of cereal
     "spooners",
     "kids stuff",
     "homestyle",
