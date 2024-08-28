@@ -88,6 +88,7 @@ SKIP_TOKENS = {
     "chewie",
     "chewy",
     ## PASTA TYPES ##
+    "radiatore",
     "elbow",
     "elbow macaroni",
     "bowtie",
@@ -139,6 +140,7 @@ SKIP_TOKENS = {
     "giant",
     "large",
     "medium",
+    "tiny",
     ## SNACKS ##
     "elf",
     "teddy",
@@ -545,4 +547,6 @@ SKIP_TOKENS = {
     "oat bran",
     "oatmeal cream pie",
     "mousse",
+    "black forest",
+    "faming hot",
 }

@@ -500,6 +500,14 @@ def subtype_handler(row: dict, token: str, subtype_map: dict = SUBTYPE_MAP) -> T
         row = add_subtypes(row, ["mozzarella", "provolone"])
         return None, row
 
+    if token == "crispix":
+        row = add_subtypes(row, ["rice", "corn"])
+        return None, row
+
+    if token == "cap'n crunch":
+        row = add_subtypes(row, ["corn", "oat"])
+        return None, row
+
     # Group membership rules
     if token in FRUIT_SNACKS:
         row["Basic Type"] = "fruit snack"

@@ -380,6 +380,7 @@ SHAPE_EXTRAS = {
 # TODO: Maybe dynamically generate fruits and vegetables
 VEGETABLES = {
     "produce",
+    "artichoke",
     "carrot",
     "cauliflower",
     "pea",
@@ -405,10 +406,11 @@ VEGETABLES = {
     "tomato basil",
 }
 
-NUTS = {"almond", "cashew", "pecan", "pistachio", "hazelnut", "walnut"}
+NUTS = {"almond", "cashew", "pecan", "pistachio", "hazelnut", "walnut", "macadamia", "kukui"}
 
 CHEESE_TYPES = {
     "cheddar",
+    "gruyere",
     "cheddar cheese",
     "monterey jack",
     "mozzarella",
@@ -424,9 +426,25 @@ CHEESE_TYPES = {
     "pepper jack",
     "parmesan",
     "swiss",
+    "sottocenere",
+    "van sormon",
+    "tomme de hood",
+    "asiago",
+    "fontina",
+    "ciliegine",
+    "baby caprino",
+    "barricato al pepe",
+    "piemontese",
+    "cotjia",
+    "halloumi",
+    "chevre",
+    "chihuahua",
+    "port salut",
+    "deep ellum blue",
+    "cotija",
 }
 
-MELON_TYPES = {"cantaloupe", "honeydew", "watermelon", "galia"}
+MELON_TYPES = {"cantaloupe", "honeydew", "watermelon", "galia", "hami"}
 
 SUBTYPE_REPLACEMENT_MAP = {
     "fruit": "fruit",
@@ -446,9 +464,11 @@ CORN_CERAL = {
     "trix",
     "froot loops",
     "chex",
+    "cocoa puffs",
+    "kix",
 }
 
-RICE_CEREAL = {"special k"}
+RICE_CEREAL = {"special k", "cocoa krispies", "rice chex"}
 
 WHEAT_CEREAL = {
     "frosted mini spooner",

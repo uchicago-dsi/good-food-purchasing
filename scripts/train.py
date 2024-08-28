@@ -10,6 +10,7 @@ from typing import List, Union
 import numpy as np
 import pandas as pd
 import torch
+import wandb
 import yaml
 from datasets import Dataset
 from sklearn.preprocessing import LabelEncoder
@@ -23,7 +24,6 @@ from transformers import (
     TrainingArguments,
 )
 
-import wandb
 from cgfp.constants.training_constants import LABELS
 from cgfp.inference.inference import inference_handler, test_inference
 from cgfp.training.models import MultiTaskConfig, MultiTaskModel

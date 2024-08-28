@@ -107,7 +107,6 @@ MISC_COLUMN_TAGS = {
             "tripe",
             "marrow bone",
             "neck",
-            "neck bone",
             "rib",
             "teres major",
             "cheek",
