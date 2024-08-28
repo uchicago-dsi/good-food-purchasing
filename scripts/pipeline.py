@@ -396,7 +396,7 @@ def remove_subtypes(row: dict, tokens: Union[str, List[str]]) -> dict:
     return row
 
 
-def update_subtypes(row: dict, num_subtype_cols: int = 2) -> dict:
+def update_subtypes(row: dict, num_subtype_cols: int = len(SUBTYPE_COLUMNS)) -> dict:
     """Updates row with subtypes in individual columns
 
     Args:
@@ -531,7 +531,6 @@ def postprocess_subtypes(row: dict, subtype_mapping: dict = SUBTYPE_REPLACEMENT_
     # TODO: Make this robust to subtype changes, change to subtype 3, etc.
     # Count occurrences of each category
     category_counts = {}
-    # for subtype in SUBTYPE_COLUMNS:
     for subtype in row["Sub-Types"]:
         category = get_category(subtype)
         if category:

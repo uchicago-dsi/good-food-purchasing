@@ -35,7 +35,7 @@ ADDITIONAL_COLUMNS = [
 ]
 
 # TODO: Sub type 3?
-SUBTYPE_COLUMNS = ["Sub-Type 1", "Sub-Type 2"]
+SUBTYPE_COLUMNS = ["Sub-Type 1", "Sub-Type 2", "Sub-Type 3"]
 NON_SUBTYPE_COLUMNS = [
     "Flavor/Cut",
     "Shape",

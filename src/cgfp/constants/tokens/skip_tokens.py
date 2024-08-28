@@ -138,6 +138,7 @@ SKIP_TOKENS = {
     "king size",
     "giant",
     "large",
+    "medium",
     ## SNACKS ##
     "elf",
     "teddy",

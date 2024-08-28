@@ -466,4 +466,5 @@ TOKEN_MAP_DICT = {
     "in pineapple juice": "in juice",
     "in sunflower oil": "in oil",
     "in balsamic vinegar": "in vinegar",
+    "black forest ham": "ham",
 }
