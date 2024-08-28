@@ -386,6 +386,7 @@ TOKEN_MAP_DICT = {
     "canteloupe": "cantaloupe",
     "bone in": "bone-in",
     "bones": "bone",
+    "bone femur": "bone",
     "amagaki": "persimmon",
     "yellow fin": "yellowfin",
     "worcestershire sauce": "worcestershire",
