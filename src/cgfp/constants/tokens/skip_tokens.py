@@ -89,6 +89,7 @@ SKIP_TOKENS = {
     "chewy",
     ## PASTA TYPES ##
     "radiatore",
+    "torchiette",
     "elbow",
     "elbow macaroni",
     "bowtie",

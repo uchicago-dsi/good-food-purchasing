@@ -442,9 +442,15 @@ CHEESE_TYPES = {
     "port salut",
     "deep ellum blue",
     "cotija",
+    "colby",
+    "burrata",
+    "colby jack",
+    "ricotta",
+    "brie",
+    "wensleydale",
 }
 
-MELON_TYPES = {"cantaloupe", "honeydew", "watermelon", "galia", "hami"}
+MELON_TYPES = {"cantaloupe", "honeydew", "watermelon", "galia", "hami", "crenshaw"}
 
 SUBTYPE_REPLACEMENT_MAP = {
     "fruit": "fruit",
@@ -466,9 +472,10 @@ CORN_CERAL = {
     "chex",
     "cocoa puffs",
     "kix",
+    "corn chex",
 }
 
-RICE_CEREAL = {"special k", "cocoa krispies", "rice chex"}
+RICE_CEREAL = {"special k", "cocoa krispies", "rice chex", "rice krispies"}
 
 WHEAT_CEREAL = {
     "frosted mini spooner",
@@ -485,6 +492,7 @@ WHEAT_CEREAL = {
     "wheat bran flakes",
     "wheat frosted",
     "wheaties",
+    "shredded wheat",
 }
 
 OAT_CEREAL = {

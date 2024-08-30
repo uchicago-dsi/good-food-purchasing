@@ -291,6 +291,7 @@ TOKEN_MAP_DICT = {
     "mesquite smoked": "smoked",
     "applewood smoked": "smoked",
     "mesquite smoke": "smoked",
+    "honey smoked": "smoked",
     # "mesquite": "cooked",  # TODO: what should we do with this?
     ## MIXED VEGGIES ##
     "vegetable cup": "vegetable",
@@ -502,4 +503,6 @@ TOKEN_MAP_DICT = {
     "consommé": "consomme",
     "cheeese": "cheese",
     "crimini": "cremini",
+    "omelet": "omelette",
+    "macaron": "macaroon",
 }
