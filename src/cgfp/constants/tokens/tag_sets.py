@@ -448,6 +448,7 @@ CHEESE_TYPES = {
     "ricotta",
     "brie",
     "wensleydale",
+    "romano pecorino",
 }
 
 MELON_TYPES = {"cantaloupe", "honeydew", "watermelon", "galia", "hami", "crenshaw"}
