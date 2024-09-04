@@ -19,9 +19,8 @@ MISC_COLS = [
     "Commodity",
 ]
 
-# TODO: Check that this doesn't break training...
-LABELS = FPG_FPC_COLS + ["Basic Type"] + SUB_TYPE_COLS + MISC_COLS
+NON_LABEL_COLS = ["Product Type", "Center Product ID"]
+LABELS = FPG_FPC_COLS + ["Basic Type"] + MISC_COLS + SUB_TYPE_COLS
+OUTPUT_COLS = NON_LABEL_COLS + FPG_FPC_COLS + ["Basic Type"] + SUB_TYPE_COLS + MISC_COLS
 
-COMPLETE_LABELS = ["Product Type", "Center Product ID"] + LABELS
-
-lower2label = {label.lower(): label for label in COMPLETE_LABELS}
+lower2label = {label.lower(): label for label in OUTPUT_COLS}

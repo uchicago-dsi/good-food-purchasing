@@ -22,7 +22,7 @@ model:
   loss: "cross_entropy" # Choices: "cross_entropy"
   save_best: true # Model saving strategy. If set to false, saves last model.
   freeze_base: false # Freezes the base model and only trains the classification heads
-  reset_classification_heads: false # Renitializes the classification heads
+  reset_classification_heads: true # Renitializes the classification heads
   attached_heads: # If null, attaches all heads to computation graph. If not null, attaches only the specified heads
     - "Sub-Types"
   update_config: true # Update the model config with new counts, etc. from data (set to false to prevent smoke test from updating)
@@ -44,4 +44,4 @@ scheduler: # CosineAnnealingWarmRestarts
   T_mult: 1 # Multiplicative factor by which to increase T after each restart
   eta_min_constant: .1 # Minimum learning rate constant
 eval:
-  eval_checkpoint: "/net/projects/cgfp/model-files/roberta_20240831_1121_config_saving_test_smoke_test"
+  eval_checkpoint: "/net/projects/cgfp/model-files/roberta_20240904_1450_config_saving_test_smoke_test"

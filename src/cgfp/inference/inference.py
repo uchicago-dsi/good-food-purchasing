@@ -14,7 +14,7 @@ from torch.nn.functional import sigmoid
 from transformers import DistilBertTokenizerFast
 
 from cgfp.constants.tokens.misc_tags import FPG2FPC
-from cgfp.constants.training_constants import COMPLETE_LABELS, lower2label
+from cgfp.constants.training_constants import NON_LABEL_COLS, OUTPUT_COLS, lower2label
 from cgfp.training.models import MultiTaskModel
 
 logger = logging.getLogger("inference_logger")
@@ -82,7 +82,7 @@ def inference(
     device: str,
     threshold: float = 0.5,
     assertion: bool = False,
-    confidence_score: bool = True,
+    confidence_score: bool = False,
     combine_name: bool = False,
 ) -> Union[str, dict[str, Any]]:
     """Performs inference on the provided text using the specified model and tokenizer, returning either a combined name or a dictionary of predictions.
@@ -178,11 +178,13 @@ def inference(
             legible_subtype = model.decoders["Sub-Types"][str(idx.item())]
             if legible_subtype in model.counts[f"Sub-Type {subtype_col_idx}"]:
                 # Note: Sort tuples by presence in subtype column, then frequency
+                # TODO: Add a sort here for whether this is a "misc" column tag (put those last)
+                # Create a set of all misc tags and check for membership...
                 predicted_subtype_tuples.append(
                     (subtype_col_idx, model.counts[f"Sub-Type {subtype_col_idx}"][legible_subtype], legible_subtype)
                 )
                 break
-
+    # Note: sort by column index then by frequency
     predicted_subtype_tuples = sorted(predicted_subtype_tuples)
 
     for i, (_, _, subtype) in enumerate(predicted_subtype_tuples):
@@ -271,25 +273,22 @@ def inference_handler(
         .apply(lambda text: inference(model, tokenizer, text, device, assertion=assertion))
         .apply(pd.Series)
     )
-    results = pd.concat([df_input[input_column], output], axis=1)
-    results = results.replace("None", pd.NA)
+    output = output.replace("None", pd.NA)
 
     if raw_results:
         if save:
-            save_output(results, input_path, save_dir)
-        return results
+            save_output(output, input_path, save_dir)
+        return output
 
     # Add all columns to results to match name normalization format
-    # Assumes that the input dataframe is in the expected name normalization format
-    # TODO: Add a check for that
     results_full = pd.DataFrame()
-    for col in COMPLETE_LABELS:
-        if col in results:
-            results_full[col] = results[col]
-        elif col == "Center Product ID":
+    for col in OUTPUT_COLS:
+        if col in output:
+            results_full[col] = output[col]
+        elif col in NON_LABEL_COLS:
             results_full[col] = df_input[col]
         else:
-            results_full[col] = pd.Series([None] * len(results))
+            results_full[col] = pd.Series([None] * len(output))
 
     if output_filename is None:
         output_filename = input_path
