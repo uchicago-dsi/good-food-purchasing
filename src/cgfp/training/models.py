@@ -187,12 +187,12 @@ class MultiTaskModel(PreTrainedModel):
         super().__init__(config)
         self.config = config
 
-        if self.config.model_type == "distilbert":
+        if self.config.base_model_type == "distilbert":
             self.llm = DistilBertModel(config)
-        elif self.config.model_type == "roberta":
+        elif self.config.base_model_type == "roberta":
             self.llm = RobertaModel(config)
         else:
-            raise ValueError(f"Unsupported model type: {config.model_type}")
+            raise ValueError(f"Unsupported model type: {config.base_model_type}")
 
         # Note: Need to store some config objects as JSON, so need to initialize them
         self.initialize_inference_masks()

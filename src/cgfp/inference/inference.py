@@ -14,7 +14,7 @@ from torch.nn.functional import sigmoid
 from transformers import DistilBertTokenizerFast
 
 from cgfp.constants.tokens.misc_tags import FPG2FPC
-from cgfp.constants.training_constants import lower2label
+from cgfp.constants.training_constants import COMPLETE_LABELS, lower2label
 from cgfp.training.models import MultiTaskModel
 
 logger = logging.getLogger("inference_logger")
@@ -224,7 +224,6 @@ def inference_handler(
     device: Optional[str] = None,
     sheet_name: Union[int, str] = 0,
     save: bool = True,
-    confidence_score: bool = False,
     threshold: float = 0.85,
     num_rows_to_classify: Optional[int] = None,
     raw_results: bool = False,
@@ -284,21 +283,13 @@ def inference_handler(
     # Assumes that the input dataframe is in the expected name normalization format
     # TODO: Add a check for that
     results_full = pd.DataFrame()
-    for col in df_input.columns:
+    for col in COMPLETE_LABELS:
         if col in results:
             results_full[col] = results[col]
         elif col == "Center Product ID":
             results_full[col] = df_input[col]
         else:
             results_full[col] = pd.Series([None] * len(results))
-
-        # Add confidence score
-        score_col = col + "_score"
-        if score_col in results:
-            results_full[score_col] = results[score_col]
-
-    if not confidence_score:
-        results_full = results_full[[col for col in df_input.columns if "_score" not in col]]
 
     if output_filename is None:
         output_filename = input_path
