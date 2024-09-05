@@ -81,6 +81,7 @@ MISC_COLUMN_TAGS = {
             "gluten free",
             "halal",
             "kosher",
+            # TODO: actually make the basic type "meatless" and the type of food the first sub-type
             "vegan",
             "vegetarian",
         },

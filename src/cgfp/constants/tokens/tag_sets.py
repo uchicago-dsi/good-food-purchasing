@@ -1,9 +1,6 @@
 """Define sets of tags that have special rules for token mapping for CGFP pipeline"""
 
 # More complicated conditional rules
-# TODO: Find rules for converting flavors to "flavored"
-# TODO: some of the cheese is incorrect in the dataset » or wait, this is all "milk & dairy"
-# TODO: cheese types? "manchego", "mozzarella", "blue", etc.
 # TODO: "blue" is a problem for colors and cheese » what about "white" for vegetables? "onion" but maybe we want this for other ones
 # also white corn, etc.
 # TODO: "whole weat" for pasta? ravioli?
@@ -449,6 +446,11 @@ CHEESE_TYPES = {
     "brie",
     "wensleydale",
     "romano pecorino",
+    "bucheron",
+    "caciotta",
+    "manchego",
+    "cheddar jack",
+    "american",
 }
 
 MELON_TYPES = {"cantaloupe", "honeydew", "watermelon", "galia", "hami", "crenshaw"}

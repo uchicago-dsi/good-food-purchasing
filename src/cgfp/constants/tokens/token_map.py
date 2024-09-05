@@ -505,4 +505,8 @@ TOKEN_MAP_DICT = {
     "crimini": "cremini",
     "omelet": "omelette",
     "macaron": "macaroon",
+    "bronzino": "branzino",
+    "cayote": "chayote",
+    "clemetine": "clementine",
+    "cherrios": "cheerios",
 }
