@@ -9,8 +9,8 @@ For example, ```CRANBERRIES, DRIED, INDIVIDUALLY PACKAGED (1.16 oz./pkg.)``` bec
 The name normalization process is time-consuming and error-prone, so we have trained a language model to perform a first-pass of name normalization.
 
 This repo contains: 
-- A data cleaning pipeline to clean CGFP's (Center for Good Food Purchasing) historical labeled data for use in training a text classifier to perform their name normalization task
-- A training pipeline to train a text classifier to perform the name normalization task
+- A data cleaning pipeline to clean CGFP's (Center for Good Food Purchasing) historical labeled data for use in training a text classifier to perform their name normalization task. **This is designed to be done on the DSI GPU Cluster**
+- A training pipeline to train a text classifier to perform the name normalization task. **This is to be run locally.**
 
 ## Pipeline
 
@@ -55,8 +55,9 @@ Otherwise, build the Docker image using the ```Dockerfile``` in the root of the 
 ### Raw Data
 
 We've been using the pipeline to clean these two data sets:
-- [CONFIDENTIAL_CGFP bulk data_073123](https://docs.google.com/spreadsheets/d/1c5v7nBhqQpjOb7HE7pqDUx_xMc8r1imc/edit?usp=sharing&ouid=114633865943391212776&rtpof=true&sd=true)
-- [New_Raw_Data_030724](https://docs.google.com/spreadsheets/d/1PziC9jR8yHQex9RB49JoH5s4nXd1fLoK/edit?usp=sharing&ouid=114633865943391212776&rtpof=true&sd=true)
+- <a href="https://docs.google.com/spreadsheets/d/1c5v7nBhqQpjOb7HE7pqDUx_xMc8r1imc/edit?usp=sharing&ouid=114633865943391212776&rtpof=true&sd=true" target="_blank">CONFIDENTIAL_CGFP bulk data_073123</a>
+- <a href="https://docs.google.com/spreadsheets/d/1PziC9jR8yHQex9RB49JoH5s4nXd1fLoK/edit?usp=sharing&ouid=114633865943391212776&rtpof=true&sd=true" target="_blank">New_Raw
+
 
 ## Text Classifier
 
