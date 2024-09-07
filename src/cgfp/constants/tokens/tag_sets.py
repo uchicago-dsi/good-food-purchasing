@@ -17,6 +17,7 @@ FLAVORS = {
     "arnold palmer",
     # sports drinks #
     "arctic blitz",
+    "blue pomegranate",
     # spices #
     "vanilla",
     "cinnamon",
@@ -502,6 +503,13 @@ FLAVORS = {
     "lavender",
     "irish cream",
     "lime lemon",
+    "smore",
+    "sweet and smoky",
+    "sweet and sour meatball",
+    "sweet and sour sauce",
+    "sweet mint",
+    "sweet tea",
+    "s'more",
 }
 
 # Note: fruits are separated since there is separate logic for "fruit, blend"
@@ -554,6 +562,7 @@ SKIP_FLAVORS = {
     "cake",
     "danish",
     "soda",
+    "sports drink",
 }
 
 # For these basic types, tag anything that includes a FLAVORS tag as "flavored"
@@ -675,9 +684,17 @@ CHEESE_TYPES = {
     "manchego",
     "cheddar jack",
     "american",
+    "jarlsberg",
+    "mascarpone",
+    "menonina",
+    "menonita",
+    "asadero",
+    "birdville reserve",
+    "botalon",
+    "taleggio",
 }
 
-MELON_TYPES = {"cantaloupe", "honeydew", "watermelon", "galia", "hami", "crenshaw"}
+MELON_TYPES = {"cantaloupe", "honeydew", "watermelon", "galia", "hami", "crenshaw", "malichita"}
 
 SUBTYPE_REPLACEMENT_MAP = {
     "fruit": "fruit",
@@ -700,9 +717,13 @@ CORN_CERAL = {
     "cocoa puffs",
     "kix",
     "corn chex",
+    "corn pops",
+    "corn pop",
+    "corn puff",
+    "corn flakes",
 }
 
-RICE_CEREAL = {"special k", "cocoa krispies", "rice chex", "rice krispies"}
+RICE_CEREAL = {"special k", "cocoa krispies", "rice chex", "rice krispies", "crisp rice", "rice crispy"}
 
 WHEAT_CEREAL = {
     "frosted mini spooner",
@@ -720,6 +741,7 @@ WHEAT_CEREAL = {
     "wheat frosted",
     "wheaties",
     "shredded wheat",
+    "total",
 }
 
 OAT_CEREAL = {
