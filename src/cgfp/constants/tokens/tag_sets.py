@@ -721,6 +721,8 @@ CORN_CERAL = {
     "corn pop",
     "corn puff",
     "corn flakes",
+    "purple flake",
+    "purple flakes",
 }
 
 RICE_CEREAL = {"special k", "cocoa krispies", "rice chex", "rice krispies", "crisp rice", "rice crispy"}

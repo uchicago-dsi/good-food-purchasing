@@ -132,6 +132,7 @@ MISC_COLUMN_TAGS = {
             "feet",
             "leg",
             "striploin",
+            "loin rib",
         },
         "Shape": {
             "bacon",
