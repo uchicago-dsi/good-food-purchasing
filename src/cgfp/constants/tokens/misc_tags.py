@@ -225,3 +225,9 @@ for fpc in FPC2FPG.keys():
         all_tags.update(NON_SUBTYPE_TAGS_FPC[fpc][col])
     # Update all allowed tags for Food Product Category
     NON_SUBTYPE_TAGS_FPC[fpc]["All"] = all_tags
+
+# Create a set of all allowed tags for inference
+ALL_NON_SUBTYPE_TAGS = set()
+for tags in NON_SUBTYPE_TAGS_FPC.values():
+    for col_tags in tags.items():
+        ALL_NON_SUBTYPE_TAGS.update(col_tags)

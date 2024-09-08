@@ -510,7 +510,10 @@ FLAVORS = {
     "sweet mint",
     "sweet tea",
     "s'more",
+    "smores",
     "pomegranate green",
+    "silver ice",
+    "sugar butter",
 }
 
 # Note: fruits are separated since there is separate logic for "fruit, blend"
@@ -564,6 +567,7 @@ SKIP_FLAVORS = {
     "danish",
     "soda",
     "sports drink",
+    "energy drink",
 }
 
 # For these basic types, tag anything that includes a FLAVORS tag as "flavored"

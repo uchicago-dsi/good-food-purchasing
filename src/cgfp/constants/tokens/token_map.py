@@ -624,4 +624,9 @@ TOKEN_MAP_DICT = {
     "philly steak": "cheesesteak",
     "four bean": "bean",
     "pork sausauce": "pork sausage",
+    "season": "seasoned",
+    "shell-on": "shell on",
+    "shortrib": "short rib",
+    "slided": "sliced",
+    "sprakling": "sparkling",
 }
