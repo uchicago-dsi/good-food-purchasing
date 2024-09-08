@@ -510,6 +510,7 @@ FLAVORS = {
     "sweet mint",
     "sweet tea",
     "s'more",
+    "pomegranate green",
 }
 
 # Note: fruits are separated since there is separate logic for "fruit, blend"

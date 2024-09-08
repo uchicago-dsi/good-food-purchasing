@@ -622,4 +622,6 @@ TOKEN_MAP_DICT = {
     "philly cheesesteak": "cheesesteak",
     "cheesteak": "cheesesteak",
     "philly steak": "cheesesteak",
+    "four bean": "bean",
+    "pork sausauce": "pork sausage",
 }
