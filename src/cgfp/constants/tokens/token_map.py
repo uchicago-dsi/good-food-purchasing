@@ -631,4 +631,7 @@ TOKEN_MAP_DICT = {
     "sprakling": "sparkling",
     "chipotle chile": "chipotle pepper",
     "zero sugar": "diet",
+    "crisscut": "cut",
+    "crinklecut": "cut",
+    "crinkle": "cut",
 }

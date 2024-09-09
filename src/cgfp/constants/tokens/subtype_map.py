@@ -16,3 +16,20 @@ SUBTYPE_MAP = {
     "nutter butter": ("cookie", {"Basic Type": "snack"}),
     "vegan mayonnaise": ("mayonnaise", {"Dietary Accommodation": "vegan"}),
 }
+
+MULTIPLE_SUBTYPES_MAP = {
+    "fried onion": {
+        "basic_type": "topping",
+        "subtypes": ["onion", "fried"],
+        "first_subtype": True,  # You can indicate whether 'first' should be applied
+    },
+    "long grain and wild": {"subtypes": ["long grain", "wild"]},
+    "pea & carrot": {"subtypes": ["pea", "carrot"]},
+    "pea and carrot": {"subtypes": ["pea", "carrot"]},
+    "fruit and nut": {"subtypes": ["fruit", "nut"]},
+    "ham and cheese": {"subtypes": ["ham", "cheese"]},
+    "mozzarella provolone": {"subtypes": ["mozzarella", "provolone"]},
+    "crispix": {"subtypes": ["rice", "corn"]},
+    "cap'n crunch": {"subtypes": ["corn", "oat"]},
+    "bean hummus": {"subtypes": ["bean", "hummus"]},
+}

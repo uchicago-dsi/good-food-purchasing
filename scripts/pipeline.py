@@ -23,7 +23,7 @@ from cgfp.constants.tokens.basic_type_map import BASIC_TYPE_MAP
 from cgfp.constants.tokens.misc_tags import NON_SUBTYPE_TAGS_FPC
 from cgfp.constants.tokens.product_type_map import PRODUCT_TYPE_MAP
 from cgfp.constants.tokens.skip_tokens import SKIP_TOKENS
-from cgfp.constants.tokens.subtype_map import SUBTYPE_MAP
+from cgfp.constants.tokens.subtype_map import MULTIPLE_SUBTYPES_MAP, SUBTYPE_MAP
 from cgfp.constants.tokens.tag_sets import (
     ALL_FLAVORS,
     CHEESE_TYPES,
@@ -469,44 +469,48 @@ def subtype_handler(row: dict, token: str, subtype_map: dict = SUBTYPE_MAP) -> T
         else:
             return "seasoned", row
 
-    # Multipe subtypes
-    if token == "fried onion":
-        row["Basic Type"] = "topping"
-        # TODO: Wait should "fried" be in one of the processing cols?
-        row = add_subtypes(row, ["onion", "fried"], first=True)
-        return None, row
-
-    if token == "long grain and wild":
-        row = add_subtypes(row, ["long grain", "wild"])
-        return None, row
-
-    if token == "pea & carrot" or token == "pea and carrot":
-        row = add_subtypes(row, ["pea", "carrot"])
-        return None, row
-
     if token == "vanilla chocolate almond":
         row = add_subtypes(row, ["nut"])  # This shows up for ice cream, so no "flavored"
         return None, row
 
-    if token == "fruit and nut":
-        row = add_subtypes(row, ["fruit", "nut"])
+    # Multipe subtypes
+    if token in MULTIPLE_SUBTYPES_MAP:
+        row = add_subtypes(
+            row,
+            MULTIPLE_SUBTYPES_MAP[token]["subtypes"],
+            first=MULTIPLE_SUBTYPES_MAP[token].get("first_subtype", False),
+        )
         return None, row
 
-    if token == "ham and cheese":
-        row = add_subtypes(row, ["ham", "cheese"])
-        return None, row
+    # if token == "fried onion":
+    #     row["Basic Type"] = "topping"
+    #     # TODO: Wait should "fried" be in one of the processing cols?
+    #     row = add_subtypes(row, ["onion", "fried"], first=True)
+    #     return None, row
 
-    if token == "mozzarella provolone":
-        row = add_subtypes(row, ["mozzarella", "provolone"])
-        return None, row
+    # if token == "long grain and wild":
+    #     row = add_subtypes(row, ["long grain", "wild"])
+    #     return None, row
 
-    if token == "crispix":
-        row = add_subtypes(row, ["rice", "corn"])
-        return None, row
+    # if token == "pea & carrot" or token == "pea and carrot":
+    #     row = add_subtypes(row, ["pea", "carrot"])
+    #     return None, row
 
-    if token == "cap'n crunch":
-        row = add_subtypes(row, ["corn", "oat"])
-        return None, row
+    # if token == "fruit and nut":
+    #     row = add_subtypes(row, ["fruit", "nut"])
+    #     return None, row
+
+    # if token == "ham and cheese":
+    #     row = add_subtypes(row, ["ham", "cheese"])
+    #     return None, row
+
+    # if token == "mozzarella provolone":
+    #     row = add_subtypes(row, ["mozzarella", "provolone"])
+    #     return None, row
+
+    # if token == "bean hummus":
+    #     row = add_subtypes(row, ["bean", "hummus"])
+    #     return None, row
 
     # Group membership rules
     if token in FRUIT_SNACKS:
@@ -522,6 +526,14 @@ def subtype_handler(row: dict, token: str, subtype_map: dict = SUBTYPE_MAP) -> T
 
     if token in OAT_CEREAL:
         return "oat", row
+
+    # if token == "crispix":
+    #     row = add_subtypes(row, ["rice", "corn"])
+    #     return None, row
+
+    # if token == "cap'n crunch":
+    #     row = add_subtypes(row, ["corn", "oat"])
+    #     return None, row
 
     return token, row
 
