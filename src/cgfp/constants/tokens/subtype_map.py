@@ -21,6 +21,7 @@ SUBTYPE_MAP = {
     "scrambled eggs": ("egg", {"Cooked/Cleaned": "cooked"}),
     "lemon pepper fish": ("fish", {"Processing": "seasoned"}),
     "blueberry cream cheese": ("cream cheese", {"Basic Type": "cheese", "Flavor/Cut": "flavored"}),
+    "veggie patty": ("vegetable", {"Shape": "patty"}),
 }
 
 MULTIPLE_SUBTYPES_MAP = {

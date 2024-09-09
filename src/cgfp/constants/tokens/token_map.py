@@ -646,4 +646,8 @@ TOKEN_MAP_DICT = {
     "pepper jack cheese": "cheese",
     "smoked gouda": "cheese",
     "three cheese": "cheese",
+    "apple gouda": "cheese",
+    "jalapeno pepper": "pepper",
+    "brined": "in brine",
+    "with meat": "beef",
 }

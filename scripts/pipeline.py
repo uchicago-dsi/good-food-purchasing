@@ -481,7 +481,7 @@ def subtype_handler(row: dict, token: str, subtype_map: dict = SUBTYPE_MAP) -> T
         row = add_subtypes(row, ["nut"])  # This shows up for ice cream, so no "flavored"
         return None, row
 
-    # Convert to subtypes
+    # Handle cases where one subtype should map to multple subtypes
     if token in MULTIPLE_SUBTYPES_MAP:
         row = add_subtypes(
             row,
