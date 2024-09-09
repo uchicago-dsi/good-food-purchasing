@@ -180,6 +180,7 @@ SKIP_TOKENS = {
     "granulated",
     "tail off",
     "peeled and deveined",
+    "devined",  # type for "deveined"
     "light",
     "low calorie",
     "low carb",

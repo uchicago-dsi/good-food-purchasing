@@ -229,5 +229,5 @@ for fpc in FPC2FPG.keys():
 # Create a set of all allowed tags for inference
 ALL_NON_SUBTYPE_TAGS = set()
 for tags in NON_SUBTYPE_TAGS_FPC.values():
-    for col_tags in tags.items():
+    for col_tags in tags.values():
         ALL_NON_SUBTYPE_TAGS.update(col_tags)

@@ -629,4 +629,6 @@ TOKEN_MAP_DICT = {
     "shortrib": "short rib",
     "slided": "sliced",
     "sprakling": "sparkling",
+    "chipotle chile": "chipotle pepper",
+    "zero sugar": "diet",
 }

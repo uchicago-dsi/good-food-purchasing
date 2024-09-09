@@ -514,6 +514,7 @@ FLAVORS = {
     "pomegranate green",
     "silver ice",
     "sugar butter",
+    "acai blueberry pomegranate",
 }
 
 # Note: fruits are separated since there is separate logic for "fruit, blend"
@@ -654,6 +655,8 @@ CHEESE_TYPES = {
     "blue",
     "havarti",
     "gouda",
+    "boursin",
+    "brie",
     "muenster",
     "white cheddar",
     "feta",
@@ -681,7 +684,6 @@ CHEESE_TYPES = {
     "burrata",
     "colby jack",
     "ricotta",
-    "brie",
     "wensleydale",
     "romano pecorino",
     "bucheron",
@@ -749,6 +751,8 @@ WHEAT_CEREAL = {
     "wheaties",
     "shredded wheat",
     "total",
+    "bran flakes",
+    "bran flake",
 }
 
 OAT_CEREAL = {
