@@ -139,6 +139,12 @@ def clean_df(df_cgfp: pd.DataFrame, input_column: str = INPUT_COLUMN, str_len_th
         | (df_cgfp["Food Product Category"] == "Non-Food")
     ].reset_index(drop=True)
 
+    # Handle issues with "Non-Food" items
+    # Non-food items sometimes have floats for "Product Name"...
+    df_cgfp.loc[df_cgfp["Food Product Category"] == "Non-Food", "Product Name"] = pd.NA
+    df_cgfp.loc[df_cgfp["Food Product Category"] == "Non-Food", "Primary Food Product Category"] = "Non-Food"
+    df_cgfp = df_cgfp[df_cgfp["Product Type"] != "Other Products + Fees ($4,640.56)"]
+
     # Handle typos in Primary Food Product Category
     category_typos = {
         "Roots & Tuber": "Roots & Tubers",
@@ -643,6 +649,10 @@ def clean_name(row: pd.Series, product_type_map: dict = PRODUCT_TYPE_MAP) -> pd.
     """
     # Note: Need to add "Sub-Types" column first so it always exists
     row["Sub-Types"] = OrderedSet()
+
+    if row["Food Product Category"] == "Non-Food":
+        # Note: everything should be empty for non-food items
+        return row
 
     # Handle product type edge cases — short-circuit if a mapping exists
     if row["Product Type"] in product_type_map:

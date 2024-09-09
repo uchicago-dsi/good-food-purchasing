@@ -1,10 +1,10 @@
 config:
   smoke_test: false
 input_data:
-  # input_file: "CONFIDENTIAL_CGFP bulk data_073123.xlsx"
+  input_file: "CONFIDENTIAL_CGFP bulk data_073123.xlsx"
   # input_file: "New_Raw_Data_030724.xlsx"
-  input_file: "NYCDHS_DSI_Data.xlsx"
-  sheet_name: 2
+  # input_file: "NYCDHS_DSI_Data.xlsx"
+  # sheet_name: 2
 output_data:
   misc_file: "misc.csv"
   clean_file_prefix: "clean_"
