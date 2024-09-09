@@ -525,6 +525,7 @@ FLAVORS = {
     "black lemon",
     "chile tomato",
     "chili tomato",
+    "black assam",
 }
 
 # Note: fruits are separated since there is separate logic for "fruit, blend"
@@ -618,6 +619,10 @@ SHAPE_EXTRAS = {
     "bowl",
     "scoop",
     "crisps",
+    "fig newton",
+    "fortune",
+    "golden grahams",
+    "teddy grahams",
 }
 
 ### BLENDS/VARIETY/ETC ###
@@ -722,7 +727,26 @@ SUBTYPE_REPLACEMENT_MAP = {
 }
 
 ### MISC ###
-CHOCOLATE = {"dark chocolate", "chocolate covered"}
+CHOCOLATE_SUBTYPES = {
+    "dark chocolate",
+    "chocolate covered",
+    "kit kat",
+    "chocolate candy piece",
+    "m&m",
+    "twix",
+    "chocolate coating",
+    "chocolate cola",
+    "chocolate dipped",
+    "chocolate filled",
+    "chocolate fudget",
+    "chocolate m&m",
+    "chocolate mint",
+    "chocolate sauce",
+    "chocolate semisweet",
+    "chocolate vanilla swirl",
+    "chocolate chunk",
+}
+COCOA_SUBTYPES = {"cocoa chip"}
 
 CORN_CERAL = {
     "frosted corn flakes",
@@ -732,7 +756,6 @@ CORN_CERAL = {
     "trix",
     "froot loops",
     "chex",
-    "cocoa puffs",
     "kix",
     "corn chex",
     "corn pops",
@@ -743,7 +766,7 @@ CORN_CERAL = {
     "purple flakes",
 }
 
-RICE_CEREAL = {"special k", "cocoa krispies", "rice chex", "rice krispies", "crisp rice", "rice crispy"}
+RICE_CEREAL = {"special k", "rice chex", "rice krispies", "crisp rice", "rice crispy"}
 
 WHEAT_CEREAL = {
     "frosted mini spooner",

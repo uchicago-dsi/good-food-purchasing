@@ -27,7 +27,8 @@ from cgfp.constants.tokens.subtype_map import MULTIPLE_SUBTYPES_MAP, SUBTYPE_MAP
 from cgfp.constants.tokens.tag_sets import (
     ALL_FLAVORS,
     CHEESE_TYPES,
-    CHOCOLATE,
+    CHOCOLATE_SUBTYPES,
+    COCOA_SUBTYPES,
     CORN_CERAL,
     FLAVORED_BASIC_TYPES,
     FLAVORS,
@@ -275,10 +276,6 @@ def token_handler(token: str, row: pd.Series) -> Tuple[Optional[str], pd.Series]
     if (food_product_group == "Meals" or basic_type == "snack") and token in CHEESE_TYPES:
         return "cheese", row
 
-    # Map chocolate tokens to "chocolate" for candy
-    if basic_type == "candy" and token in CHOCOLATE:
-        return "chocolate", row
-
     # "chip" should be mapped to "cut" for pickles...but "chip" is valid for snacks
     if sub_type_1 == "pickle" and token == "chip":
         return "cut", row
@@ -495,6 +492,12 @@ def subtype_handler(row: dict, token: str, subtype_map: dict = SUBTYPE_MAP) -> T
         row["Basic Type"] = "fruit snack"
         return None, row
 
+    if token in CHOCOLATE_SUBTYPES:
+        return "chocolate", row
+
+    if token in COCOA_SUBTYPES:
+        return "cocoa", row
+
     # Note: these all have "cereal" as basic type so convert subtype to grain type
     if token in WHEAT_CEREAL:
         return "wheat", row
@@ -505,13 +508,37 @@ def subtype_handler(row: dict, token: str, subtype_map: dict = SUBTYPE_MAP) -> T
     if token in OAT_CEREAL:
         return "oat", row
 
-    # if token == "crispix":
-    #     row = add_subtypes(row, ["rice", "corn"])
-    #     return None, row
+    # Cereal edge cases
+    if token == "cocoa puffs":
+        row = add_subtypes(row, ["corn", "cocoa"])
+        return None, row
 
-    # if token == "cap'n crunch":
-    #     row = add_subtypes(row, ["corn", "oat"])
-    #     return None, row
+    if token == "crispix":
+        row = add_subtypes(row, ["rice", "corn"])
+        return None, row
+
+    if token == "cap'n crunch":
+        row = add_subtypes(row, ["corn", "oat"])
+        return None, row
+
+    if token in ["apple jacks", "tootie fruities"]:
+        row = add_subtypes(row, ["corn", "wheat", "oat"])
+
+    if token == "cinnamon toasters":
+        row = add_subtypes(row, ["wheat", "rice"])
+        return None, row
+
+    if token == "special k":
+        row = add_subtypes(row, ["rice", "wheat", "oat"])
+        return None, row
+
+    if token == "cocoa krispies":
+        row = add_subtypes(row, ["rice", "cocoa"])
+        return None, row
+
+    if token == "life":
+        row = add_subtypes(row, ["oat", "wheat", "corn"])
+        return None, row
 
     return token, row
 

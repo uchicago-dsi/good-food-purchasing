@@ -658,4 +658,8 @@ TOKEN_MAP_DICT = {
     "italian seasoned": "seasoned",
     "long been": "long bean",
     "pretzel cashew": "nut",
+    "chick pea": "chickpea",
+    "fritos": "corn",
+    "doritos": "corn",
+    "breakfast sausage": "sausage",
 }

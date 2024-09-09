@@ -106,4 +106,18 @@ PRODUCT_TYPE_MAP = {
         "Basic Type": "appetizer",
         "Sub-Types": ["fig", "cheese"],
     },
+    "DRINK TEA CHAI CLDB COF CSHWMK": {
+        "Basic Type": "tea",
+        "Sub-Types": ["chai"],
+        "Dietary Accommodation": "non-dairy",
+        "Shape": "concentrate",
+        "Additives": "no additives",
+    },
+    "DRINK TEA CHAI CASHEWMILK": {
+        "Basic Type": "tea",
+        "Sub-Types": ["chai"],
+        "Dietary Accommodation": "non-dairy",
+        "Shape": "concentrate",
+        "Additives": "no additives",
+    },
 }

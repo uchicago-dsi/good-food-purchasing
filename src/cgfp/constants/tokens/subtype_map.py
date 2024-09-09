@@ -42,4 +42,6 @@ MULTIPLE_SUBTYPES_MAP = {
     "bean hummus": {"subtypes": ["bean", "hummus"]},
     "vegetarian chili": {"subtypes": ["chili", "vegetable"], "first_subtype": True},
     "spicy crab roll": {"subtypes": ["crab", "roll"]},
+    "cheetos": {"subtypes": ["corn", "cheese"]},
+    "barley. instant": {"subtypes": ["barley", "instant"]},
 }

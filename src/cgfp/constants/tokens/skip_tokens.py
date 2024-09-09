@@ -59,6 +59,7 @@ SKIP_TOKENS = {
     "brown",
     "orange",  # basic type will still be set to orange since it doesn't pass through token handler
     "grey",
+    "purple",
     ## DESCRIPTORS ##
     "mini",
     "snack",
@@ -863,4 +864,9 @@ SKIP_TOKENS = {
     "kidney",
     "pinto",
     "noi",
+    "sugar less",
+    "less sugar",
+    "sugar added",
+    "celebration",
+    "chester",
 }
