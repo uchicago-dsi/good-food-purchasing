@@ -515,6 +515,7 @@ FLAVORS = {
     "silver ice",
     "sugar butter",
     "acai blueberry pomegranate",
+    "earl grey",
 }
 
 # Note: fruits are separated since there is separate logic for "fruit, blend"

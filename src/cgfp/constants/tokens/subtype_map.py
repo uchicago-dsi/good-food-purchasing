@@ -15,13 +15,19 @@ SUBTYPE_MAP = {
     "mucho queso": ("cheese", {"Basic Type": "sauce"}),
     "nutter butter": ("cookie", {"Basic Type": "snack"}),
     "vegan mayonnaise": ("mayonnaise", {"Dietary Accommodation": "vegan"}),
+    "dried banana": ("banana", {"Processing": "dried"}),
+    "jerk chicken": ("chicken", {"Processing": "seasoned"}),
+    "chicken strips": ("chicken", {"Shape": "cut"}),
+    "scrambled eggs": ("egg", {"Cooked/Cleaned": "cooked"}),
+    "lemon pepper fish": ("fish", {"Processing": "seasoned"}),
+    "blueberry cream cheese": ("cream cheese", {"Basic Type": "cheese", "Flavor/Cut": "flavored"}),
 }
 
 MULTIPLE_SUBTYPES_MAP = {
     "fried onion": {
         "basic_type": "topping",
         "subtypes": ["onion", "fried"],
-        "first_subtype": True,  # You can indicate whether 'first' should be applied
+        "first_subtype": True,
     },
     "long grain and wild": {"subtypes": ["long grain", "wild"]},
     "pea & carrot": {"subtypes": ["pea", "carrot"]},
@@ -29,7 +35,6 @@ MULTIPLE_SUBTYPES_MAP = {
     "fruit and nut": {"subtypes": ["fruit", "nut"]},
     "ham and cheese": {"subtypes": ["ham", "cheese"]},
     "mozzarella provolone": {"subtypes": ["mozzarella", "provolone"]},
-    "crispix": {"subtypes": ["rice", "corn"]},
-    "cap'n crunch": {"subtypes": ["corn", "oat"]},
     "bean hummus": {"subtypes": ["bean", "hummus"]},
+    "vegetarian chili": {"subtypes": ["chili", "vegetable"], "first_subtype": True},
 }

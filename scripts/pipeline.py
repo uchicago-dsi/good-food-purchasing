@@ -436,15 +436,22 @@ def subtype_handler(row: dict, token: str, subtype_map: dict = SUBTYPE_MAP) -> T
     token, mapping = subtype_map.get(token, (token, None))
 
     if mapping is not None:
-        # TODO: There are rare edge cases where info can be overwritten. Check if empty first?
-        row.update(mapping)
+        if mapping:
+            # Check for conflicts to avoid overwriting existing data
+            existing_misc_data = {key: value for key, value in mapping.items() if key in row}
+            if existing_misc_data:
+                # Add conflicting data as subtypes
+                row = add_subtypes(row, list(existing_misc_data.values()))
+                return None, row
+
+            row.update(mapping)  # Safe to update if no conflicts
+            return None, row
+        else:
+            return token, row
 
     # One off rules and edge cases
     if token == "applesauce" and row["Basic Type"] != "baby food":
         return None, row
-
-    if token == "earl grey" and row["Food Product Category"] != "Beverages":
-        return "flavored", row
 
     if token == "fruit and vegetable" and row["Food Product Group"] == "Beverages":
         return "fruit punch", row
@@ -469,11 +476,12 @@ def subtype_handler(row: dict, token: str, subtype_map: dict = SUBTYPE_MAP) -> T
         else:
             return "seasoned", row
 
+    # TODO: This should probably be incorporated into the flavor/nut rules if we ever decide on those
     if token == "vanilla chocolate almond":
         row = add_subtypes(row, ["nut"])  # This shows up for ice cream, so no "flavored"
         return None, row
 
-    # Multipe subtypes
+    # Convert to subtypes
     if token in MULTIPLE_SUBTYPES_MAP:
         row = add_subtypes(
             row,
@@ -481,36 +489,6 @@ def subtype_handler(row: dict, token: str, subtype_map: dict = SUBTYPE_MAP) -> T
             first=MULTIPLE_SUBTYPES_MAP[token].get("first_subtype", False),
         )
         return None, row
-
-    # if token == "fried onion":
-    #     row["Basic Type"] = "topping"
-    #     # TODO: Wait should "fried" be in one of the processing cols?
-    #     row = add_subtypes(row, ["onion", "fried"], first=True)
-    #     return None, row
-
-    # if token == "long grain and wild":
-    #     row = add_subtypes(row, ["long grain", "wild"])
-    #     return None, row
-
-    # if token == "pea & carrot" or token == "pea and carrot":
-    #     row = add_subtypes(row, ["pea", "carrot"])
-    #     return None, row
-
-    # if token == "fruit and nut":
-    #     row = add_subtypes(row, ["fruit", "nut"])
-    #     return None, row
-
-    # if token == "ham and cheese":
-    #     row = add_subtypes(row, ["ham", "cheese"])
-    #     return None, row
-
-    # if token == "mozzarella provolone":
-    #     row = add_subtypes(row, ["mozzarella", "provolone"])
-    #     return None, row
-
-    # if token == "bean hummus":
-    #     row = add_subtypes(row, ["bean", "hummus"])
-    #     return None, row
 
     # Group membership rules
     if token in FRUIT_SNACKS:
