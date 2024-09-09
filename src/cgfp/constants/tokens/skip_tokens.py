@@ -857,4 +857,5 @@ SKIP_TOKENS = {
     "4%",
     "5 grain",
     "7 grain",
+    "passover",
 }

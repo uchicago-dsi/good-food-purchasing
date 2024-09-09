@@ -650,4 +650,5 @@ TOKEN_MAP_DICT = {
     "jalapeno pepper": "pepper",
     "brined": "in brine",
     "with meat": "beef",
+    "oats": "oat",
 }
