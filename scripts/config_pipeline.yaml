@@ -5,8 +5,6 @@ input_data:
   # input_file: "New_Raw_Data_030724.xlsx"
   input_file: "NYCDHS_DSI_Data.xlsx"
   sheet_name: 2
-  # input_file: "PPS_new_dataset_formatted.csv"
-  # input_file: "NYCDHS_DSI_Data_formatted.csv"
 output_data:
   misc_file: "misc.csv"
   clean_file_prefix: "clean_"

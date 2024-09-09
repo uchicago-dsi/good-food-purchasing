@@ -2,6 +2,7 @@
 
 import argparse
 from collections import defaultdict
+from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Tuple, Union
 
@@ -12,12 +13,14 @@ from tqdm import tqdm
 
 from cgfp.constants.pipeline_constants import (
     ADDITIONAL_COLUMNS,
+    CLEAN_FOLDER,
     COLUMNS_ORDER,
+    DATA_FOLDER,
     GROUP_COLUMNS,
     INPUT_COLUMN,
     NON_SUBTYPE_COLUMNS,
     NORMALIZED_COLUMNS,
-    RUN_PATH,
+    RAW_FOLDER,
     SUBTYPE_COLUMNS,
 )
 from cgfp.constants.tokens.basic_type_map import BASIC_TYPE_MAP
@@ -62,6 +65,16 @@ DEFAULT_INPUT_FILE = config["input_data"]["input_file"]
 DEFAULT_MISC_FILE = config["output_data"]["misc_file"]
 CLEAN_FILE_PREFIX = config["output_data"]["clean_file_prefix"]
 
+RUN_FOLDER = f"{config['input_data']['input_file']}-pipeline-{datetime.now().strftime('%Y-%m-%d %H-%M')}/".replace(
+    " ", "_"
+)
+RUN_PATH = CLEAN_FOLDER / RUN_FOLDER
+
+DATA_FOLDER.mkdir(parents=True, exist_ok=True)
+RAW_FOLDER.mkdir(parents=True, exist_ok=True)
+CLEAN_FOLDER.mkdir(parents=True, exist_ok=True)
+RUN_PATH.mkdir(parents=True, exist_ok=True)
+
 
 def create_parser() -> argparse.ArgumentParser:
     """Creates and returns an argument parser for processing files.
@@ -94,7 +107,7 @@ def clean_df(df_cgfp: pd.DataFrame, input_column: str = INPUT_COLUMN, str_len_th
 
     Args:
         df_cgfp: The DataFrame to clean
-        input_column: The input column that will be used for inference
+        input_column: The input column that will be used for creating the pipeline data
         str_len_threshold: The minimum length for "Product Type" and "Product Name"
 
     Returns:
@@ -113,6 +126,9 @@ def clean_df(df_cgfp: pd.DataFrame, input_column: str = INPUT_COLUMN, str_len_th
 
     # Add normalized name columns
     df_cgfp[NORMALIZED_COLUMNS + ["Misc"]] = None
+
+    # Sometimes there's spaces around the strings...
+    df_cgfp["Product Type"] = df_cgfp["Product Type"].str.strip()
 
     # Filter missing data (except for Non-Food columns)
     df_cgfp = df_cgfp[
@@ -692,6 +708,7 @@ def clean_name(row: pd.Series, product_type_map: dict = PRODUCT_TYPE_MAP) -> pd.
     row_normalized = row[NORMALIZED_COLUMNS]
     row_normalized[row_normalized.notna() & row_normalized.duplicated()] = None
     row[NORMALIZED_COLUMNS] = row_normalized
+
     return row
 
 
@@ -877,6 +894,8 @@ def main(argv):
     parser = create_parser()
     options = vars(parser.parse_args(argv))
 
+    options["run_folder_path"] = RUN_PATH
+
     # processing
     print("Loading data...")
     sheet_name = config["input_data"].get("sheet_name", None)
@@ -892,6 +911,7 @@ def main(argv):
         misc,
         options.get("clean_folder"),
         options.get("misc_file"),
+        run_folder_path=options.get("run_folder_path"),
         output_file="misc.csv",
     )
 

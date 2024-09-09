@@ -662,4 +662,5 @@ TOKEN_MAP_DICT = {
     "fritos": "corn",
     "doritos": "corn",
     "breakfast sausage": "sausage",
+    "bone marrow": "marrow bone",
 }

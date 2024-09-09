@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from cgfp.constants.pipeline_constants import CLEAN_FILE_PREFIX, RUN_PATH
+from cgfp.constants.pipeline_constants import CLEAN_FILE_PREFIX
 
 
 def load_to_pd(raw_data: str, input_file: str, **options) -> pd.DataFrame:
@@ -29,8 +29,9 @@ def load_to_pd(raw_data: str, input_file: str, **options) -> pd.DataFrame:
         else pd.read_csv(INPUT_PATH)
     )
     # Note: Sometimes this is inconsistent — make sure it has "Product Type" column
-    if "Product Type" not in df_raw.columns:
-        df_raw = df_raw.rename(columns={"Normalized Product Type": "Product Type"})
+    df_raw["Product Type"] = (
+        df_raw["Normalized Product Type"] if "Normalized Product Type" in df_raw.columns else df_raw["Product Type"]
+    )
     return df_raw
 
 
@@ -69,8 +70,7 @@ def save_pd_to_csv(
     if ext.lower() != ".csv":
         output_file = filename + ".csv"
 
-    run_folder_path = Path(clean_folder) / RUN_PATH
-    run_folder_path.mkdir(parents=True, exist_ok=True)
+    run_folder_path = options.get("run_folder_path")
 
     clean_file_path = run_folder_path / output_file
     clean_file_path = Path(str(clean_file_path).replace(" ", "_"))
