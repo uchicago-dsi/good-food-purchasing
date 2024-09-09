@@ -1,7 +1,7 @@
 config:
   smoke_test: false
 input_data:
-  input_file: "CONFIDENTIAL_CGFP bulk data_073123.xlsx"
+  input_file: "TestData_11.22.23.csv"
   # input_file: "New_Raw_Data_030724.xlsx"
   # input_file: "NYCDHS_DSI_Data.xlsx"
   # sheet_name: 2
