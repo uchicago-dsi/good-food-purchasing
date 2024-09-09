@@ -14,13 +14,14 @@ from cgfp.constants.pipeline_constants import (
     ADDITIONAL_COLUMNS,
     COLUMNS_ORDER,
     GROUP_COLUMNS,
+    INPUT_COLUMN,
     NON_SUBTYPE_COLUMNS,
     NORMALIZED_COLUMNS,
     RUN_PATH,
     SUBTYPE_COLUMNS,
 )
 from cgfp.constants.tokens.basic_type_map import BASIC_TYPE_MAP
-from cgfp.constants.tokens.misc_tags import NON_SUBTYPE_TAGS_FPC
+from cgfp.constants.tokens.misc_tags import FPC2FPG, NON_SUBTYPE_TAGS_FPC
 from cgfp.constants.tokens.product_type_map import PRODUCT_TYPE_MAP
 from cgfp.constants.tokens.skip_tokens import SKIP_TOKENS
 from cgfp.constants.tokens.subtype_map import MULTIPLE_SUBTYPES_MAP, SUBTYPE_MAP
@@ -83,25 +84,43 @@ def create_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def clean_df(df_cgfp: pd.DataFrame, str_len_threshold: int = 3) -> pd.DataFrame:
+def create_comma_separated_string(row, columns):
+    values = [str(row[col]) for col in columns if col in row and pd.notna(row[col])]
+    return ", ".join(values)
+
+
+def clean_df(df_cgfp: pd.DataFrame, input_column: str = INPUT_COLUMN, str_len_threshold: int = 3) -> pd.DataFrame:
     """Cleans the given DataFrame by applying several filters and transformations:
 
     Args:
-        df_cgfp: The DataFrame to clean.
+        df_cgfp: The DataFrame to clean
+        input_column: The input column that will be used for inference
         str_len_threshold: The minimum length for "Product Type" and "Product Name"
 
     Returns:
         The cleaned DataFrame.
     """
+    if input_column not in df_cgfp.columns:
+        df_cgfp[input_column] = df_cgfp.apply(
+            lambda row: create_comma_separated_string(row, NORMALIZED_COLUMNS), axis=1
+        )
+
+    if "Food Product Group" not in df_cgfp.columns:
+        df_cgfp["Food Product Group"] = df_cgfp["Food Product Category"].map(FPC2FPG)
+
     # TODO: Do we ever use "Primary Food Product Group?
     df_cgfp = df_cgfp.reindex(columns=ADDITIONAL_COLUMNS + GROUP_COLUMNS, fill_value=pd.NA).copy()
 
     # Add normalized name columns
     df_cgfp[NORMALIZED_COLUMNS + ["Misc"]] = None
 
+    # Filter missing data (except for Non-Food columns)
     df_cgfp = df_cgfp[
-        (df_cgfp["Product Type"].str.len() >= str_len_threshold)
-        & (df_cgfp["Product Name"].str.len() >= str_len_threshold)
+        (
+            (df_cgfp["Product Type"].str.len() >= str_len_threshold)
+            & (df_cgfp["Product Name"].str.len() >= str_len_threshold)
+        )
+        | (df_cgfp["Food Product Category"] == "Non-Food")
     ].reset_index(drop=True)
 
     # Handle typos in Primary Food Product Category
@@ -860,6 +879,9 @@ def main(argv):
 
     # processing
     print("Loading data...")
+    sheet_name = config["input_data"].get("sheet_name", None)
+    if sheet_name is not None:
+        options["sheet_name"] = sheet_name
     df_loaded = load_to_pd(**options)
     df_processed, misc, df_diff, df_scoring = process_data(df_loaded, **options)
 

@@ -18,6 +18,8 @@ RUN_PATH.mkdir(parents=True, exist_ok=True)
 
 CLEAN_FILE_PREFIX = "clean_"
 
+INPUT_COLUMN = "Product Name"
+
 GROUP_COLUMNS = [
     "Product Type",
     "Product Name",

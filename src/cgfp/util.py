@@ -23,7 +23,14 @@ def load_to_pd(raw_data: str, input_file: str, **options) -> pd.DataFrame:
     INPUT_PATH = Path(raw_data) / input_file
     if not INPUT_PATH.exists():
         raise GoodFoodDataException(f"Could not find input file {INPUT_PATH}")
-    df_raw = pd.read_excel(INPUT_PATH) if INPUT_PATH.suffix in [".xls", ".xlsx"] else pd.read_csv(INPUT_PATH)
+    df_raw = (
+        pd.read_excel(INPUT_PATH, sheet_name=options.get("sheet_name", 0))
+        if INPUT_PATH.suffix in [".xls", ".xlsx"]
+        else pd.read_csv(INPUT_PATH)
+    )
+    # Note: Sometimes this is inconsistent — make sure it has "Product Type" column
+    if "Product Type" not in df_raw.columns:
+        df_raw = df_raw.rename(columns={"Normalized Product Type": "Product Type"})
     return df_raw
 
 
