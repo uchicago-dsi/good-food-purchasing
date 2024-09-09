@@ -94,7 +94,7 @@ def clean_df(df_cgfp: pd.DataFrame, str_len_threshold: int = 3) -> pd.DataFrame:
         The cleaned DataFrame.
     """
     # TODO: Do we ever use "Primary Food Product Group?
-    df_cgfp = df_cgfp[ADDITIONAL_COLUMNS + GROUP_COLUMNS].copy()
+    df_cgfp = df_cgfp.reindex(columns=ADDITIONAL_COLUMNS + GROUP_COLUMNS, fill_value=pd.NA).copy()
 
     # Add normalized name columns
     df_cgfp[NORMALIZED_COLUMNS + ["Misc"]] = None
