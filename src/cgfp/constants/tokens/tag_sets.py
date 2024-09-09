@@ -517,6 +517,14 @@ FLAVORS = {
     "acai blueberry pomegranate",
     "earl grey",
     "thai tea",
+    "punch",
+    "cherry cola",
+    "root beer",
+    "sprite",
+    "black chai",
+    "black lemon",
+    "chile tomato",
+    "chili tomato",
 }
 
 # Note: fruits are separated since there is separate logic for "fruit, blend"
@@ -647,6 +655,7 @@ VEGETABLES = {
 NUTS = {"almond", "cashew", "pecan", "pistachio", "hazelnut", "walnut", "macadamia", "kukui"}
 
 CHEESE_TYPES = {
+    "iberico",
     "cheddar",
     "gruyere",
     "cheddar cheese",
@@ -747,6 +756,7 @@ WHEAT_CEREAL = {
     "fruit whirls",
     "kashi",
     "mini spooners",
+    "spooners",
     "mini spooner",
     "wheat bran flakes",
     "wheat frosted",
@@ -755,6 +765,7 @@ WHEAT_CEREAL = {
     "total",
     "bran flakes",
     "bran flake",
+    "raisin bran",
 }
 
 OAT_CEREAL = {

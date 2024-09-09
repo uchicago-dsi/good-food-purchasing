@@ -651,4 +651,11 @@ TOKEN_MAP_DICT = {
     "brined": "in brine",
     "with meat": "beef",
     "oats": "oat",
+    "extra light syrup": "in syrup",
+    "thick crust whole grain rich": "whole grain rich",
+    "brat": "bratwurst",
+    "texas smoked": "smoked",
+    "italian seasoned": "seasoned",
+    "long been": "long bean",
+    "pretzel cashew": "nut",
 }

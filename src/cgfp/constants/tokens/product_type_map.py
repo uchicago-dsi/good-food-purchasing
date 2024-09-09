@@ -93,4 +93,17 @@ PRODUCT_TYPE_MAP = {
         "Sub-Types": ["oat"],
         "Packaging": "ss",
     },
+    "SANDWICH CHILI CHS DOG IW": {
+        "Basic Type": "sandwich",
+        "Shape": "hot dog",
+        "Sub-Types": ["beef", "pork"],
+    },
+    "BREAKFAST STICK CHORIZO BEEF CHEESE I/W": {
+        "Basic Type": "entrée",
+        "Sub-Types": ["beef", "cheese"],
+    },
+    "PHYLLO STAR FIG & GOAT CHEESE 60 CT SK": {
+        "Basic Type": "appetizer",
+        "Sub-Types": ["fig", "cheese"],
+    },
 }

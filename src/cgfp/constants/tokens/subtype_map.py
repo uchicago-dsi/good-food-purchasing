@@ -22,6 +22,9 @@ SUBTYPE_MAP = {
     "lemon pepper fish": ("fish", {"Processing": "seasoned"}),
     "blueberry cream cheese": ("cream cheese", {"Basic Type": "cheese", "Flavor/Cut": "flavored"}),
     "veggie patty": ("vegetable", {"Shape": "patty"}),
+    "marrow bone pipe": (None, {"Flavor/Cut": "marrow bone", "Shape": "cut"}),
+    "green commodity": ("bell", {"Commodity": "commodity"}),
+    "gluten free ss": (None, {"Dietary Accommodation": "gluten free", "Packaging": "ss"}),
 }
 
 MULTIPLE_SUBTYPES_MAP = {
@@ -38,4 +41,5 @@ MULTIPLE_SUBTYPES_MAP = {
     "mozzarella provolone": {"subtypes": ["mozzarella", "provolone"]},
     "bean hummus": {"subtypes": ["bean", "hummus"]},
     "vegetarian chili": {"subtypes": ["chili", "vegetable"], "first_subtype": True},
+    "spicy crab roll": {"subtypes": ["crab", "roll"]},
 }

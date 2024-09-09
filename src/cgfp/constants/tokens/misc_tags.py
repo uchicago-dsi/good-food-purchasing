@@ -158,6 +158,7 @@ MISC_COLUMN_TAGS = {
             "prosciutto",
             "sopressata",
             "genoa",
+            "iberico",
         },
         "Skin": {"skin on"},
         "Seed/Bone": {"bone-in"},

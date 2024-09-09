@@ -33,9 +33,9 @@ SKIP_TOKENS = {
     ## BONELESS ##
     "boneless",
     ## CEREAL TYPES ##
-    "spooners",
     "kids stuff",
     "homestyle",
+    "homeystyle",
     "instant",
     ## BREAD ##
     "loaf",
@@ -858,4 +858,9 @@ SKIP_TOKENS = {
     "5 grain",
     "7 grain",
     "passover",
+    "pod",
+    "kona blend",
+    "kidney",
+    "pinto",
+    "noi",
 }
