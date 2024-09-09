@@ -28,10 +28,16 @@ def load_to_pd(raw_data: str, input_file: str, **options) -> pd.DataFrame:
         if INPUT_PATH.suffix in [".xls", ".xlsx"]
         else pd.read_csv(INPUT_PATH, dtype=str)
     )
+
     # Note: Sometimes this is inconsistent — make sure it has "Product Type" column
-    df_raw["Product Type"] = (
-        df_raw["Normalized Product Type"] if "Normalized Product Type" in df_raw.columns else df_raw["Product Type"]
-    )
+    if "Normalized Product Type" in df_raw.columns:
+        # Only replace "Product Type" where "Normalized Product Type" is not null
+        df_raw["Product Type"] = df_raw.apply(
+            lambda row: row["Normalized Product Type"]
+            if pd.notna(row["Normalized Product Type"])
+            else row["Product Type"],
+            axis=1,
+        )
     return df_raw
 
 
