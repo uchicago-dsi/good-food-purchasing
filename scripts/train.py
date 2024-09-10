@@ -346,9 +346,9 @@ if __name__ == "__main__":
 
     logging.info("Preparing dataset")
     if MODEL_NAME == "distilbert":
-        tokenizer = DistilBertTokenizerFast.from_pretrained(starting_checkpoint)
+        tokenizer = DistilBertTokenizerFast.from_pretrained("uchicago-dsi/cgfp-distilbert")
     elif MODEL_NAME == "roberta":
-        tokenizer = RobertaTokenizerFast.from_pretrained(starting_checkpoint)
+        tokenizer = RobertaTokenizerFast.from_pretrained("uchicago-dsi/cgfp-roberta")
 
     train_dataset = Dataset.from_pandas(df_train)
     eval_dataset = Dataset.from_pandas(df_eval)

@@ -181,15 +181,15 @@ class MultiTaskTrainer(Trainer):
         """Initializes the MultiTaskTrainer with any arguments required by the base Trainer class."""
         super().__init__(*args, **kwargs)
         # Note: Model dicts are different — kind of ugly way to get the weights we want
-        if self.model.config.model_type == "distilbert":
+        if self.model.config.base_model_type == "distilbert":
             transformer = "transformer"
             query = "q_lin"
-        elif self.model.config.model_type == "roberta":
+        elif self.model.config.base_model_type == "roberta":
             transformer = "encoder"
             query = "self.query"
 
         def get_query(layer):
-            if self.model.config.model_type == "roberta":
+            if self.model.config.base_model_type == "roberta":
                 return layer.attention.self.query
             return getattr(layer.attention, query)
 
