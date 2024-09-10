@@ -16,7 +16,7 @@ data:
 model:
   model_name: "roberta" # Choices: distilbert, roberta
   # starting_checkpoint: "/net/projects/cgfp/huggingface/cgfp-roberta" # null to train the off-the-shelf huggingface model
-  starting_checkpoint: "/net/projects/cgfp/checkpoints/roberta_20240909_1855_final_basic_type_full_sft/checkpoint-191808" 
+  starting_checkpoint: "/net/projects/cgfp/checkpoints/roberta_20240910_0755_final_subtypes_full_sft/checkpoint-53280" 
   model_dir: "/net/projects/cgfp/model-files/"
   classification_head_type: "mlp" # Choices: "mlp", "linear"
   loss: "cross_entropy" # Choices: "cross_entropy"
@@ -28,7 +28,7 @@ model:
   update_config: true # Update the model config with new counts, etc. from data (set to false to prevent smoke test from updating)
 training:
   lr: 2e-5 # .001 for distilbert, 2e-5 for roberta
-  epochs: 50 # Recommended: 80 for full model training, 20 for classification head training
+  epochs: 30 # Recommended: 80 for full model training, 20 for classification head training
   train_batch_size: 32
   eval_batch_size: 64
   metric_for_best_model: "mean_f1_score" # Choices: "mean_f1_score", "basic_type_accuracy"
