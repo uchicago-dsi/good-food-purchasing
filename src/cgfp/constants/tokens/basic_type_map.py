@@ -4,6 +4,7 @@ from cgfp.constants.tokens.tag_sets import NUTS
 
 BASIC_TYPE_MAP = {
     "sea salt": {"Basic Type": "salt"},
+    "fruit blend": {"Basic Type": "fruit", "Sub-Types": "blend"},
     "apple. Gala": {"Basic Type": "apple", "Sub-Types": "gala"},
     "apple. gala": {"Basic Type": "apple", "Sub-Types": "gala"},
     "apple golden delicious": {"Basic Type": "apple", "Sub-Types": "golden delicious"},

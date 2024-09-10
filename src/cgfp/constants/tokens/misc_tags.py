@@ -32,6 +32,7 @@ FPG2FPC = {
     "Beverages": ["Beverages"],
     "Meals": ["Meals"],
     "Condiments & Snacks": ["Condiments & Snacks"],
+    "Non-Food": ["Non-Food"],
 }
 
 FPC2FPG = {}
@@ -52,9 +53,14 @@ MISC_COLUMN_TAGS = {
             "dried",
             "in oil",
             "in water",
+            "in sauce",
+            "in puree",
             "puree",
             "seasoned",
             "whipped",
+            "in vegetable broth",
+            "in vinegar",
+            "in liquid",
         },
         "Cooked/Cleaned": {"cooked"},
         "WG/WGR": {"whole grain rich"},
@@ -77,6 +83,8 @@ MISC_COLUMN_TAGS = {
             "gluten free",
             "halal",
             "kosher",
+            "non-dairy",
+            # TODO: actually make the basic type "meatless" and the type of food the first sub-type
             "vegan",
             "vegetarian",
         },
@@ -100,6 +108,31 @@ MISC_COLUMN_TAGS = {
             "ham",
             "round",
             "butt",
+            "tripe",
+            "marrow bone",
+            "neck",
+            "rib",
+            "teres major",
+            "cheek",
+            "belly",
+            "bottom round",
+            "chuck",
+            "knuckle",
+            "outside skirt",
+            "oxtail",
+            "pectoral meat",
+            "rack",
+            "shortloin",
+            "shoulder",
+            "sirloin top",
+            "tenderloin",
+            "tongue",
+            "sirloin",
+            "tri tip",
+            "feet",
+            "leg",
+            "striploin",
+            "loin rib",
         },
         "Shape": {
             "bacon",
@@ -112,10 +145,24 @@ MISC_COLUMN_TAGS = {
             "patty",
             "salami",
             "crumble",
+            "guanciale",
+            "mortadella",
+            "pastrami",
+            "nostrano",
+            "bologna",
+            "bresaola",
+            "capocollo",
+            "carpaccio",
+            "cotto",
+            "pancetta",
+            "prosciutto",
+            "sopressata",
+            "genoa",
+            "iberico",
         },
         "Skin": {"skin on"},
         "Seed/Bone": {"bone-in"},
-        "Processing": {"corned"},
+        "Processing": {"corned", "stuffed"},
         "Cooked/Cleaned": {"smoked"},
     },
     "Seafood": {
@@ -124,7 +171,7 @@ MISC_COLUMN_TAGS = {
         "Cooked/Cleaned": {"smoked"},
     },
     "Condiments & Snacks": {
-        "Processing": {"dehydrated", "powder", "in juice"},
+        "Processing": {"dehydrated", "powder", "in juice", "in syrup"},
         "Seed/Bone": {"pitted"},
         "Dietary Accommodation": {"non-dairy"},
     },
@@ -139,13 +186,18 @@ MISC_COLUMN_TAGS = {
         "Dietary Concern": {"1%", "2%"},
         "Dietary Accommodation": {"lactose free"},
     },
+    "Produce": {
+        "Processing": {"in brine"},
+    },
     ### FOOD PRODUCT CATEGORIES ###
-    "Fruit": {"Seed/Bone": {"pitted"}, "Processing": {"in juice"}},
+    "Fruit": {"Seed/Bone": {"pitted"}, "Processing": {"in juice", "in gel", "in syrup"}},
     "Cheese": {"Shape": {"crumble"}},
     "Milk": {"Shape": {"thickened"}},
     "Yogurt": {"Shape": {"thickened"}},
     "Legumes": {"Processing": {"dehydrated"}},
     "Roots & Tubers": {"Processing": {"dehydrated"}},
+    "Eggs": {"Processing": {"hard boiled"}},
+    "Pork": {"Shape": {"iberico"}},
 }
 
 # Note: Tags are aggregated on the Food Product Category level so we can easily check if a tag
@@ -174,3 +226,9 @@ for fpc in FPC2FPG.keys():
         all_tags.update(NON_SUBTYPE_TAGS_FPC[fpc][col])
     # Update all allowed tags for Food Product Category
     NON_SUBTYPE_TAGS_FPC[fpc]["All"] = all_tags
+
+# Create a set of all allowed tags for inference
+ALL_NON_SUBTYPE_TAGS = set()
+for tags in NON_SUBTYPE_TAGS_FPC.values():
+    for col_tags in tags.values():
+        ALL_NON_SUBTYPE_TAGS.update(col_tags)

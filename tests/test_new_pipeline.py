@@ -5,13 +5,12 @@ Beginning refactor with the goal of better code quality.
 """
 
 import pytest
-import pandas as pd
+
+from cgfp.util import load_to_pd
 
 # TODO: Move these to the package
-# from scripts.pipeline import process_data as initial_process_data
-from scripts.pipeline_v7 import process_data as initial_process_data
 from scripts.pipeline import process_data as new_process_data
-from cgfp.util import load_to_pd
+from scripts.pipeline_old import process_data as initial_process_data
 
 
 def test_imports():
@@ -22,8 +21,7 @@ test_args = [
     # (input_file, raw_data, sample)  # (name of input file with no path, path to folder or test folder acting as raw data source, whether to sample)
     ("test_input_1.csv", "./tests/assets/", False),
     ("test_input_2.csv", "./tests/assets/", False),
-    ("CONFIDENTIAL_CGFP bulk data_073123.xlsx", "./data/raw/", True),
-    # ("CONFIDENTIAL_CGFP bulk data_073123.xlsx", "./data/raw/", False),
+    ("CONFIDENTIAL_CGFP bulk data_073123.xlsx", "./data/raw/", False),
 ]
 
 
@@ -45,11 +43,11 @@ def test_initial_and_v2_pipelines_match(input_file, raw_data, sample, v2_arg_par
     argv = ["--input_file", input_file, "--raw_data", raw_data]
 
     # I don't think args are used after initial setup
-    # if they are needed, extract create parser to it's own function as in v2 pipeline and repeat below process
-    initial_output, initial_misc, _ = initial_process_data(data)
+    # if they are needed, extract create parser to its own function as in v2 pipeline and repeat below process
+    initial_output, initial_misc, _, _ = initial_process_data(data)
 
     new_options = vars(v2_arg_parser.parse_args(argv))
-    new_normalized, new_misc, _ = new_process_data(data, **new_options)
+    new_normalized, new_misc, _, _ = new_process_data(data, **new_options)
 
     new_misc = new_misc.sort_index().reset_index(drop=True)
     initial_misc = initial_misc.sort_index().reset_index(drop=True)
@@ -62,15 +60,13 @@ def test_initial_and_v2_pipelines_match(input_file, raw_data, sample, v2_arg_par
         # with discrepancies in order to get the full rows
         differences_only = new_misc.compare(initial_misc)
         differences_only.to_csv("differences_only.csv")
-        differences = new_misc.compare(
-            initial_misc, keep_equal=True, keep_shape=True
-        ).loc[differences_only.index.tolist()]
+        differences = new_misc.compare(initial_misc, keep_equal=True, keep_shape=True).loc[
+            differences_only.index.tolist()
+        ]
         initial_misc.to_csv("initial_output.csv")
         new_misc.to_csv("v2_output.csv")
         differences.to_csv("differences.csv")
-        assert new_misc.equals(
-            initial_misc
-        ), "Output columns seem to match but other issue in dataframe"
+        assert new_misc.equals(initial_misc), "Output columns seem to match but other issue in dataframe"
 
     mismatch_misc_columns = set(new_normalized.columns) ^ set(initial_output.columns)
     assert len(mismatch_misc_columns) == 0, "Misc columns are mismatching"
@@ -79,6 +75,4 @@ def test_initial_and_v2_pipelines_match(input_file, raw_data, sample, v2_arg_par
         differences = new_normalized.compare(initial_output)
         print("Differences in misc DataFrames:")
         print(differences)
-        assert new_normalized.equals(
-            initial_output
-        ), "Misc columns seem to match but other issue in dataframe"
+        assert new_normalized.equals(initial_output), "Misc columns seem to match but other issue in dataframe"

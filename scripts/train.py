@@ -5,6 +5,7 @@ import logging
 import os
 from datetime import datetime
 from pathlib import Path
+from typing import List, Union
 
 import numpy as np
 import pandas as pd
@@ -32,6 +33,24 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
 
+def get_paths(directory: Path, filenames: Union[str, List[str]]) -> List[Path]:
+    """Generates a list of file paths by combining directory and filenames.
+
+    This function handles both single filenames and lists of filenames. Used to handle filepaths from config
+
+    Args:
+        directory: The base directory where the files are located.
+        filenames: A single filename or a list of filenames to be combined with the directory.
+
+    Returns:
+        A list of Path objects corresponding to the provided filenames.
+    """
+    if isinstance(filenames, list):
+        return [directory / filename for filename in filenames]
+    else:
+        return [directory / filenames]
+
+
 def read_data(input_col: str, labels: list[str], data_path: str, smoke_test: bool = False) -> pd.DataFrame:
     """Reads data from a CSV file, filters out rows with null values in specified columns, and returns a cleaned DataFrame with specified columns.
 
@@ -44,14 +63,16 @@ def read_data(input_col: str, labels: list[str], data_path: str, smoke_test: boo
     Returns:
         A cleaned DataFrame containing only the specified columns.
     """
+    logging.info(f"Reading data from {data_path}")
     nrows = 1000 if smoke_test else None
-    df_cgfp = pd.read_csv(data_path, na_values=["NULL"], nrows=nrows)
 
-    # Drop duplicate input column rows for more balanced dataset
-    prev_height = df_cgfp.shape[0]
-    df_cgfp = df_cgfp.drop_duplicates(subset=[input_col])
-    new_height = df_cgfp.shape[0]
-    logging.info(f"Dropped {prev_height - new_height} duplicate rows based on the column '{input_col}'.")
+    file_extension = Path(data_path).suffix.lower()
+    if file_extension == ".csv":
+        df_cgfp = pd.read_csv(data_path, na_values=["NULL"], nrows=nrows)
+    elif file_extension in [".xls", ".xlsx"]:
+        df_cgfp = pd.read_excel(data_path, na_values=["NULL"], nrows=nrows)
+    else:
+        raise ValueError(f"Unsupported file format: {file_extension}")
 
     # Filter out rows with null values in specific columns
     for col in [input_col, "Food Product Group", "Food Product Category", "Primary Food Product Category"]:
@@ -200,16 +221,17 @@ if __name__ == "__main__":
 
     # Data & directory configuration
     DATA_DIR = Path(config["data"]["data_dir"])
-    CLEAN_DIR = DATA_DIR / "clean"
-    RAW_DIR = DATA_DIR / "raw"
+    TRAIN_DIR = DATA_DIR / "train"
+    EVAL_DIR = DATA_DIR / "eval"
     TEST_DIR = DATA_DIR / "test"
-    Path.mkdir(CLEAN_DIR, exist_ok=True, parents=True)
-    Path.mkdir(RAW_DIR, exist_ok=True, parents=True)
+    Path.mkdir(TRAIN_DIR, exist_ok=True, parents=True)
+    Path.mkdir(EVAL_DIR, exist_ok=True, parents=True)
     Path.mkdir(TEST_DIR, exist_ok=True, parents=True)
 
-    TRAIN_DATA_PATH = CLEAN_DIR / config["data"]["train_filename"]
-    EVAL_DATA_PATH = CLEAN_DIR / config["data"]["eval_filename"]
-    TEST_DATA_PATH = RAW_DIR / config["data"]["test_filename"]
+    train_data_paths = get_paths(TRAIN_DIR, config["data"]["train_filenames"])
+    eval_data_paths = get_paths(EVAL_DIR, config["data"]["eval_filenames"])
+
+    TEST_DATA_PATH = TEST_DIR / config["data"]["test_filename"]
 
     TEXT_FIELD = config["data"]["text_field"]
 
@@ -219,7 +241,6 @@ if __name__ == "__main__":
     RESET_CLASSIFICATION_HEADS = config["model"]["reset_classification_heads"]
     ATTACHED_HEADS = config["model"]["attached_heads"]
     FREEZE_BASE = config["model"]["freeze_base"]
-    COMBINE_SUBTYPES = config["model"]["combine_subtypes"]
     UPDATE_CONFIG = config["model"]["update_config"]
 
     pretrained_checkpoint = config["model"]["starting_checkpoint"]
@@ -291,11 +312,27 @@ if __name__ == "__main__":
     logging.info(f"Predicting categorical fields : {LABELS}")
 
     ### DATA PREP ###
-    logging.info(f"Reading training data from path : {TRAIN_DATA_PATH}")
-    df_train = read_data(TEXT_FIELD, LABELS, TRAIN_DATA_PATH, smoke_test=SMOKE_TEST)
+    logging.info(f"Reading training data from path : {train_data_paths}")
+    df_train = pd.concat(
+        [read_data(TEXT_FIELD, LABELS, train_path, smoke_test=SMOKE_TEST) for train_path in train_data_paths],
+        ignore_index=True,
+    )
+    # Drop duplicate input column rows for more balanced dataset
+    prev_height = df_train.shape[0]
+    df_train = df_train.drop_duplicates(subset=[TEXT_FIELD])
+    new_height = df_train.shape[0]
+    logging.info(f"Dropped {prev_height - new_height} duplicate rows based on the column '{TEXT_FIELD}'.")
 
-    logging.info(f"Reading eval data from path : {TRAIN_DATA_PATH}")
-    df_eval = read_data(TEXT_FIELD, LABELS, EVAL_DATA_PATH, smoke_test=SMOKE_TEST)
+    logging.info(f"Reading eval data from path : {train_data_paths}")
+    df_eval = pd.concat(
+        [read_data(TEXT_FIELD, LABELS, eval_path, smoke_test=SMOKE_TEST) for eval_path in eval_data_paths],
+        ignore_index=True,
+    )
+
+    prev_height = df_eval.shape[0]
+    df_eval = df_eval.drop_duplicates(subset=[TEXT_FIELD])
+    new_height = df_train.shape[0]
+    logging.info(f"Dropped {prev_height - new_height} duplicate rows based on the column '{TEXT_FIELD}'.")
 
     labels_dict = {label: i for i, label in enumerate(LABELS)}
 
@@ -309,9 +346,9 @@ if __name__ == "__main__":
 
     logging.info("Preparing dataset")
     if MODEL_NAME == "distilbert":
-        tokenizer = DistilBertTokenizerFast.from_pretrained(starting_checkpoint)
+        tokenizer = DistilBertTokenizerFast.from_pretrained("uchicago-dsi/cgfp-distilbert")
     elif MODEL_NAME == "roberta":
-        tokenizer = RobertaTokenizerFast.from_pretrained(starting_checkpoint)
+        tokenizer = RobertaTokenizerFast.from_pretrained("uchicago-dsi/cgfp-roberta")
 
     train_dataset = Dataset.from_pandas(df_train)
     eval_dataset = Dataset.from_pandas(df_eval)
@@ -364,7 +401,7 @@ if __name__ == "__main__":
             multi_task_config.inference_masks = json.dumps(inference_masks)
             multi_task_config.counts = json.dumps(counts)
             multi_task_config.loss = loss
-            multi_task_config.model_type = MODEL_NAME
+            multi_task_config.base_model_type = MODEL_NAME
 
         # Note: ignore_mismatched_sizes since we are often loading from checkpoints with different numbers of categories
         model = MultiTaskModel.from_pretrained(
@@ -459,7 +496,6 @@ if __name__ == "__main__":
         device=device,
         sheet_name=0,
         input_column=TEXT_FIELD,
-        confidence_score=False,
         raw_results=False,
         assertion=False,
         save=not SMOKE_TEST,
