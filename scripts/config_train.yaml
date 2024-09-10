@@ -1,17 +1,17 @@
 config:
   smoke_test: false
   checkpoints_dir: "/net/projects/cgfp/checkpoints/"
-  run_title: "3_subtypes_basic_type_full_sft"
+  run_title: "final_basic_type_full_sft"
 data:
   text_field: "Product Type"
   data_dir: "/net/projects/cgfp/data/"
   train_filenames: # Note: takes lists or single filenames
-    - "clean_CONFIDENTIAL_CGFP_bulk_data_073123_three_subtypes.csv" 
-    # - "Non-food Items_082024.xlsx"
+    - "clean_CONFIDENTIAL_CGFP_bulk_data_073123.csv" 
+    - "clean_Non-food_Items_082024.csv"
   eval_filenames:  # Note: takes lists or single filenames
-    - "combined_eval_set_3_subtypes.csv"
-    # - "PPS_new_dataset_formatted.csv"
-    # - "NYCDHS_DSI_Data_formatted.csv"
+    - "clean_TestData_11.22.23.csv"
+    - "clean_PPS_new_dataset.csv"
+    - "clean_NYCDHS_DSI_Data.csv"
   test_filename: "TestData_11.22.23.xlsx"  # This should just be a single filename
 model:
   model_name: "roberta" # Choices: distilbert, roberta
@@ -31,7 +31,7 @@ training:
   epochs: 80 # Recommended: 80 for full model training, 20 for classification head training
   train_batch_size: 32
   eval_batch_size: 64
-  metric_for_best_model: "mean_f1_score" # Choices: "mean_f1_score", "basic_type_accuracy"
+  metric_for_best_model: "basic_type_accuracy" # Choices: "mean_f1_score", "basic_type_accuracy"
   eval_prompt: "frozen peas and carrots"
 adamw:
   betas:
