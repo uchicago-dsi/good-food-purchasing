@@ -221,17 +221,17 @@ if __name__ == "__main__":
 
     # Data & directory configuration
     DATA_DIR = Path(config["data"]["data_dir"])
-    CLEAN_DIR = DATA_DIR / "clean"
-    RAW_DIR = DATA_DIR / "raw"
+    TRAIN_DIR = DATA_DIR / "train"
+    EVAL_DIR = DATA_DIR / "eval"
     TEST_DIR = DATA_DIR / "test"
-    Path.mkdir(CLEAN_DIR, exist_ok=True, parents=True)
-    Path.mkdir(RAW_DIR, exist_ok=True, parents=True)
+    Path.mkdir(TRAIN_DIR, exist_ok=True, parents=True)
+    Path.mkdir(EVAL_DIR, exist_ok=True, parents=True)
     Path.mkdir(TEST_DIR, exist_ok=True, parents=True)
 
-    train_data_paths = get_paths(CLEAN_DIR, config["data"]["train_filenames"])
-    eval_data_paths = get_paths(CLEAN_DIR, config["data"]["eval_filenames"])
+    train_data_paths = get_paths(TRAIN_DIR, config["data"]["train_filenames"])
+    eval_data_paths = get_paths(EVAL_DIR, config["data"]["eval_filenames"])
 
-    TEST_DATA_PATH = RAW_DIR / config["data"]["test_filename"]
+    TEST_DATA_PATH = TEST_DIR / config["data"]["test_filename"]
 
     TEXT_FIELD = config["data"]["text_field"]
 
