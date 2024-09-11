@@ -1,7 +1,7 @@
-  #!/usr/bin/bash
-  #SBATCH --job-name=cgfp-train
-  #SBATCH --nodes=1
-  #SBATCH --ntasks-per-node=1
-  #SBATCH --mail-type=END
+#!/usr/bin/bash
+#SBATCH --job-name=cgfp-train
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --mail-type=END
 
-  python scripts/train.py
+python scripts/train.py
