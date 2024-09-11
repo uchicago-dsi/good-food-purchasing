@@ -32,10 +32,7 @@ $(conda_updated): $(conda_yml)
 
 train: ${conda_updated}
 	${SBATCH} \
-	--mem=64GB \
 	--partition=$(DSI_PARTITION) \
-	--nodes=1 \
-	--gres=gpu:1 \
 	--output="$(output_file)" \
 	--error="$(err_file)" \
 	--mail-user=$(SBATCH_MAIL) \

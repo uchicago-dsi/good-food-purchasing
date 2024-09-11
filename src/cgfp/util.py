@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from cgfp.constants.pipeline_constants import CLEAN_FILE_PREFIX, RUN_FOLDER
+from cgfp.constants.pipeline_constants import CLEAN_FILE_PREFIX
 
 
 def load_to_pd(raw_data: str, input_file: str, **options) -> pd.DataFrame:
@@ -23,7 +23,21 @@ def load_to_pd(raw_data: str, input_file: str, **options) -> pd.DataFrame:
     INPUT_PATH = Path(raw_data) / input_file
     if not INPUT_PATH.exists():
         raise GoodFoodDataException(f"Could not find input file {INPUT_PATH}")
-    df_raw = pd.read_excel(INPUT_PATH) if INPUT_PATH.suffix in [".xls", ".xlsx"] else pd.read_csv(INPUT_PATH)
+    df_raw = (
+        pd.read_excel(INPUT_PATH, sheet_name=options.get("sheet_name", 0), dtype=str)
+        if INPUT_PATH.suffix in [".xls", ".xlsx"]
+        else pd.read_csv(INPUT_PATH, dtype=str)
+    )
+
+    # Note: Sometimes this is inconsistent — make sure it has "Product Type" column
+    if "Normalized Product Type" in df_raw.columns:
+        # Only replace "Product Type" where "Normalized Product Type" is not null
+        df_raw["Product Type"] = df_raw.apply(
+            lambda row: row["Normalized Product Type"]
+            if pd.notna(row["Normalized Product Type"])
+            else row["Product Type"],
+            axis=1,
+        )
     return df_raw
 
 
@@ -62,8 +76,7 @@ def save_pd_to_csv(
     if ext.lower() != ".csv":
         output_file = filename + ".csv"
 
-    run_folder_path = Path(clean_folder) / RUN_FOLDER
-    run_folder_path.mkdir(parents=True, exist_ok=True)
+    run_folder_path = options.get("run_folder_path")
 
     clean_file_path = run_folder_path / output_file
     clean_file_path = Path(str(clean_file_path).replace(" ", "_"))
