@@ -148,47 +148,63 @@ def inference(
         if fpg != "Meals" and pfpc not in FPG2FPC[fpg]:
             assertion_failed = True
 
-    legible_preds = {}
-    for item, score in zip(model.decoders.items(), scores):
-        col, decoder = item
-        prob, idx = score
+    if fpc == "Non-Food" or fpg == "Non-Food":
+        legible_preds = {
+            "Food Product Group": "Non-Food",
+            "Food Product Category": "Non-Food",
+            "Primary Food Product Category": "Non-Food",
+        }
+        for key in model.config.columns.keys():
+            if key not in legible_preds:
+                legible_preds[key] = None
+    else:
+        legible_preds = {}
+        for item, score in zip(model.decoders.items(), scores):
+            col, decoder = item
+            prob, idx = score
 
-        if col != "Sub-Types":
-            pred = decoder[str(idx.item())]  # decoders have been serialized so keys are strings
-            legible_preds[col] = pred if not assertion_failed else None
-            if confidence_score:
-                legible_preds[col + "_score"] = prob.item()
+            if col != "Sub-Types":
+                pred = decoder[str(idx.item())]  # decoders have been serialized so keys are strings
+                legible_preds[col] = pred if not assertion_failed else None
+                if confidence_score:
+                    legible_preds[col + "_score"] = prob.item()
 
-    # Handle subtype predictions separately
-    # Note: Make sure we are not predicting class "None"
-    subtype_logits[:, int(model.none_subtype_idx)] = 0
-    topk_values, topk_indices = torch.topk(subtype_logits, 2)
-    mask = torch.zeros_like(subtype_logits)
-    mask.scatter_(1, topk_indices, 1)
-    subtype_logits = subtype_logits * mask
-    subtype_preds = (sigmoid(subtype_logits) > threshold).int()
-    predicted_subtype_indices = torch.nonzero(subtype_preds.squeeze()) if not assertion_failed else torch.tensor([])
+        # Handle subtype predictions separately
+        # Note: Make sure we are not predicting class "None"
+        subtype_logits[:, int(model.none_subtype_idx)] = 0
+        topk_values, topk_indices = torch.topk(subtype_logits, 2)
+        mask = torch.zeros_like(subtype_logits)
+        mask.scatter_(1, topk_indices, 1)
+        subtype_logits = subtype_logits * mask
+        subtype_preds = (sigmoid(subtype_logits) > threshold).int()
+        predicted_subtype_indices = (
+            torch.nonzero(subtype_preds.squeeze()) if not assertion_failed else torch.tensor([])
+        )
 
-    num_subtype_columns = sum(1 for key in model.config.columns.keys() if "Sub-Type" in key)
-    predicted_subtype_tuples = []
+        num_subtype_columns = sum(1 for key in model.config.columns.keys() if "Sub-Type" in key)
+        predicted_subtype_tuples = []
 
-    for idx in predicted_subtype_indices:
-        for j in range(num_subtype_columns):
-            subtype_col_idx = j + 1
-            legible_subtype = model.decoders["Sub-Types"][str(idx.item())]
-            if legible_subtype in model.counts[f"Sub-Type {subtype_col_idx}"]:
-                # Note: Sort tuples by presence in subtype column, then frequency
-                # TODO: Add a sort here for whether this is a "misc" column tag (put those last)
-                # Create a set of all misc tags and check for membership...
-                predicted_subtype_tuples.append(
-                    (subtype_col_idx, model.counts[f"Sub-Type {subtype_col_idx}"][legible_subtype], legible_subtype)
-                )
-                break
-    # Note: sort by column index then by frequency
-    predicted_subtype_tuples = sorted(predicted_subtype_tuples)
+        for idx in predicted_subtype_indices:
+            for j in range(num_subtype_columns):
+                subtype_col_idx = j + 1
+                legible_subtype = model.decoders["Sub-Types"][str(idx.item())]
+                if legible_subtype in model.counts[f"Sub-Type {subtype_col_idx}"]:
+                    # Note: Sort tuples by presence in subtype column, then frequency
+                    # TODO: Add a sort here for whether this is a "misc" column tag (put those last)
+                    # Create a set of all misc tags and check for membership...
+                    predicted_subtype_tuples.append(
+                        (
+                            subtype_col_idx,
+                            model.counts[f"Sub-Type {subtype_col_idx}"][legible_subtype],
+                            legible_subtype,
+                        )
+                    )
+                    break
+        # Note: sort by column index then by frequency
+        predicted_subtype_tuples = sorted(predicted_subtype_tuples)
 
-    for i, (_, _, subtype) in enumerate(predicted_subtype_tuples):
-        legible_preds[f"Sub-Type {i+1}"] = subtype
+        for i, (_, _, subtype) in enumerate(predicted_subtype_tuples):
+            legible_preds[f"Sub-Type {i+1}"] = subtype
 
     if combine_name:
         return get_combined_name(legible_preds)

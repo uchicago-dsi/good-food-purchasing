@@ -43,7 +43,7 @@ train: ${conda_updated}
 
 ##### HUGGINGFACE #####
 
-# Usage: make update-huggingface MODEL_DIR=2024-02-05_10-56 MODEL_NAME=distilbert
+# Usage: make update-huggingface MODEL_DIR=/full/path/to/model/ MODEL_NAME=distilbert
 update-huggingface:
 	$(RUNNING)
 	@echo "Moving model files from $(MODEL_DIR)..."
