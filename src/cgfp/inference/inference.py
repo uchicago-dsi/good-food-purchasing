@@ -248,7 +248,6 @@ def inference_handler(
     save: bool = True,
     threshold: float = 0.85,
     num_rows_to_classify: Optional[int] = None,
-    raw_results: bool = False,
     assertion: bool = False,
 ) -> pd.DataFrame:
     """Handles the inference pipeline on a dataset, including reading data, performing inference, and saving results.
@@ -266,7 +265,6 @@ def inference_handler(
         confidence_score: Whether to include confidence scores in the output
         threshold: Threshold for determining uncertainty in predictions
         num_rows_to_classify: Number of rows to classify. If None, all rows are classified.
-        raw_results: Whether to return raw model results instead of formatted results
         assertion: Whether to perform additional assertions during inference
 
     Returns:
@@ -295,11 +293,6 @@ def inference_handler(
     )
     output = output.replace("None", pd.NA)
 
-    if raw_results:
-        if save:
-            save_output(output, input_path, save_dir)
-        return output
-
     # Add all columns to results to match name normalization format
     results_full = pd.DataFrame()
     for col in OUTPUT_COLS:
@@ -325,7 +318,7 @@ if __name__ == "__main__":
     with Path.open(SCRIPT_DIR / "../../../scripts/config_train.yaml") as file:
         config = yaml.safe_load(file)
 
-    DATA_DIR = Path(config["data"]["data_dir"]) / "raw"
+    DATA_DIR = Path(config["data"]["data_dir"]) / "test"
     test_filepath = DATA_DIR / config["data"]["test_filename"]
     model_checkpoint = Path(config["model"]["eval_checkpoint"])
 
@@ -351,6 +344,5 @@ if __name__ == "__main__":
         input_column=INPUT_COLUMN,
         num_rows_to_classify=ROWS_TO_CLASSIFY,
         confidence_score=CONFIDENCE_SCORE,
-        raw_results=RAW_RESULTS,
         assertion=ASSERTION,
     )

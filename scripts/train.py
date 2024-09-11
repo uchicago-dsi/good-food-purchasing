@@ -496,7 +496,6 @@ if __name__ == "__main__":
         device=device,
         sheet_name=0,
         input_column=TEXT_FIELD,
-        raw_results=False,
         assertion=False,
         save=not SMOKE_TEST,
     )
