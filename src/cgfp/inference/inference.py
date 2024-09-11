@@ -13,7 +13,7 @@ import yaml
 from torch.nn.functional import sigmoid
 from transformers import DistilBertTokenizerFast
 
-from cgfp.constants.tokens.misc_tags import FPG2FPC
+from cgfp.constants.tokens.misc_tags import ALL_NON_SUBTYPE_TAGS, FPG2FPC
 from cgfp.constants.training_constants import NON_LABEL_COLS, OUTPUT_COLS, lower2label
 from cgfp.training.models import MultiTaskModel
 
@@ -202,6 +202,10 @@ def inference(
                     break
         # Note: sort by column index then by frequency
         predicted_subtype_tuples = sorted(predicted_subtype_tuples)
+        # Move overflow misc columns to the end of the subtype list
+        non_misc_subtypes = [tup for tup in predicted_subtype_tuples if tup[2] not in ALL_NON_SUBTYPE_TAGS]
+        misc_subtypes = [tup for tup in predicted_subtype_tuples if tup[2] in ALL_NON_SUBTYPE_TAGS]
+        predicted_subtype_tuples = non_misc_subtypes + misc_subtypes
 
         for i, (_, _, subtype) in enumerate(predicted_subtype_tuples):
             legible_preds[f"Sub-Type {i+1}"] = subtype
