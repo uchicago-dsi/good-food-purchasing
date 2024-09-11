@@ -9,8 +9,8 @@ For example, ```CRANBERRIES, DRIED, INDIVIDUALLY PACKAGED (1.16 oz./pkg.)``` bec
 The name normalization process is time-consuming and error-prone, so we have trained a language model to perform a first-pass of name normalization.
 
 This repo contains: 
-- A data cleaning pipeline to clean CGFP's (Center for Good Food Purchasing) historical labeled data for use in training a text classifier to perform their name normalization task. **This is designed to be done on the DSI GPU Cluster**
-- A training pipeline to train a text classifier to perform the name normalization task. **This is to be run locally.**
+- A data cleaning pipeline to clean CGFP's (Center for Good Food Purchasing) historical labeled data for use in training a text classifier to perform their name normalization task. **This is designed to be run locally.**
+- A training pipeline to train a text classifier to perform the name normalization task. **This is to be run on UChicago's DSI Cluster.**
 
 ## Pipeline
 
@@ -25,7 +25,7 @@ The data pipeline takes in the normalized name (eg ```taquito, egg, turkey sausa
 ### Quickstart
 - Build the Docker container to run the pipeline (see the [Docker](#docker) section)
 - Download the raw data you wish to clean (see the [Raw Data](#raw-data) section)
-- Update ```scripts/config_pipeline.yaml``` with the filename and location of the data you wish to clean
+- Update ```scripts/config_pipeline.yaml``` with the filename and location of the data you wish to clean. Note that the file is expected to be in `/data/raw` _inside_ the container.
 - Run ```scripts/pipeline.py```
 
 ### Understanding the Data Pipeline
@@ -56,8 +56,23 @@ Otherwise, build the Docker image using the ```Dockerfile``` in the root of the 
 
 We've been using the pipeline to clean these two data sets:
 - <a href="https://docs.google.com/spreadsheets/d/1c5v7nBhqQpjOb7HE7pqDUx_xMc8r1imc/edit?usp=sharing&ouid=114633865943391212776&rtpof=true&sd=true" target="_blank">CONFIDENTIAL_CGFP bulk data_073123</a>
-- <a href="https://docs.google.com/spreadsheets/d/1PziC9jR8yHQex9RB49JoH5s4nXd1fLoK/edit?usp=sharing&ouid=114633865943391212776&rtpof=true&sd=true" target="_blank">New_Raw
+- <a href="https://docs.google.com/spreadsheets/d/1PziC9jR8yHQex9RB49JoH5s4nXd1fLoK/edit?usp=sharing&ouid=114633865943391212776&rtpof=true&sd=true" target="_blank">New_Raw</a>
 
+Make sure to download them as `xlsx` files from the google drive site. The files are expected to be the `/data/raw` directory.
+
+### Clean Data
+
+Once the data cleaning pipeline is run, files should appear in the directory `data/clean/pipeline-{date}-{time}`. These files are the input for the training / text classifier. The following files are created:
+
+```
+value_counts.xlsx
+normalized_name_diff.csv
+scoring.csv
+misc.csv
+clean_CONFIDENTIAL_CGFP_bulk_data_073123.csv
+```
+
+The final file of this list is the one that is required for the classification task below.
 
 ## Text Classifier
 
@@ -73,30 +88,37 @@ We have infrastructure to train both RoBERTa and DistilBERT models.
 
 To get good results for all columns, we need to do a multi-stage fine-tuning process.
 
-- First, clean a dataset using the [data pipeline](#pipeline). Upload this dataset to wherever you'll be training your model.
+- First, clean a dataset using the [data pipeline](#pipeline). Upload this dataset to wherever you'll be training your model. 
 - Upload a validation set and a test set
-  - [Validation set](https://docs.google.com/spreadsheets/d/1pyEBLXbNEDH4D0k7y94jR3pG2z29qgxD3Iqmyfjiblc/edit?usp=sharing)
-  - [Test set](https://docs.google.com/spreadsheets/d/1em0DvmnjTu3h7NfTjf1DdJtl8axuLeL3/edit?usp=sharing&ouid=114633865943391212776&rtpof=true&sd=true) (Note: this is not a "true" test set, but is used at the end of training to run inference with the trained model)
-- Update ```scripts/config_train.yaml``` with the location of your training, validation, and testing datasets and the location where you'd like to save your models
+  - [Validation set](https://docs.google.com/spreadsheets/d/1pyEBLXbNEDH4D0k7y94jR3pG2z29qgxD3Iqmyfjiblc/edit?usp=sharing). Note that this should be downloaded as a CSV file.
+  - [Test set](https://docs.google.com/spreadsheets/d/1em0DvmnjTu3h7NfTjf1DdJtl8axuLeL3/edit?usp=sharing&ouid=114633865943391212776&rtpof=true&sd=true) (Note: this is not a "true" test set, but is used at the end of training to run inference with the trained model) This should be downloaded as an Excel File.
+- Update ```scripts/config_train.yaml``` with the location of your training, validation, and testing datasets and the location where you'd like to save your models.
+  - All files should be in the same directory (`data_dir` in the `config_train.yaml`).
   - You can also choose training options in this yaml file. Most of the defaults should work well.
-- Build the conda environment in ```environment.yaml```
+- Build the conda environment in ```environment.yml```. Note that this creates an environment with the name `cgfp`, as per the [file](environment.yml).
 ```bash 
 conda env create -f environment.yml
 ```
-- If you are using the UChicago DSI cluster, set up a ```slurm``` script. Here's an example script:
-```
-#!/usr/bin/bash
-#SBATCH --job-name=cgfp-train
-#SBATCH --nodes=1
-#SBATCH --ntasks-per-node=1
-#SBATCH --mail-type=END
+- Create a `.env` file in the root directory. You will need to create a `.env` file which contains the following information:
+    ```
+    SBATCH_MAIL=your_cnet_id@gmail.com
+    CONDA_ENV_PATH=full path to conda location
+    CGFP_DIR=/net/projects/cgfp/
+    DSI_PARTITION=general
+    ENV_NAME=cgfp
+    ```
+  - The `CONDA_ENV_PATH` is specific to how you installed conda. You should look for a directory which contains the `cfgp` environment that was created by the previous `environment.yml`. If you aren't sure where to look you can try typing `echo $CONDA_PREFIX` into the terminal to find the root. On my installation:
+    ```
+    echo $CONDA_PREFIX
+      /home/nickross/miniconda3
+    (base) nickross@fe01:~/miniconda3/envs/cgfp$ ls /home/nickross/miniconda3/envs/cgfp/
+    ```
+    and I use `/home/nickross/miniconda3/envs/cgfp/` as my `CONDA_ENV_PATH`
 
-python scripts/train.py
-```
-- Then, train the model using
-```bash
-make train
-```
+- Then, train the model using the following command.
+  ```bash
+  make train
+  ```
   - If you are not using the UChicago DSI cluster, activate the ```cgfp``` conda environment and run ```scripts/train.py```
 
 #### Multi-Stage Fine-Tuning
