@@ -23,14 +23,21 @@ include .env
 # effectively exes
 SBATCH = $(_conda) run -n ${ENV_NAME} sbatch
 
-.PHONY: train
+.PHONY: train validate_api_key
+
+validate_api_key:
+ifndef WANDB_API_KEY
+	@echo "WARNING: WANDB_API_KEY IS NOT SET"
+	@echo "ADD your wandb api key as an environment variable before continuining"
+	$(error "WANDB_API_KEY is not set. Please set it to continue.")
+endif
 
 $(conda_updated): $(conda_yml)
 	mkdir -p ${build_dir}
 	$(_conda) env update -f $(conda_yml)
 	@touch $(conda_updated)
 
-train: ${conda_updated}
+train: ${conda_updated} validate_api_key
 	${SBATCH} \
 	--partition=$(DSI_PARTITION) \
 	--output="$(output_file)" \

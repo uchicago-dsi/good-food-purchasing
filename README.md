@@ -84,6 +84,8 @@ Note that, other than "Food Product Group", "Food Product Category", "Primary Fo
 
 We have infrastructure to train both RoBERTa and DistilBERT models.
 
+**Before running the below make sure that you set up an environment variable with your [wandb.ai api key](https://wandb.ai/home). The variable should be set as `WANDB_API_KEY` and should be available in the environment that is calling the `make` commands below.**
+
 ### Training the Classifier
 
 To get good results for all columns, we need to do a multi-stage fine-tuning process.
@@ -119,13 +121,15 @@ conda env create -f environment.yml
   ```bash
   make train
   ```
-  - If you are not using the UChicago DSI cluster, activate the ```cgfp``` conda environment and run ```scripts/train.py```
+  - If you are _not_ using the UChicago DSI cluster, activate the ```cgfp``` conda environment and run ```scripts/train.py```
 
 #### Multi-Stage Fine-Tuning
 
 To get good performance across tasks, we run a multi-stage fine-tuning process where we freeze and unfreeze the base model while also attaching different classification heads to the computation graph. We can configure all of this in the ```config_train.yaml```.
 
-We start by training the entire model on "Basic Type" while detaching all other classification heads from the computation graph (so they do not impact the representations from the base model). To do this, we set the following settings in ```config_train.yaml```:
+We use the same command as above (`make train`) on the DSI cluster to run the training. Updating the `config_train.yaml` file changes how the training is run; it is basically a conf file which controls all aspects of the training.
+
+We start by training the entire model on "Basic Type" while detaching all other classification heads from the computation graph (so they do not impact the representations from the base model). To do this, we set the following settings in ```config_train.yaml``` (leaving all other rows unchanged.):
 
 ```
 model:
@@ -135,6 +139,8 @@ model:
 training:
   metric_for_best_model: "basic_type_accuracy"
 ```
+
+Once this file is updated re-run `make train`.
 
 Next, we load the model trained on "Basic Type" only and train the full model on "Sub-Types".
 
