@@ -281,7 +281,10 @@ def inference_handler(
 
     # Force columns to have capitalization consistent with expected output
     df_input.columns = [col.lower() for col in df_input.columns]
+    # Column names vary between scoring platforms
     df_input = df_input.rename(columns=lower2label)
+    # Note: Old datasets have "Center Product ID" as a column name so handle this separately
+    df_input = df_input.rename(columns={"Center Product ID": "Product Identifier"})
 
     if num_rows_to_classify:
         df_input = df_input.head(num_rows_to_classify)

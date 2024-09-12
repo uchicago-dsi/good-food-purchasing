@@ -1,5 +1,5 @@
 config:
-  smoke_test: false
+  smoke_test: true
   checkpoints_dir: "/net/projects/cgfp/checkpoints/"
   run_title: "final_all_heads_full_sft"
 data:
@@ -44,4 +44,4 @@ scheduler: # CosineAnnealingWarmRestarts
   T_mult: 1 # Multiplicative factor by which to increase T after each restart
   eta_min_constant: .1 # Minimum learning rate constant
 eval:
-  eval_checkpoint: "/net/projects/cgfp/model-files/roberta_20240910_1156_final_subtypes_full_sft"
+  eval_checkpoint: "uchicago-dsi/cgfp-roberta"

@@ -19,8 +19,10 @@ MISC_COLS = [
     "Commodity",
 ]
 
-NON_LABEL_COLS = ["Product Type", "Center Product ID"]
+NON_LABEL_COLS = ["Product Identifier", "Product Type"]
 LABELS = FPG_FPC_COLS + ["Basic Type"] + MISC_COLS + SUB_TYPE_COLS
 OUTPUT_COLS = NON_LABEL_COLS + FPG_FPC_COLS + ["Basic Type"] + SUB_TYPE_COLS + MISC_COLS
 
 lower2label = {label.lower(): label for label in OUTPUT_COLS}
+# Note: Handle this column separately since it exists in some datasets — will be renamed in inference handler
+lower2label["center product id"] = "Center Product ID"
