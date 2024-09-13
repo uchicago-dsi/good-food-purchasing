@@ -86,6 +86,8 @@ We have infrastructure to train both RoBERTa and DistilBERT models.
 
 **Before running the below make sure that you set up an environment variable with your [wandb.ai api key](https://wandb.ai/home). The variable should be set as `WANDB_API_KEY` and should be available in the environment that is calling the `make` commands below.**
 
+**There is configuration variable in the `config_train.yaml` called `smoke_test`. Setting this to `true` will run through a small subset of the data in order to test any code. You need to set it to `False` in order to run the actual models.***
+
 ### Training the Classifier
 
 To get good results for all columns, we need to do a multi-stage fine-tuning process.

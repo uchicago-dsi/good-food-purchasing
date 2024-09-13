@@ -23,7 +23,17 @@ include .env
 # effectively exes
 SBATCH = $(_conda) run -n ${ENV_NAME} sbatch
 
-.PHONY: train validate_api_key
+.PHONY: train validate_api_key smoke_test_indicator
+
+smoke_test_indicator:
+	@result=$$(cat scripts/config_train.yaml | grep -i smoke_test | awk -F':' '{print $$2}' | tr -d ' ' | tr '[:lower:]' '[:upper:]'); \
+	if [ "$$result" = "TRUE" ]; then \
+		echo "  ____  __  __  ____  _  __    _______ ______ _______ "; \
+		echo " / ___||  \/  |/ __ \| |/ /   / / ____|__  __|__   __|"; \
+		echo " \___ \| |\/| | |  | | ' /   / /|  __   |  |    | |   "; \
+		echo "  ___) | |  | | |__| | . \  / / | |____ |  |    | |   "; \
+		echo " |____/|_|  |_|\____/|_|\_\/_/   \____/ |  |    |_|   "; \
+	fi
 
 validate_api_key:
 ifndef WANDB_API_KEY
@@ -37,7 +47,7 @@ $(conda_updated): $(conda_yml)
 	$(_conda) env update -f $(conda_yml)
 	@touch $(conda_updated)
 
-train: ${conda_updated} validate_api_key
+train: ${conda_updated} validate_api_key smoke_test_indicator
 	${SBATCH} \
 	--partition=$(DSI_PARTITION) \
 	--output="$(output_file)" \
