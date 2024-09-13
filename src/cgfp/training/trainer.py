@@ -49,7 +49,7 @@ def compute_metrics(
     recalls = {}
 
     # Note: Distilbert returns just preds, Roberta returns preds and logits
-    if model.config.base_model_type == "distilbert":
+    if model.config.base_model_type == "distilbert" or model.config.model_type == "distilbert":
         predictions = pred.predictions
     elif model.config.base_model_type == "roberta":
         predictions = pred.predictions[0]
@@ -181,17 +181,23 @@ class MultiTaskTrainer(Trainer):
         """Initializes the MultiTaskTrainer with any arguments required by the base Trainer class."""
         super().__init__(*args, **kwargs)
         # Note: Model dicts are different — kind of ugly way to get the weights we want
-        if self.model.config.base_model_type == "distilbert":
+        if self.model.config.base_model_type == "distilbert" or self.model.config.model_type == "distilbert":
             transformer = "transformer"
             query = "q_lin"
+            logging.info("distilbert")
         elif self.model.config.base_model_type == "roberta":
             transformer = "encoder"
             query = "self.query"
+            logging.info("roberta")
 
         def get_query(layer):
             if self.model.config.base_model_type == "roberta":
+                logging.info("roberta query")
                 return layer.attention.self.query
-            return getattr(layer.attention, query)
+            else:  # Distilbert
+                logging.info("distilbert query")
+                return layer.attention.q_lin
+            # return getattr(layer.attention, query)
 
         self.logging_params = {
             "First Attention Layer Q": get_query(getattr(self.model.llm, transformer).layer[0]).weight,

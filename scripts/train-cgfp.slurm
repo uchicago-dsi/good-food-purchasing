@@ -6,6 +6,6 @@
 #SBATCH	--mem=64GB
 #SBATCH --mail-type=END
 #SBATCH --constraint="a100|h100"
-#SBATCH --time=10:00:00
+#SBATCH --time=00:30:00
 
 python scripts/train.py

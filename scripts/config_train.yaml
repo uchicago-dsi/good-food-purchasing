@@ -1,7 +1,7 @@
 config:
   smoke_test: True
   checkpoints_dir: "/net/projects/cgfp/checkpoints/"
-  run_title: "distilbert_basic_type_full_sft"
+  run_title: "distilbert_test"
 data:
   text_field: "Product Type"
   data_dir: "/net/projects/cgfp/data/"
@@ -17,7 +17,7 @@ model:
   model_name: "distilbert" # Choices: distilbert, roberta
   # starting_checkpoint: "/net/projects/cgfp/huggingface/cgfp-roberta" # null to train the off-the-shelf huggingface model
   # starting_checkpoint: "/net/projects/cgfp/model-files/roberta_20240910_1156_final_subtypes_full_sft" 
-  starting_checkpoint: "uchicago-dsi/cgfp-distilbert"
+  starting_checkpoint: null
   model_dir: "/net/projects/cgfp/model-files/"
   classification_head_type: "mlp" # Choices: "mlp", "linear"
   loss: "cross_entropy" # Choices: "cross_entropy"
