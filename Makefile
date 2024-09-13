@@ -25,6 +25,7 @@ SBATCH = $(_conda) run -n ${ENV_NAME} sbatch
 
 .PHONY: train validate_api_key smoke_test_indicator
 
+# Thanks ChatGPT for the ASCII art
 smoke_test_indicator:
 	@result=$$(cat scripts/config_train.yaml | grep -i smoke_test | awk -F':' '{print $$2}' | tr -d ' ' | tr '[:lower:]' '[:upper:]'); \
 	if [ "$$result" = "TRUE" ]; then \

@@ -87,7 +87,6 @@ class MultiTaskConfig(PretrainedConfig):
 
     def __init__(
         self,
-        base_model_type="roberta",
         classification="linear",
         decoders=None,
         columns=None,
@@ -96,14 +95,16 @@ class MultiTaskConfig(PretrainedConfig):
         loss="cross_entropy",
         combine_subtypes=False,
         subtype_orders=None,
+        base_model_type="roberta",
         **kwargs,
     ):
         """Initializes the PreTrainedConfig with the passed parameters"""
         super().__init__(**kwargs)
-        self.base_model_type = base_model_type
+        # Note: this is kind of hacky since "model_type" is a reserved variable name for huggingface
+        self.base_model_type = base_model_type if self.model_type != "distilbert" else "distilbert"
 
         # Note: distilbert has some unconventionally named config options
-        if base_model_type == "distilbert":
+        if base_model_type == "distilbert" or self.model_type == "distilbert":
             self.attribute_map = {
                 "hidden_size": "dim",
                 "num_attention_heads": "n_heads",
@@ -187,7 +188,7 @@ class MultiTaskModel(PreTrainedModel):
         super().__init__(config)
         self.config = config
 
-        if self.config.base_model_type == "distilbert":
+        if self.config.base_model_type == "distilbert" or self.config.model_type == "distilbert":
             self.llm = DistilBertModel(config)
         elif self.config.base_model_type == "roberta":
             self.llm = RobertaModel(config)
