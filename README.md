@@ -133,6 +133,8 @@ We use the same command as above (`make train`) on the DSI cluster to run the tr
 
 We start by training the entire model on "Basic Type" while detaching all other classification heads from the computation graph (so they do not impact the representations from the base model). To do this, we set the following settings in ```config_train.yaml``` (leaving all other rows unchanged.):
 
+You want to use either the roberta or distilbert models, make sure to adjust the learning rate parameter in the `config_train.yaml` accordingly.
+
 ```
 model:
   freeze_base: false
@@ -140,6 +142,8 @@ model:
     - "Basic Type"
 training:
   metric_for_best_model: "basic_type_accuracy"
+training:
+  lr: 2e-5 # .001 for distilbert, 2e-5 for roberta
 ```
 
 Once this file is updated re-run `make train`.
@@ -154,9 +158,13 @@ model:
     - "Sub-Types"
 training:
   metric_for_best_model: "mean_f1_score"
+training:
+  lr: 2e-5 # .001 for distilbert, 2e-5 for roberta  
 ```
 
 The results after these two steps are usually quite good.
+
+When running the above you want to pick one of roberta or distilbert and then run the first which will generate the starting checkpoint for use in the second. **Make sure that the models in the starting\_checkpoint align**
 
 #### Training Just the Classification Heads
 
