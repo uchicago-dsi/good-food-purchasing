@@ -23,19 +23,34 @@ include .env
 # effectively exes
 SBATCH = $(_conda) run -n ${ENV_NAME} sbatch
 
-.PHONY: train
+.PHONY: train validate_api_key smoke_test_indicator
+
+# Thanks ChatGPT for the ASCII art
+smoke_test_indicator:
+	@result=$$(cat scripts/config_train.yaml | grep -i smoke_test | awk -F':' '{print $$2}' | tr -d ' ' | tr '[:lower:]' '[:upper:]'); \
+	if [ "$$result" = "TRUE" ]; then \
+		echo "  ____  __  __  ____  _  __    _______ ______ _______ "; \
+		echo " / ___||  \/  |/ __ \| |/ /   / / ____|__  __|__   __|"; \
+		echo " \___ \| |\/| | |  | | ' /   / /|  __   |  |    | |   "; \
+		echo "  ___) | |  | | |__| | . \  / / | |____ |  |    | |   "; \
+		echo " |____/|_|  |_|\____/|_|\_\/_/   \____/ |  |    |_|   "; \
+	fi
+
+validate_api_key:
+ifndef WANDB_API_KEY
+	@echo "WARNING: WANDB_API_KEY IS NOT SET"
+	@echo "ADD your wandb api key as an environment variable before continuining"
+	$(error "WANDB_API_KEY is not set. Please set it to continue.")
+endif
 
 $(conda_updated): $(conda_yml)
 	mkdir -p ${build_dir}
 	$(_conda) env update -f $(conda_yml)
 	@touch $(conda_updated)
 
-train: ${conda_updated}
+train: ${conda_updated} validate_api_key smoke_test_indicator
 	${SBATCH} \
-	--mem=64GB \
 	--partition=$(DSI_PARTITION) \
-	--nodes=1 \
-	--gres=gpu:1 \
 	--output="$(output_file)" \
 	--error="$(err_file)" \
 	--mail-user=$(SBATCH_MAIL) \
@@ -46,7 +61,7 @@ train: ${conda_updated}
 
 ##### HUGGINGFACE #####
 
-# Usage: make update-huggingface MODEL_DIR=2024-02-05_10-56 MODEL_NAME=distilbert
+# Usage: make update-huggingface MODEL_DIR=/full/path/to/model/ MODEL_NAME=distilbert
 update-huggingface:
 	$(RUNNING)
 	@echo "Moving model files from $(MODEL_DIR)..."

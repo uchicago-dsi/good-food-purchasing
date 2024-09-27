@@ -1,6 +1,5 @@
 # Custom
 *.code-workspace
-*.slurm
 
 # Project Folders
 logs/

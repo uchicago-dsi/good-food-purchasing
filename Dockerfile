@@ -14,7 +14,7 @@ COPY pyproject.toml .
 # so copying here is fine. The actual files will be the mounted ones.
 COPY . . 
 
-RUN pip install --no-cache-dir -r requirements.dev.txt && \
+RUN pip install --no-cache-dir -r requirements.pipeline.txt && \
     pip install --upgrade pip setuptools
 RUN pip install -e .
 

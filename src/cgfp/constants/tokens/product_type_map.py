@@ -1,4 +1,7 @@
-PRODUCT_TYPE_MAPPING = {
+"""Defines product type mappings for edge cases in CGFP tagging system"""
+
+PRODUCT_TYPE_MAP = {
+    "TOMATO HEIRLOOM CHERRY MIX 12 PT": {"Basic Type": "tomato", "Sub-Types": ["cherry"]},
     "HAWAIIAN PUNCH CANS": {"Basic Type": "drink", "Sub-Types": ["fruit punch"]},
     "Concentrate Chipotle S/O": {"Basic Type": "chipotle", "Shape": "concentrate"},
     "OREGANO AQUARESIN (7.5LB/PL)": {
@@ -34,6 +37,9 @@ PRODUCT_TYPE_MAPPING = {
         "WG/WGR": "whole grain rich",
     },
     "EDAMAME SUCCOTASH BLEND": {
+        "Food Product Group": "Produce",
+        "Food Product Category": "Vegetables",
+        "Primary Food Product Category": "Vegetables",
         "Basic Type": "vegetable",
         "Sub-Types": ["blend", "edamame", "succotash"],
     },
@@ -76,7 +82,7 @@ PRODUCT_TYPE_MAPPING = {
     },
     "ORANGE, BLOOD CNCNT FZN": {
         "Basic Type": "orange",
-        "Shape": ["concentrate"],
+        "Shape": "concentrate",
         "Frozen": "frozen",
     },
     "GRAIN, WHEAT RED BRRY": {
@@ -86,5 +92,32 @@ PRODUCT_TYPE_MAPPING = {
         "Basic Type": "bar",
         "Sub-Types": ["oat"],
         "Packaging": "ss",
+    },
+    "SANDWICH CHILI CHS DOG IW": {
+        "Basic Type": "sandwich",
+        "Shape": "hot dog",
+        "Sub-Types": ["beef", "pork"],
+    },
+    "BREAKFAST STICK CHORIZO BEEF CHEESE I/W": {
+        "Basic Type": "entrée",
+        "Sub-Types": ["beef", "cheese"],
+    },
+    "PHYLLO STAR FIG & GOAT CHEESE 60 CT SK": {
+        "Basic Type": "appetizer",
+        "Sub-Types": ["fig", "cheese"],
+    },
+    "DRINK TEA CHAI CLDB COF CSHWMK": {
+        "Basic Type": "tea",
+        "Sub-Types": ["chai"],
+        "Dietary Accommodation": "non-dairy",
+        "Shape": "concentrate",
+        "Additives": "no additives",
+    },
+    "DRINK TEA CHAI CASHEWMILK": {
+        "Basic Type": "tea",
+        "Sub-Types": ["chai"],
+        "Dietary Accommodation": "non-dairy",
+        "Shape": "concentrate",
+        "Additives": "no additives",
     },
 }

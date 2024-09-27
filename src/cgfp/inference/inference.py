@@ -1,47 +1,105 @@
+"""Contains inference functions for converting multitask model predictions to the expected output format for CGFP"""
+
 import json
 import logging
 import os
 from pathlib import Path
+from typing import Any, Optional, Union
 
 import numpy as np
 import pandas as pd
 import torch
 import yaml
-from cgfp.constants.tokens.misc_tags import FPG2FPC
-from cgfp.constants.training_constants import lower2label
-from cgfp.training.models import MultiTaskModel
 from torch.nn.functional import sigmoid
 from transformers import DistilBertTokenizerFast
+
+from cgfp.constants.tokens.misc_tags import ALL_NON_SUBTYPE_TAGS, FPG2FPC
+from cgfp.constants.training_constants import NON_LABEL_COLS, OUTPUT_COLS, lower2label
+from cgfp.training.models import MultiTaskModel
 
 logger = logging.getLogger("inference_logger")
 logger.setLevel(logging.INFO)
 
 
-def test_inference(model, tokenizer, prompt, device="cuda:0"):
-    normalized_name = inference(model, tokenizer, prompt, device, combine_name=True)
-    logging.info(f"Example output for 'frozen peas and carrots': {normalized_name}")
-    # TODO: I should set this up so I only do the forward pass once...
+def get_combined_name(legible_preds: dict[str, str]) -> str:
+    """Combines predictions into a single, normalized name string.
+
+    Args:
+        legible_preds: A dictionary of predictions where keys are column names and values are the predicted strings.
+
+    Returns:
+        A combined, comma-separated string of the predicted normalized name
+    """
+    normalized_name = ""
+    # TODO: Reorder this to be in the expected column output order
+    for col, pred in legible_preds.items():
+        if "_score" not in col and "Food" not in col and pred != "None" and pred is not None:
+            normalized_name += pred + ", "
+    normalized_name = normalized_name.strip().rstrip(",")
+    return normalized_name
+
+
+def test_inference(model: Any, tokenizer: Any, prompt: str, device: str = "cuda:0") -> None:
+    """Performs inference on a given prompt using the specified model and tokenizer, logging the results.
+
+    Args:
+        model: The model used for inference
+        tokenizer: The tokenizer used to preprocess the prompt
+        prompt: The text input to be processed by the model
+        device: The device on which to run the inference
+
+    Returns:
+        None
+    """
     preds_dict = inference(model, tokenizer, prompt, device)
+    normalized_name = get_combined_name(preds_dict)
+    logging.info(f"Example output for 'frozen peas and carrots': {normalized_name}")
     pretty_preds = json.dumps(preds_dict, indent=4)
     logging.info(pretty_preds)
 
 
-def prediction_to_string(model, scores, idx):
+def prediction_to_string(model: Any, scores: torch.Tensor, idx: int) -> str:
+    """Converts a model's prediction scores to a string representation using the appropriate decoder.
+
+    Args:
+        model: The model containing the configuration and decoders.
+        scores: A tensor of prediction scores.
+        idx: The index of the prediction to convert.
+
+    Returns:
+        The string representation of the prediction.
+    """
     max_idx = torch.argmax(scores[idx])
-    # decoders are a tuple of column name and actual decoding dictionary
+    # Note: decoders are a tuple of column name and actual decoding dictionary
     _, decoder = model.config.decoders[idx]
     return decoder[str(max_idx.item())]
 
 
 def inference(
-    model,
-    tokenizer,
-    text,
-    device,
-    assertion=False,
-    confidence_score=True,
-    combine_name=False,
-):
+    model: Any,
+    tokenizer: Any,
+    text: str,
+    device: str,
+    threshold: float = 0.5,
+    assertion: bool = False,
+    confidence_score: bool = False,
+    combine_name: bool = False,
+) -> Union[str, dict[str, Any]]:
+    """Performs inference on the provided text using the specified model and tokenizer, returning either a combined name or a dictionary of predictions.
+
+    Args:
+        model: The model used for inference.
+        tokenizer: The tokenizer used to preprocess the text input
+        text: The input text to be processed by the model
+        device: The device on which to run the inference
+        threshold: The probability threshold to count as a positive prediction for multilabel tasks
+        assertion: If True, performs an additional assertion check on the predictions
+        confidence_score: If True, includes confidence scores in the predictions
+        combine_name: If True, returns a combined string representation of the predictions
+
+    Returns:
+        A combined string of predictions if combine_name is True, otherwise a dictionary of predictions.
+    """
     inputs = tokenizer(text.lower(), padding=True, truncation=True, return_tensors="pt")
 
     inputs = inputs.to(device)
@@ -61,10 +119,12 @@ def inference(
 
     fpg_idx = list(model.classification_heads.keys()).index("Food Product Group")
     fpc_idx = list(model.classification_heads.keys()).index("Food Product Category")
+    pfpc_idx = list(model.classification_heads.keys()).index("Primary Food Product Category")
 
     # Get predicted food product group & predicted food product category
     fpg = prediction_to_string(model, softmaxed_scores, fpg_idx)
     fpc = prediction_to_string(model, softmaxed_scores, fpc_idx)
+    pfpc = prediction_to_string(model, softmaxed_scores, pfpc_idx)
 
     inference_mask = model.inference_masks[fpg].to(device)
 
@@ -78,184 +138,180 @@ def inference(
         torch.max(score, dim=1) for score in softmaxed_scores
     ]  # Note: torch.max returns both max and argmax if you specify dim so this is a list of tuples
 
-    # assertion to make sure fpg & fpg match
-    # TODO: Maybe good assertion behavior would be something like:
-    # » If food product group + food product category + basic type don't match, ask GPT
-    # » If one of these pairs doesn't match, just highlight
-    # TODO: Add argument here to turn this behavior on and off
+    # Assertions to make sure that high level categories match (Usually catches obvious errors)
     assertion_failed = False
-    if fpc not in FPG2FPC[fpg] and assertion:
-        assertion_failed = True
+    if assertion:
+        if fpc not in FPG2FPC[fpg]:
+            assertion_failed = True
+        if fpg != "Meals" and fpc != pfpc:
+            assertion_failed = True
+        if fpg != "Meals" and pfpc not in FPG2FPC[fpg]:
+            assertion_failed = True
 
-    legible_preds = {}
-    for item, score in zip(model.decoders.items(), scores):
-        col, decoder = item
-        prob, idx = score
+    if fpc == "Non-Food" or fpg == "Non-Food":
+        legible_preds = {
+            "Food Product Group": "Non-Food",
+            "Food Product Category": "Non-Food",
+            "Primary Food Product Category": "Non-Food",
+        }
+        for key in model.config.columns.keys():
+            if key not in legible_preds:
+                legible_preds[key] = None
+    else:
+        legible_preds = {}
+        for item, score in zip(model.decoders.items(), scores):
+            col, decoder = item
+            prob, idx = score
 
-        if col != "Sub-Types":
-            try:
+            if col != "Sub-Types":
                 pred = decoder[str(idx.item())]  # decoders have been serialized so keys are strings
                 legible_preds[col] = pred if not assertion_failed else None
                 if confidence_score:
                     legible_preds[col + "_score"] = prob.item()
-            except Exception:
-                pass
-                # TODO: what do we want to actually happen here?
-                # Can we log or print base on where we are?
-                # logging.info(f"Exception: {e}")
 
-    # TODO: Need to set this up in a config somehwere
-    threshold = 0.5
+        # Handle subtype predictions separately
+        # Note: Make sure we are not predicting class "None"
+        subtype_logits[:, int(model.none_subtype_idx)] = 0
+        topk_values, topk_indices = torch.topk(subtype_logits, 2)
+        mask = torch.zeros_like(subtype_logits)
+        mask.scatter_(1, topk_indices, 1)
+        subtype_logits = subtype_logits * mask
+        subtype_preds = (sigmoid(subtype_logits) > threshold).int()
+        predicted_subtype_indices = (
+            torch.nonzero(subtype_preds.squeeze()) if not assertion_failed else torch.tensor([])
+        )
 
-    # Note: Make sure None we are not predicting class "None"
-    subtype_logits[:, int(model.none_subtype_idx)] = 0
-    topk_values, topk_indices = torch.topk(subtype_logits, 2)
-    mask = torch.zeros_like(subtype_logits)
-    mask.scatter_(1, topk_indices, 1)
-    subtype_logits = subtype_logits * mask
-    subtype_preds = (sigmoid(subtype_logits) > threshold).int()
-    predicted_subtype_indices = torch.nonzero(subtype_preds.squeeze())
+        num_subtype_columns = sum(1 for key in model.config.columns.keys() if "Sub-Type" in key)
+        predicted_subtype_tuples = []
 
-    num_subtype_columns = sum(1 for key in model.config.columns.keys() if "Sub-Type" in key)
-    predicted_subtype_tuples = []
+        for idx in predicted_subtype_indices:
+            for j in range(num_subtype_columns):
+                subtype_col_idx = j + 1
+                legible_subtype = model.decoders["Sub-Types"][str(idx.item())]
+                if legible_subtype in model.counts[f"Sub-Type {subtype_col_idx}"]:
+                    # Note: Sort tuples by presence in subtype column, then frequency
+                    # TODO: Add a sort here for whether this is a "misc" column tag (put those last)
+                    # Create a set of all misc tags and check for membership...
+                    predicted_subtype_tuples.append(
+                        (
+                            subtype_col_idx,
+                            model.counts[f"Sub-Type {subtype_col_idx}"][legible_subtype],
+                            legible_subtype,
+                        )
+                    )
+                    break
+        # Note: sort by column index then by frequency
+        predicted_subtype_tuples = sorted(predicted_subtype_tuples)
+        # Move overflow misc columns to the end of the subtype list
+        non_misc_subtypes = [tup for tup in predicted_subtype_tuples if tup[2] not in ALL_NON_SUBTYPE_TAGS]
+        misc_subtypes = [tup for tup in predicted_subtype_tuples if tup[2] in ALL_NON_SUBTYPE_TAGS]
+        predicted_subtype_tuples = non_misc_subtypes + misc_subtypes
 
-    for idx in predicted_subtype_indices:
-        for j in range(num_subtype_columns):
-            subtype_col_idx = j + 1
-            legible_subtype = model.decoders["Sub-Types"][str(idx.item())]
-            if legible_subtype in model.counts[f"Sub-Type {subtype_col_idx}"]:
-                # Note: Sort tuples by presence in subtype column, then frequency
-                predicted_subtype_tuples.append(
-                    (subtype_col_idx, model.counts[f"Sub-Type {subtype_col_idx}"][legible_subtype], legible_subtype)
-                )
-                break
+        for i, (_, _, subtype) in enumerate(predicted_subtype_tuples):
+            legible_preds[f"Sub-Type {i+1}"] = subtype
 
-    predicted_subtype_tuples = sorted(predicted_subtype_tuples)
-
-    for i, (_, _, subtype) in enumerate(predicted_subtype_tuples):
-        legible_preds[f"Sub-Type {i+1}"] = subtype
-
-    # TODO: Reorder this to be in the expected column output order
     if combine_name:
-        normalized_name = ""
-        for col, pred in legible_preds.items():
-            if "_score" not in col and "Food" not in col and pred != "None":
-                normalized_name += pred + ", "
-        normalized_name = normalized_name.strip().rstrip(",")
-        return normalized_name
+        return get_combined_name(legible_preds)
     return legible_preds
 
 
-def highlight_uncertain_preds(df, threshold=0.85):
-    """Creates a styles dictionary for underconfident predictions"""
-    styles_dict = {}
-    for col_idx, dtype in enumerate(df.dtypes):
-        # TODO: this is fragile - fix it later
-        if dtype == "object":  # Skip non-float columns
-            continue
-        else:
-            try:
-                styles_dict[df.columns[col_idx - 1]] = df.iloc[:, col_idx].apply(
-                    lambda x: "background-color: yellow" if x < threshold else ""
-                )
-            except:
-                print(f"Tried to find uncertainty in a a non-float column! {df.iloc[:,col_idx].head(5)}")
-    return styles_dict
+def save_output(df_classified: pd.DataFrame, filename: Union[str, Path], data_dir: Union[str, Path]) -> None:
+    """Saves a DataFrame to an Excel file in the specified directory, replacing "None" values with NaN.
 
+    Args:
+        df_classified: The DataFrame to be saved.
+        filename: The name of the file to save the output as. Can be a string or Path object.
+        data_dir: The directory where the file should be saved. Can be a string or Path object.
 
-def save_output(df, filename, data_dir):
+    Returns:
+        None
+    """
     if not isinstance(filename, Path):
         filename = Path(filename)
     os.chdir(data_dir)  # ensures this saves in the expected directory in Colab
     output_path = filename.with_name(filename.stem + "_classified.xlsx")
-    df = df.replace("None", np.nan)
-    df.to_excel(output_path, index=False)
+    df_classified = df_classified.replace("None", np.nan)
+    df_classified.to_excel(output_path, index=False)
     print(f"Classification completed! File saved to {output_path}")
     return
 
 
 def inference_handler(
-    model,
-    tokenizer,
-    input_path,
-    input_column,
-    output_filename=None,
-    save_dir="/content",
-    device=None,
-    sheet_name=0,
-    save=True,
-    highlight=False,
-    confidence_score=False,
-    threshold=0.85,
-    rows_to_classify=None,
-    raw_results=False,
-    assertion=False,
-):
+    model: Any,
+    tokenizer: Any,
+    input_path: Union[str, Path],
+    input_column: str,
+    output_filename: Optional[Union[str, Path]] = None,
+    save_dir: Union[str, Path] = "/content",
+    device: Optional[str] = None,
+    sheet_name: Union[int, str] = 0,
+    save: bool = True,
+    threshold: float = 0.85,
+    num_rows_to_classify: Optional[int] = None,
+    assertion: bool = False,
+) -> pd.DataFrame:
+    """Handles the inference pipeline on a dataset, including reading data, performing inference, and saving results.
+
+    Args:
+        model: The model used for inference.
+        tokenizer: The tokenizer used to preprocess the text input.
+        input_path: Path to the input Excel file.
+        input_column: The column name in the Excel file containing the text to classify.
+        output_filename: Optional filename for the output file
+        save_dir: Directory where the output file should be saved
+        device: The device to run inference on
+        sheet_name: The sheet name or index to read from the Excel file
+        save: Whether to save the output file
+        confidence_score: Whether to include confidence scores in the output
+        threshold: Threshold for determining uncertainty in predictions
+        num_rows_to_classify: Number of rows to classify. If None, all rows are classified.
+        assertion: Whether to perform additional assertions during inference
+
+    Returns:
+        The DataFrame containing predictions from the model
+    """
     if device is None:
         device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
     try:
-        df = pd.read_excel(input_path, sheet_name=sheet_name)
+        df_input = pd.read_excel(input_path, sheet_name=sheet_name)
     except FileNotFoundError:
         print("FileNotFound: {e}\n. Please double check the filename: {input_path}")
         raise
 
     # Force columns to have capitalization consistent with expected output
-    df.columns = [col.lower() for col in df.columns]
-    df = df.rename(columns=lower2label)
+    df_input.columns = [col.lower() for col in df_input.columns]
+    # Column names vary between scoring platforms
+    df_input = df_input.rename(columns=lower2label)
+    # Note: Old datasets have "Center Product ID" as a column name so handle this separately
+    df_input = df_input.rename(columns={"Center Product ID": "Product Identifier"})
 
-    if rows_to_classify:
-        df = df.head(rows_to_classify)
+    if num_rows_to_classify:
+        df_input = df_input.head(num_rows_to_classify)
 
     output = (
-        df[input_column]
+        df_input[input_column]
         .apply(lambda text: inference(model, tokenizer, text, device, assertion=assertion))
         .apply(pd.Series)
     )
-    results = pd.concat([df[input_column], output], axis=1)
-    results = results.replace("None", pd.NA)
-
-    if raw_results:
-        if save:
-            save_output(results, input_path, save_dir)
-        return results
+    output = output.replace("None", pd.NA)
 
     # Add all columns to results to match name normalization format
-    # Assumes that the input dataframe is in the expected name normalization format
-    # TODO: Add a check for that
     results_full = pd.DataFrame()
-    for col in df.columns:
-        if col in results:
-            results_full[col] = results[col]
-        elif col == "Center Product ID":
-            results_full[col] = df[col]
+    for col in OUTPUT_COLS:
+        if col in output:
+            results_full[col] = output[col]
+        elif col in NON_LABEL_COLS:
+            results_full[col] = df_input[col]
         else:
-            results_full[col] = pd.Series([None] * len(results))
-
-        # Add confidence score (needed for highlights)
-        score_col = col + "_score"
-        if score_col in results:
-            results_full[score_col] = results[score_col]
-
-    # Create highlights
-    # Logic here is a bit odd since applying styles gives you a Styler
-    # object...not a dataframe
-    if highlight:
-        styles_dict = highlight_uncertain_preds(results_full, threshold)
-        styles_df = pd.DataFrame(styles_dict)
-
-    if not confidence_score:
-        results_full = results_full[[col for col in df.columns if "_score" not in col]]
-
-    # Actually apply the styles here
-    df_formatted = results_full.style.apply(lambda x: styles_df, axis=None) if highlight else results_full
+            results_full[col] = pd.Series([None] * len(output))
 
     if output_filename is None:
         output_filename = input_path
 
     if save:
-        save_output(df_formatted, output_filename, save_dir)
-    return df_formatted
+        save_output(results_full, output_filename, save_dir)
+    return results_full
 
 
 if __name__ == "__main__":
@@ -265,7 +321,7 @@ if __name__ == "__main__":
     with Path.open(SCRIPT_DIR / "../../../scripts/config_train.yaml") as file:
         config = yaml.safe_load(file)
 
-    DATA_DIR = Path(config["data"]["data_dir"]) / "raw"
+    DATA_DIR = Path(config["data"]["data_dir"]) / "test"
     test_filepath = DATA_DIR / config["data"]["test_filename"]
     model_checkpoint = Path(config["model"]["eval_checkpoint"])
 
@@ -274,10 +330,9 @@ if __name__ == "__main__":
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
     SHEET_NUMBER = 0
-    HIGHLIGHT = False
     CONFIDENCE_SCORE = False
     ROWS_TO_CLASSIFY = None
-    RAW_RESULTS = False  # saves the raw model results rather than the formatted normalized name results
+    RAW_RESULTS = False
     ASSERTION = False
 
     INPUT_COLUMN = config["data"]["text_field"]
@@ -290,9 +345,7 @@ if __name__ == "__main__":
         device=device,
         sheet_name=SHEET_NUMBER,
         input_column=INPUT_COLUMN,
-        rows_to_classify=ROWS_TO_CLASSIFY,
-        highlight=HIGHLIGHT,
+        num_rows_to_classify=ROWS_TO_CLASSIFY,
         confidence_score=CONFIDENCE_SCORE,
-        raw_results=RAW_RESULTS,
         assertion=ASSERTION,
     )

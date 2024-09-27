@@ -1,0 +1,8 @@
+config:
+  smoke_test: false
+input_data:
+  input_file: "Non-food Items_082024.xlsx"
+  # sheet_name: 2
+output_data:
+  misc_file: "misc.csv"
+  clean_file_prefix: "clean_"

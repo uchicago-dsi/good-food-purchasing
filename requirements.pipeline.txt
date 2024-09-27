@@ -7,3 +7,5 @@ pandas~=2.2
 ruff~=0.4
 ordered_set
 tqdm
+pyyaml
+ipykernel
