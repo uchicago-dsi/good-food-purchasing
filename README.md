@@ -84,6 +84,10 @@ Note that, other than "Food Product Group", "Food Product Category", "Primary Fo
 
 We have infrastructure to train both RoBERTa and DistilBERT models.
 
+**Before running the below make sure that you set up an environment variable with your [wandb.ai api key](https://wandb.ai/home). The variable should be set as `WANDB_API_KEY` and should be available in the environment that is calling the `make` commands below.**
+
+**There is configuration variable in the `config_train.yaml` called `smoke_test`. Setting this to `true` will run through a small subset of the data in order to test any code. You need to set it to `False` in order to run the actual models.***
+
 ### Training the Classifier
 
 To get good results for all columns, we need to do a multi-stage fine-tuning process.
@@ -119,13 +123,17 @@ conda env create -f environment.yml
   ```bash
   make train
   ```
-  - If you are not using the UChicago DSI cluster, activate the ```cgfp``` conda environment and run ```scripts/train.py```
+  - If you are _not_ using the UChicago DSI cluster, activate the ```cgfp``` conda environment and run ```scripts/train.py```
 
 #### Multi-Stage Fine-Tuning
 
 To get good performance across tasks, we run a multi-stage fine-tuning process where we freeze and unfreeze the base model while also attaching different classification heads to the computation graph. We can configure all of this in the ```config_train.yaml```.
 
-We start by training the entire model on "Basic Type" while detaching all other classification heads from the computation graph (so they do not impact the representations from the base model). To do this, we set the following settings in ```config_train.yaml```:
+We use the same command as above (`make train`) on the DSI cluster to run the training. Updating the `config_train.yaml` file changes how the training is run; it is basically a conf file which controls all aspects of the training.
+
+We start by training the entire model on "Basic Type" while detaching all other classification heads from the computation graph (so they do not impact the representations from the base model). To do this, we set the following settings in ```config_train.yaml``` (leaving all other rows unchanged.):
+
+You want to use either the roberta or distilbert models, make sure to adjust the learning rate parameter in the `config_train.yaml` accordingly.
 
 ```
 model:
@@ -134,7 +142,11 @@ model:
     - "Basic Type"
 training:
   metric_for_best_model: "basic_type_accuracy"
+training:
+  lr: 2e-5 # .001 for distilbert, 2e-5 for roberta
 ```
+
+Once this file is updated re-run `make train`.
 
 Next, we load the model trained on "Basic Type" only and train the full model on "Sub-Types".
 
@@ -146,9 +158,13 @@ model:
     - "Sub-Types"
 training:
   metric_for_best_model: "mean_f1_score"
+training:
+  lr: 2e-5 # .001 for distilbert, 2e-5 for roberta  
 ```
 
 The results after these two steps are usually quite good.
+
+When running the above you want to pick one of roberta or distilbert and then run the first which will generate the starting checkpoint for use in the second. **Make sure that the models in the starting\_checkpoint align**
 
 #### Training Just the Classification Heads
 

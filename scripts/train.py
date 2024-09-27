@@ -246,7 +246,7 @@ if __name__ == "__main__":
     pretrained_checkpoint = config["model"]["starting_checkpoint"]
     if pretrained_checkpoint is None:
         if MODEL_NAME == "distilbert":
-            starting_checkpoint = "distilbert-base-uncased"
+            starting_checkpoint = "distilbert/distilbert-base-uncased"
         elif MODEL_NAME == "roberta":
             starting_checkpoint = "FacebookAI/roberta-base"
     else:
