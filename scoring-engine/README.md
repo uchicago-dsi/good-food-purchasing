@@ -1,6 +1,6 @@
 # Run a CPU-only scoring engine on your own computer
 
-This is an alternative to [the scoring engine on Google Colab](https://colab.research.google.com/drive/1bFhwSUIzzH_B1gxVqKS_3SYxwxShF4Xe?authuser=1#scrollTo=sbJNo52mL5rg), with the advantage that it locks all software versions, so that it will always work. (Google Colab has updated its Python version and some of its core packages, which broke the scoring engine online.)
+This is an alternative to [the scoring engine on Google Colab](https://colab.research.google.com/drive/1bFhwSUIzzH_B1gxVqKS_3SYxwxShF4Xe), with the advantage that it locks all software versions, so that it will always work. (Google Colab has updated its Python version and some of its core packages, which broke the scoring engine online.)
 
 **Step 1:** Install Git if you don't have it already. You can find [instructions for your platform here](https://git-scm.com/downloads).
 
