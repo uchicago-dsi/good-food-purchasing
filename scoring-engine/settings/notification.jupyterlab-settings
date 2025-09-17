@@ -1,0 +1,5 @@
+{
+    // the "there's a new Jupyter version" pop-up is ANNOYING!
+    "checkForUpdates": false,
+    "fetchNews": "false"
+}
