@@ -1,8 +1,10 @@
 import argparse
-import json
-import pathlib
-import os
 import csv
+import json
+import os
+import pathlib
+import queue
+import threading
 from functools import reduce
 from operator import mul
 
@@ -21,6 +23,43 @@ OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
 DIRECTORY = pathlib.Path(
     "~/Box/dsi-core/11th-hour/good-food-purchasing/nov2025-dataset"
 ).expanduser()
+
+parser = argparse.ArgumentParser(
+    description="Normalize 'Product Name' in an Excel sheet for Center for Good Food Purchasing food products."
+)
+parser.add_argument(
+    "input_excel",
+    type=str,
+    help="Path to the input Excel spreadsheet file (.xlsx, .xls)",
+)
+parser.add_argument("output_csv", type=str, help="Path to the output CSV file")
+parser.add_argument(
+    "--sheet",
+    type=str,
+    help="Name of the sheet in the Excel file to process (alternative to --sheet-index)",
+)
+parser.add_argument(
+    "--sheet-index",
+    type=int,
+    default=0,
+    help="Index of the sheet in the Excel file to process (0-based, alternative to --sheet)",
+)
+parser.add_argument(
+    "--num-parallel",
+    type=int,
+    default=1,
+    help="Number of queries to run in parallel",
+)
+args = parser.parse_args()
+
+if args.sheet is not None and args.sheet_index is not None:
+    parser.error("Specify either --sheet or --sheet-index, not both.")
+sheet_kw = args.sheet if args.sheet is not None else args.sheet_index
+
+product_type_sheet = pd.read_excel(args.input_excel, sheet_name=sheet_kw)
+if "Product Type" not in product_type_sheet.columns:
+    parser.error("'Product Type' column not found in input spreadsheet.")
+product_type_column = product_type_sheet["Product Type"]
 
 with open(DIRECTORY / "p_correct.json") as file:
     p_correct = json.load(file)
@@ -617,41 +656,23 @@ product_name_fields = [
     "Commodity",
 ]
 
-parser = argparse.ArgumentParser(
-    description="Normalize 'Product Name' in an Excel sheet for Center for Good Food Purchasing food products."
-)
-parser.add_argument(
-    "input_excel",
-    type=str,
-    help="Path to the input Excel spreadsheet file (.xlsx, .xls)",
-)
-parser.add_argument("output_csv", type=str, help="Path to the output CSV file")
-parser.add_argument(
-    "--sheet",
-    type=str,
-    help="Name of the sheet in the Excel file to process (alternative to --sheet-index)",
-)
-parser.add_argument(
-    "--sheet-index",
-    type=int,
-    default=0,
-    help="Index of the sheet in the Excel file to process (0-based, alternative to --sheet)",
-)
-args = parser.parse_args()
+done_sentinel = object()
 
-if args.sheet is not None and args.sheet_index is not None:
-    parser.error("Specify either --sheet or --sheet-index, not both.")
-sheet_kw = args.sheet if args.sheet is not None else args.sheet_index
+queries = queue.Queue()
+for product_type in product_type_column:
+    queries.put(product_type)
 
-product_type_sheet = pd.read_excel(args.input_excel, sheet_name=sheet_kw)
-if "Product Type" not in product_type_sheet.columns:
-    parser.error("'Product Type' column not found in input spreadsheet.")
-product_type_column = product_type_sheet["Product Type"]
+for _ in range(args.num_parallel):
+    queries.put(done_sentinel)
+
+output_lock = threading.Lock()
 
 with open(args.output_csv, "w") as output_file:
     output_writer = csv.writer(output_file)
     output_writer.writerow(fields)
     output_file.flush()
+
+    pbar = tqdm(total=len(product_type_column))
 
     def print_error(err):
         print(
@@ -659,101 +680,116 @@ with open(args.output_csv, "w") as output_file:
         )
 
     def write_output(output_row):
-        output_writer.writerow(output_row)
-        output_file.flush()
+        with output_lock:
+            output_writer.writerow(output_row)
+            output_file.flush()
+            pbar.update(1)
 
-    for product_type in tqdm(product_type_column):
-        output_row = [""] * len(fields)
-        output_row[field_to_index["Product Type"]] = product_type
+    def worker():
+        while True:
+            product_type = queries.get()
+            if product_type is done_sentinel:
+                break
 
-        try:
-            response = requests.post(
-                "https://api.openai.com/v1/chat/completions",
-                timeout=OPENAI_API_TIMEOUT,
-                headers={
-                    "Authorization": f"Bearer {OPENAI_API_KEY}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": "ft:gpt-4.1-mini-2025-04-14:u-chicago:name-normalization-try3:CgFswafI",
-                    "messages": [
-                        {"role": "system", "content": system_message},
-                        {"role": "user", "content": product_type},
-                    ],
-                    "response_format": {
-                        "type": "json_schema",
-                        "json_schema": json_schema,
+            output_row = [""] * len(fields)
+            output_row[field_to_index["Product Type"]] = product_type
+
+            try:
+                response = requests.post(
+                    "https://api.openai.com/v1/chat/completions",
+                    timeout=OPENAI_API_TIMEOUT,
+                    headers={
+                        "Authorization": f"Bearer {OPENAI_API_KEY}",
+                        "Content-Type": "application/json",
                     },
-                },
-            )
-        except Exception as err:
-            print_error(err)
-            write_output(output_row)
-            continue
+                    json={
+                        "model": "ft:gpt-4.1-mini-2025-04-14:u-chicago:name-normalization-try3:CgFswafI",
+                        "messages": [
+                            {"role": "system", "content": system_message},
+                            {"role": "user", "content": product_type},
+                        ],
+                        "response_format": {
+                            "type": "json_schema",
+                            "json_schema": json_schema,
+                        },
+                    },
+                )
+            except Exception as err:
+                print_error(err)
+                write_output(output_row)
+                continue
 
-        try:
-            response_json = response.json()
-        except Exception as err:
-            print_error(err)
-            write_output(output_row)
-            continue
+            try:
+                response_json = response.json()
+            except Exception as err:
+                print_error(err)
+                write_output(output_row)
+                continue
 
-        try:
-            output = json.loads(response_json["choices"][0]["message"]["content"])
-        except Exception as err:
-            print_error(err)
-            write_output(output_row)
-            continue
+            try:
+                output = json.loads(response_json["choices"][0]["message"]["content"])
+            except Exception as err:
+                print_error(err)
+                write_output(output_row)
+                continue
 
-        basic_type = None
-        for column, probabilities in p_correct.items():
-            out = output_row[field_to_index[column]] = output.get(column, "")
-            if column == "Basic Type":
-                basic_type = out
+            basic_type = None
+            for column, probabilities in p_correct.items():
+                out = output_row[field_to_index[column]] = output.get(column, "")
+                if column == "Basic Type":
+                    basic_type = out
 
-            if probabilities["numsamples"].get(out, 0) >= MINIMUM_NUM_SAMPLES:
-                probability = f"{probabilities['byvalue'].get(out, 0):.0f}"
+                if probabilities["numsamples"].get(out, 0) >= MINIMUM_NUM_SAMPLES:
+                    probability = f"{probabilities['byvalue'].get(out, 0):.0f}"
+                else:
+                    probability = "???"
+                output_row[field_to_index[f"P({column})"]] = probability
+
+            subtypes = output.get("Sub-Type", [])
+            if len(subtypes) > 0:
+                output_row[field_to_index["Sub-Type 1"]] = subtypes[0]
+            if len(subtypes) > 1:
+                output_row[field_to_index["Sub-Type 2"]] = subtypes[1]
+            if len(subtypes) > 2:
+                output_row[field_to_index["Sub-Type 3"]] = subtypes[2]
+
+            key_suffix = "empty" if len(subtypes) == 0 else "nonempty"
+            if (
+                p_subtype_correct[f"numsamples_{key_suffix}"].get(basic_type, 0)
+                >= MINIMUM_NUM_SAMPLES
+            ):
+                probability = (
+                    f"{p_subtype_correct[f'byvalue_{key_suffix}'].get(basic_type, 0):.0f}"
+                )
             else:
                 probability = "???"
-            output_row[field_to_index[f"P({column})"]] = probability
+            output_row[field_to_index["P(Sub-Types)"]] = probability
 
-        subtypes = output.get("Sub-Type", [])
-        if len(subtypes) > 0:
-            output_row[field_to_index["Sub-Type 1"]] = subtypes[0]
-        if len(subtypes) > 1:
-            output_row[field_to_index["Sub-Type 2"]] = subtypes[1]
-        if len(subtypes) > 2:
-            output_row[field_to_index["Sub-Type 3"]] = subtypes[2]
-
-        key_suffix = "empty" if len(subtypes) == 0 else "nonempty"
-        if (
-            p_subtype_correct[f"numsamples_{key_suffix}"].get(basic_type, 0)
-            >= MINIMUM_NUM_SAMPLES
-        ):
-            probability = (
-                f"{p_subtype_correct[f'byvalue_{key_suffix}'].get(basic_type, 0):.0f}"
+            product_name_pieces = [
+                output_row[field_to_index[column]] for column in product_name_fields
+            ]
+            output_row[field_to_index["Product Name"]] = ", ".join(
+                [x for x in product_name_pieces if x != ""]
             )
-        else:
-            probability = "???"
-        output_row[field_to_index["P(Sub-Types)"]] = probability
 
-        product_name_pieces = [
-            output_row[field_to_index[column]] for column in product_name_fields
-        ]
-        output_row[field_to_index["Product Name"]] = ", ".join(
-            [x for x in product_name_pieces if x != ""]
-        )
+            probability_factors = [
+                output_row[field_to_index[f"P({column})"]]
+                for column in product_name_fields
+                if not column.startswith("Sub-Type")
+            ] + [output_row[field_to_index["P(Sub-Types)"]]]
 
-        probability_factors = [
-            output_row[field_to_index[f"P({column})"]]
-            for column in product_name_fields
-            if not column.startswith("Sub-Type")
-        ] + [output_row[field_to_index["P(Sub-Types)"]]]
+            if all(x != "???" for x in probability_factors):
+                probability = f"{100 * reduce(mul, [float(x) / 100 for x in probability_factors]):.0f}"
+            else:
+                probability = "???"
+            output_row[field_to_index["P(Product Name)"]] = probability
 
-        if all(x != "???" for x in probability_factors):
-            probability = f"{100 * reduce(mul, [float(x) / 100 for x in probability_factors]):.0f}"
-        else:
-            probability = "???"
-        output_row[field_to_index["P(Product Name)"]] = probability
+            write_output(output_row)
 
-        write_output(output_row)
+    threads = [threading.Thread(target=worker) for _ in range(args.num_parallel)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    pbar.close()
