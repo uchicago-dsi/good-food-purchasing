@@ -328,81 +328,15 @@ json_schema = {
         "properties": {
             "Food Product Group": {
                 "type": "string",
-                "enum": [
-                    "Produce",
-                    "Condiments & Snacks",
-                    "Meat",
-                    "Bread, Grains & Legumes",
-                    "Meals",
-                    "Milk & Dairy",
-                    "Beverages",
-                    "Non-Food",
-                    "Seafood",
-                ],
+                "enum": allowed["Food Product Group"],
             },
             "Food Product Category": {
                 "type": "string",
-                "enum": [
-                    "Condiments & Snacks",
-                    "Vegetables",
-                    "Meals",
-                    "Fruit",
-                    "Grain Products",
-                    "Beverages",
-                    "Non-Food",
-                    "Roots & Tubers",
-                    "Chicken",
-                    "Beef",
-                    "Cheese",
-                    "Pork",
-                    "Turkey, Other Poultry",
-                    "Milk & Dairy",
-                    "Yogurt",
-                    "Seafood",
-                    "Legumes",
-                    "Milk",
-                    "Eggs",
-                    "Tree Nuts & Seeds",
-                    "Rice",
-                    "Meat",
-                    "Butter",
-                    "Fish (Wild)",
-                    "Fish (Farm-Raised)",
-                    "Produce",
-                ],
+                "enum": allowed["Food Product Category"],
             },
             "Primary Food Product Category": {
                 "type": "string",
-                "enum": [
-                    "Condiments & Snacks",
-                    "Vegetables",
-                    "Fruit",
-                    "Grain Products",
-                    "Beverages",
-                    "Non-Food",
-                    "Cheese",
-                    "Roots & Tubers",
-                    "Meals",
-                    "Beef",
-                    "Chicken",
-                    "Pork",
-                    "Turkey, Other Poultry",
-                    "Milk & Dairy",
-                    "Seafood",
-                    "Yogurt",
-                    "Legumes",
-                    "Milk",
-                    "Eggs",
-                    "Tree Nuts & Seeds",
-                    "Rice",
-                    "Butter",
-                    "Fish (Wild)",
-                    "Fish (Farm-Raised)",
-                    "Produce",
-                    "Meat",
-                    "Egg",
-                    "Meats",
-                ],
+                "enum": allowed["Primary Food Product Category"],
             },
             "Basic Type": {"type": "string"},
             "Sub-Type": {
@@ -411,175 +345,55 @@ json_schema = {
             },
             "Flavor/Cut": {
                 "type": "string",
-                "enum": [
-                    "flavored",
-                    "breast",
-                    "ham",
-                    "wing",
-                    "thigh",
-                    "steak",
-                    "loin",
-                    "rib",
-                    "mix",
-                    "tenderloin",
-                    "leg",
-                    "brisket",
-                    "chuck",
-                    "butt",
-                    "sirloin",
-                    "shoulder",
-                    "short rib",
-                    "bottom round",
-                    "belly",
-                    "shank",
-                    "oxtail",
-                    "skirt",
-                    "tri tip",
-                    "striploin",
-                    "knuckle",
-                    "rack",
-                    "shortloin",
-                    "cheek",
-                    "neck",
-                    "round",
-                    "tripe",
-                    "tongue",
-                    "teres major",
-                    "pectoral meat",
-                    "outside skirt",
-                    "marrow bone",
-                    "loin rib",
-                    "t-bone",
-                    "cut",
-                ],
+                "enum": allowed["Flavor/Cut"],
             },
             "Shape": {
                 "type": "string",
-                "enum": [
-                    "cut",
-                    "patty",
-                    "ground",
-                    "concentrate",
-                    "bacon",
-                    "hot dog",
-                    "meatball",
-                    "thickened",
-                    "crumble",
-                    "nugget",
-                    "jerky",
-                    "salami",
-                    "pepperoni",
-                    "pastrami",
-                    "bologna",
-                    "prosciutto",
-                    "shredded",
-                    "genoa",
-                    "liquid",
-                    "mortadella",
-                    "capocollo",
-                    "pancetta",
-                    "bresaola",
-                    "sopressata",
-                    "breast",
-                    "cotto",
-                    "guanciale",
-                    "nostrano",
-                ],
+                "enum": allowed["Shape"],
             },
             "Skin": {
                 "type": "string",
-                "enum": ["skin on", "tail on", "shell on"],
+                "enum": allowed["Skin"],
             },
             "Seed/Bone": {
                 "type": "string",
-                "enum": ["bone-in", "pitted"],
+                "enum": allowed["Seed/Bone"],
             },
             "Processing": {
                 "type": "string",
-                "enum": [
-                    "breaded",
-                    "in juice",
-                    "seasoned",
-                    "dried",
-                    "in syrup",
-                    "puree",
-                    "powder",
-                    "in water",
-                    "battered",
-                    "hard boiled",
-                    "dehydrated",
-                    "whipped",
-                    "grated",
-                    "corned",
-                    "in sauce",
-                    "stuffed",
-                    "in brine",
-                    "in oil",
-                    "evaporated",
-                    "in puree",
-                    "in vinegar",
-                    "in liquid",
-                    "in gel",
-                    "marinated",
-                    "powdered",
-                    "in vegetable broth",
-                ],
+                "enum": allowed["Processing"],
             },
             "Cooked/Cleaned": {
                 "type": "string",
-                "enum": ["cooked", "smoked"],
+                "enum": allowed["Cooked/Cleaned"],
             },
             "WG/WGR": {
                 "type": "string",
-                "enum": ["whole grain rich"],
+                "enum": allowed["WG/WGR"],
             },
             "Dietary Concern": {
                 "type": "string",
-                "enum": [
-                    "nonfat",
-                    "low sodium",
-                    "low fat",
-                    "1%",
-                    "salted",
-                    "unsalted",
-                    "decaffeinated",
-                    "diet",
-                    "2%",
-                    "reduced sodium",
-                    "fat free",
-                    "reduced sugar",
-                    "no sodium",
-                    "reduced calorie",
-                    "caffeinated",
-                ],
+                "enum": allowed["Dietary Concern"],
             },
             "Additives": {
                 "type": "string",
-                "enum": ["no additives", "unsweetened", "additives", "sweetened"],
+                "enum": allowed["Additives"],
             },
             "Dietary Accommodation": {
                 "type": "string",
-                "enum": [
-                    "gluten free",
-                    "kosher",
-                    "vegan",
-                    "vegetarian",
-                    "lactose free",
-                    "halal",
-                    "non-dairy",
-                ],
+                "enum": allowed["Dietary Accommodation"],
             },
             "Frozen": {
                 "type": "string",
-                "enum": ["frozen", "iced"],
+                "enum": allowed["Frozen"],
             },
             "Packaging": {
                 "type": "string",
-                "enum": ["ss", "canned", "jarred"],
+                "enum": allowed["Packaging"],
             },
             "Commodity": {
                 "type": "string",
-                "enum": ["commodity"],
+                "enum": allowed["Commodity"],
             },
         },
         "required": [
@@ -658,6 +472,86 @@ product_name_fields = [
 
 done_sentinel = object()
 
+def predict_product_name(product_type):
+    output_row = [""] * len(fields)
+    output_row[field_to_index["Product Type"]] = product_type
+
+    response = requests.post(
+        "https://api.openai.com/v1/chat/completions",
+        timeout=OPENAI_API_TIMEOUT,
+        headers={
+            "Authorization": f"Bearer {OPENAI_API_KEY}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "model": "ft:gpt-4.1-mini-2025-04-14:u-chicago:name-normalization-try3:CgFswafI",
+            "messages": [
+                {"role": "system", "content": system_message},
+                {"role": "user", "content": product_type},
+            ],
+            "response_format": {
+                "type": "json_schema",
+                "json_schema": json_schema,
+            },
+        },
+    )
+
+    result = json.loads(response.json()["choices"][0]["message"]["content"])
+
+    basic_type = None
+    for column, probabilities in p_correct.items():
+        out = output_row[field_to_index[column]] = result.get(column, "")
+        if column == "Basic Type":
+            basic_type = out
+
+        if probabilities["numsamples"].get(out, 0) >= MINIMUM_NUM_SAMPLES:
+            probability = f"{probabilities['byvalue'].get(out, 0):.0f}"
+        else:
+            probability = "???"
+        output_row[field_to_index[f"P({column})"]] = probability
+
+    subtypes = result.get("Sub-Type", [])
+    if len(subtypes) > 0:
+        output_row[field_to_index["Sub-Type 1"]] = subtypes[0]
+    if len(subtypes) > 1:
+        output_row[field_to_index["Sub-Type 2"]] = subtypes[1]
+    if len(subtypes) > 2:
+        output_row[field_to_index["Sub-Type 3"]] = subtypes[2]
+
+    key_suffix = "empty" if len(subtypes) == 0 else "nonempty"
+    if (
+        p_subtype_correct[f"numsamples_{key_suffix}"].get(basic_type, 0)
+        >= MINIMUM_NUM_SAMPLES
+    ):
+        probability = (
+            f"{p_subtype_correct[f'byvalue_{key_suffix}'].get(basic_type, 0):.0f}"
+        )
+    else:
+        probability = "???"
+    output_row[field_to_index["P(Sub-Types)"]] = probability
+
+    product_name_pieces = [
+        output_row[field_to_index[column]] for column in product_name_fields
+    ]
+    output_row[field_to_index["Product Name"]] = ", ".join(
+        [x for x in product_name_pieces if x != ""]
+    )
+
+    probability_factors = [
+        output_row[field_to_index[f"P({column})"]]
+        for column in product_name_fields
+        if not column.startswith("Sub-Type")
+    ] + [output_row[field_to_index["P(Sub-Types)"]]]
+
+    if all(x != "???" for x in probability_factors):
+        probability = f"{100 * reduce(mul, [float(x) / 100 for x in probability_factors]):.0f}"
+    else:
+        probability = "???"
+    output_row[field_to_index["P(Product Name)"]] = probability
+
+    return output_row
+
+
 queries = queue.Queue()
 for product_type in product_type_column:
     queries.put(product_type)
@@ -681,8 +575,9 @@ with open(args.output_csv, "w") as output_file:
 
     def write_output(output_row):
         with output_lock:
-            output_writer.writerow(output_row)
-            output_file.flush()
+            if not output_file.closed:
+                output_writer.writerow(output_row)
+                output_file.flush()
             pbar.update(1)
 
     def worker():
@@ -695,94 +590,9 @@ with open(args.output_csv, "w") as output_file:
             output_row[field_to_index["Product Type"]] = product_type
 
             try:
-                response = requests.post(
-                    "https://api.openai.com/v1/chat/completions",
-                    timeout=OPENAI_API_TIMEOUT,
-                    headers={
-                        "Authorization": f"Bearer {OPENAI_API_KEY}",
-                        "Content-Type": "application/json",
-                    },
-                    json={
-                        "model": "ft:gpt-4.1-mini-2025-04-14:u-chicago:name-normalization-try3:CgFswafI",
-                        "messages": [
-                            {"role": "system", "content": system_message},
-                            {"role": "user", "content": product_type},
-                        ],
-                        "response_format": {
-                            "type": "json_schema",
-                            "json_schema": json_schema,
-                        },
-                    },
-                )
+                output_row = predict_product_name(product_type)
             except Exception as err:
                 print_error(err)
-                write_output(output_row)
-                continue
-
-            try:
-                response_json = response.json()
-            except Exception as err:
-                print_error(err)
-                write_output(output_row)
-                continue
-
-            try:
-                output = json.loads(response_json["choices"][0]["message"]["content"])
-            except Exception as err:
-                print_error(err)
-                write_output(output_row)
-                continue
-
-            basic_type = None
-            for column, probabilities in p_correct.items():
-                out = output_row[field_to_index[column]] = output.get(column, "")
-                if column == "Basic Type":
-                    basic_type = out
-
-                if probabilities["numsamples"].get(out, 0) >= MINIMUM_NUM_SAMPLES:
-                    probability = f"{probabilities['byvalue'].get(out, 0):.0f}"
-                else:
-                    probability = "???"
-                output_row[field_to_index[f"P({column})"]] = probability
-
-            subtypes = output.get("Sub-Type", [])
-            if len(subtypes) > 0:
-                output_row[field_to_index["Sub-Type 1"]] = subtypes[0]
-            if len(subtypes) > 1:
-                output_row[field_to_index["Sub-Type 2"]] = subtypes[1]
-            if len(subtypes) > 2:
-                output_row[field_to_index["Sub-Type 3"]] = subtypes[2]
-
-            key_suffix = "empty" if len(subtypes) == 0 else "nonempty"
-            if (
-                p_subtype_correct[f"numsamples_{key_suffix}"].get(basic_type, 0)
-                >= MINIMUM_NUM_SAMPLES
-            ):
-                probability = (
-                    f"{p_subtype_correct[f'byvalue_{key_suffix}'].get(basic_type, 0):.0f}"
-                )
-            else:
-                probability = "???"
-            output_row[field_to_index["P(Sub-Types)"]] = probability
-
-            product_name_pieces = [
-                output_row[field_to_index[column]] for column in product_name_fields
-            ]
-            output_row[field_to_index["Product Name"]] = ", ".join(
-                [x for x in product_name_pieces if x != ""]
-            )
-
-            probability_factors = [
-                output_row[field_to_index[f"P({column})"]]
-                for column in product_name_fields
-                if not column.startswith("Sub-Type")
-            ] + [output_row[field_to_index["P(Sub-Types)"]]]
-
-            if all(x != "???" for x in probability_factors):
-                probability = f"{100 * reduce(mul, [float(x) / 100 for x in probability_factors]):.0f}"
-            else:
-                probability = "???"
-            output_row[field_to_index["P(Product Name)"]] = probability
 
             write_output(output_row)
 
