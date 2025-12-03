@@ -1,3 +1,5 @@
+"""Classify food product attributes with an LLM and export results to CSV."""
+
 import argparse
 import csv
 import json
@@ -7,14 +9,18 @@ import queue
 import threading
 from functools import reduce
 from operator import mul
+from typing import Dict, List, Optional, Union
 
 import numpy as np
 import pandas as pd
 import requests
 from tqdm import tqdm
 
+# constants
+
 MINIMUM_NUM_SAMPLES = 10
-OPENAI_API_TIMEOUT = 20  # seconds
+CHATGPT_TIMEOUT = 20  # seconds
+CHATGPT_TEMPERATURE = 1.0
 
 if "OPENAI_API_KEY" not in os.environ:
     raise Exception("environment variable `OPENAI_API_KEY` not found")
@@ -23,6 +29,12 @@ OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
 DIRECTORY = pathlib.Path(
     "~/Box/dsi-core/11th-hour/good-food-purchasing/nov2025-dataset"
 ).expanduser()
+
+with open(DIRECTORY / "p_correct.json") as file:
+    P_CORRECT = json.load(file)
+
+with open(DIRECTORY / "p_subtype_correct.json") as file:
+    P_SUBTYPE_CORRECT = json.load(file)
 
 ALLOWED = {
     "Food Product Group": [
@@ -428,18 +440,32 @@ PRODUCT_NAME_FIELDS = [
 ]
 
 
-def predict_product_name(product_type):
-    output = {"Product Type": product_type}
+# functions
+
+
+def predict_product_name(product_type: str) -> Dict[str, Optional[Union[float, str]]]:
+    """Predict normalized attributes for a single product type.
+
+    Args:
+        product_type: Free-form product type description from the spreadsheet.
+
+    Returns:
+        Mapping keyed by `FIELDS` with attribute strings (or empty strings when the
+        attribute is missing), unrounded probability floats, or None for missing
+        probabilities.
+    """
+    output: Dict[str, Optional[Union[float, str]]] = {"Product Type": product_type}
 
     response = requests.post(
         "https://api.openai.com/v1/chat/completions",
-        timeout=OPENAI_API_TIMEOUT,
+        timeout=CHATGPT_TIMEOUT,
         headers={
             "Authorization": f"Bearer {OPENAI_API_KEY}",
             "Content-Type": "application/json",
         },
         json={
             "model": "ft:gpt-4.1-mini-2025-04-14:u-chicago:name-normalization-try3:CgFswafI",
+            "temperature": CHATGPT_TEMPERATURE,
             "messages": [
                 {"role": "system", "content": SYSTEM_MESSAGE},
                 {"role": "user", "content": product_type},
@@ -454,7 +480,7 @@ def predict_product_name(product_type):
     result = json.loads(response.json()["choices"][0]["message"]["content"])
 
     basic_type = None
-    for column, probabilities in p_correct.items():
+    for column, probabilities in P_CORRECT.items():
         out = output[column] = result.get(column, "")
         if column == "Basic Type":
             basic_type = out
@@ -472,10 +498,10 @@ def predict_product_name(product_type):
 
     key_suffix = "empty" if len(subtypes) == 0 else "nonempty"
     if (
-        p_subtype_correct[f"numsamples_{key_suffix}"].get(basic_type, 0)
+        P_SUBTYPE_CORRECT[f"numsamples_{key_suffix}"].get(basic_type, 0)
         >= MINIMUM_NUM_SAMPLES
     ):
-        probability = p_subtype_correct[f"byvalue_{key_suffix}"].get(basic_type, 0)
+        probability = P_SUBTYPE_CORRECT[f"byvalue_{key_suffix}"].get(basic_type, 0)
     else:
         probability = None
     output["P(Sub-Types)"] = probability
@@ -498,7 +524,15 @@ def predict_product_name(product_type):
     return output
 
 
-def format_as_output_row(output, output_row):
+def format_as_output_row(
+    output: Dict[str, Optional[Union[float, str]]], output_row: List[str]
+) -> None:
+    """Format a result dict into a CSV row in-place.
+
+    Args:
+        output: Mapping produced by `predict_product_name`.
+        output_row: Mutable CSV row to fill; length must equal `FIELDS`.
+    """
     for key, value in output.items():
         if not key.startswith("P("):
             output_row[FIELD_TO_INDEX[key]] = value
@@ -506,7 +540,14 @@ def format_as_output_row(output, output_row):
             output_row[FIELD_TO_INDEX[key]] = "" if value is None else f"{value:.0f}"
 
 
-if __name__ == "__main__":
+# script
+
+
+def main() -> None:
+    """Parse CLI arguments, orchestrate predictions, and write CSV output."""
+
+    # command line arguments
+
     parser = argparse.ArgumentParser(
         description="Normalize 'Product Name' in an Excel sheet for Center for Good Food Purchasing food products."
     )
@@ -544,15 +585,11 @@ if __name__ == "__main__":
         parser.error("'Product Type' column not found in input spreadsheet.")
     product_type_column = product_type_sheet["Product Type"]
 
-    with open(DIRECTORY / "p_correct.json") as file:
-        p_correct = json.load(file)
-
-    with open(DIRECTORY / "p_subtype_correct.json") as file:
-        p_subtype_correct = json.load(file)
+    # parallel-processing
 
     done_sentinel = object()
 
-    queries = queue.Queue()
+    queries: queue.Queue = queue.Queue()
     for product_type in product_type_column:
         queries.put(product_type)
 
@@ -561,6 +598,8 @@ if __name__ == "__main__":
 
     output_lock = threading.Lock()
 
+    # stream continuously to output file while updating progress bar
+
     with open(args.output_csv, "w") as output_file:
         output_writer = csv.writer(output_file)
         output_writer.writerow(FIELDS)
@@ -568,25 +607,25 @@ if __name__ == "__main__":
 
         pbar = tqdm(total=len(product_type_column))
 
-        def print_error(err):
+        def print_error(err: Exception) -> None:
             print(
                 f"{json.dumps(product_type)} failed with {type(err).__name__}: {str(err)}"
             )
 
-        def write_output(output_row):
+        def write_output(output_row: List[str]) -> None:
             with output_lock:
                 if not output_file.closed:
                     output_writer.writerow(output_row)
                     output_file.flush()
                 pbar.update(1)
 
-        def worker():
+        def worker() -> None:
             while True:
                 product_type = queries.get()
                 if product_type is done_sentinel:
                     break
 
-                output_row = [""] * len(FIELDS)
+                output_row: List[str] = [""] * len(FIELDS)
                 output_row[FIELD_TO_INDEX["Product Type"]] = product_type
 
                 try:
@@ -604,3 +643,7 @@ if __name__ == "__main__":
             thread.join()
 
         pbar.close()
+
+
+if __name__ == "__main__":
+    main()
