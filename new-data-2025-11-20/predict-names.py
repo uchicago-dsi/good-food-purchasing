@@ -24,50 +24,7 @@ DIRECTORY = pathlib.Path(
     "~/Box/dsi-core/11th-hour/good-food-purchasing/nov2025-dataset"
 ).expanduser()
 
-parser = argparse.ArgumentParser(
-    description="Normalize 'Product Name' in an Excel sheet for Center for Good Food Purchasing food products."
-)
-parser.add_argument(
-    "input_excel",
-    type=str,
-    help="Path to the input Excel spreadsheet file (.xlsx, .xls)",
-)
-parser.add_argument("output_csv", type=str, help="Path to the output CSV file")
-parser.add_argument(
-    "--sheet",
-    type=str,
-    help="Name of the sheet in the Excel file to process (alternative to --sheet-index)",
-)
-parser.add_argument(
-    "--sheet-index",
-    type=int,
-    default=0,
-    help="Index of the sheet in the Excel file to process (0-based, alternative to --sheet)",
-)
-parser.add_argument(
-    "--num-parallel",
-    type=int,
-    default=1,
-    help="Number of queries to run in parallel",
-)
-args = parser.parse_args()
-
-if args.sheet is not None and args.sheet_index is not None:
-    parser.error("Specify either --sheet or --sheet-index, not both.")
-sheet_kw = args.sheet if args.sheet is not None else args.sheet_index
-
-product_type_sheet = pd.read_excel(args.input_excel, sheet_name=sheet_kw)
-if "Product Type" not in product_type_sheet.columns:
-    parser.error("'Product Type' column not found in input spreadsheet.")
-product_type_column = product_type_sheet["Product Type"]
-
-with open(DIRECTORY / "p_correct.json") as file:
-    p_correct = json.load(file)
-
-with open(DIRECTORY / "p_subtype_correct.json") as file:
-    p_subtype_correct = json.load(file)
-
-allowed = {
+ALLOWED = {
     "Food Product Group": [
         "Produce",
         "Condiments & Snacks",
@@ -298,45 +255,45 @@ allowed = {
     ],
 }
 
-system_message = f"""
+SYSTEM_MESSAGE = f"""
 Your job is to classify a food product's attributes as a JSON object with the following keys and values:
 
-* "Food Product Group": which must be present and its value must be one of the following: {', '.join(map(json.dumps, allowed['Food Product Group']))}
-* "Food Product Category": which must be present and its value must be one of the following: {', '.join(map(json.dumps, allowed['Food Product Category']))}
-* "Primary Food Product Category": which must be present and its value must be one of the following: {', '.join(map(json.dumps, allowed['Primary Food Product Category']))}
+* "Food Product Group": which must be present and its value must be one of the following: {', '.join(map(json.dumps, ALLOWED['Food Product Group']))}
+* "Food Product Category": which must be present and its value must be one of the following: {', '.join(map(json.dumps, ALLOWED['Food Product Category']))}
+* "Primary Food Product Category": which must be present and its value must be one of the following: {', '.join(map(json.dumps, ALLOWED['Primary Food Product Category']))}
 * "Basic Type": if it is present, it must have a value like "chicken", "beef", "cheese", "juice", "condiment", "pork", "sauce", "potato", "dessert", "pepper", "seasoned", "turkey", "cereal", "chip", "apple", "tomato", "carrot", "dressing", "lettuce", "yogurt", "onion", "bread", "cracker", "herb", "milk", "pasta", "bean", "squash", "bar"
 * "Sub-Type": if it is present, it is a list of values like "cheese", "blend", "chicken", "corn", "sausage", "bell", "beef", "potato", "variety", "vegetable", "cake", "mozzarella", "grape", "mayonnaise", "oat", "pie", "sparkling", "syrup", "soy", "chocolate", "cookie", "barbecue", "mustard", "romaine", "graham", "italian", "zucchini", "pepper", "ranch"
-* "Flavor/Cut": if present, its value must be one of the following: {', '.join(map(json.dumps, allowed['Flavor/Cut']))}
-* "Shape": if present, its value must be one of the following: {', '.join(map(json.dumps, allowed['Shape']))}
-* "Skin": if present, its value must be one of the following: {', '.join(map(json.dumps, allowed['Skin']))}
-* "Seed/Bone": if present, its value must be one of the following: {', '.join(map(json.dumps, allowed['Seed/Bone']))}
-* "Processing": if present, its value must be one of the following: {', '.join(map(json.dumps, allowed['Processing']))}
-* "Cooked/Cleaned": if present, its value must be one of the following: {', '.join(map(json.dumps, allowed['Cooked/Cleaned']))}
-* "WG/WGR": if present, its value must be one of the following: {', '.join(map(json.dumps, allowed['WG/WGR']))}
-* "Dietary Concern": if present, its value must be one of the following: {', '.join(map(json.dumps, allowed['Dietary Concern']))}
-* "Additives": if present, its value must be one of the following: {', '.join(map(json.dumps, allowed['Additives']))}
-* "Dietary Accommodation": if present, its value must be one of the following: {', '.join(map(json.dumps, allowed['Dietary Accommodation']))}
-* "Frozen": if present, its value must be one of the following: {', '.join(map(json.dumps, allowed['Frozen']))}
-* "Packaging": if present, its value must be one of the following: {', '.join(map(json.dumps, allowed['Packaging']))}
-* "Commodity": if present, its value must be one of the following: {', '.join(map(json.dumps, allowed['Commodity']))}
+* "Flavor/Cut": if present, its value must be one of the following: {', '.join(map(json.dumps, ALLOWED['Flavor/Cut']))}
+* "Shape": if present, its value must be one of the following: {', '.join(map(json.dumps, ALLOWED['Shape']))}
+* "Skin": if present, its value must be one of the following: {', '.join(map(json.dumps, ALLOWED['Skin']))}
+* "Seed/Bone": if present, its value must be one of the following: {', '.join(map(json.dumps, ALLOWED['Seed/Bone']))}
+* "Processing": if present, its value must be one of the following: {', '.join(map(json.dumps, ALLOWED['Processing']))}
+* "Cooked/Cleaned": if present, its value must be one of the following: {', '.join(map(json.dumps, ALLOWED['Cooked/Cleaned']))}
+* "WG/WGR": if present, its value must be one of the following: {', '.join(map(json.dumps, ALLOWED['WG/WGR']))}
+* "Dietary Concern": if present, its value must be one of the following: {', '.join(map(json.dumps, ALLOWED['Dietary Concern']))}
+* "Additives": if present, its value must be one of the following: {', '.join(map(json.dumps, ALLOWED['Additives']))}
+* "Dietary Accommodation": if present, its value must be one of the following: {', '.join(map(json.dumps, ALLOWED['Dietary Accommodation']))}
+* "Frozen": if present, its value must be one of the following: {', '.join(map(json.dumps, ALLOWED['Frozen']))}
+* "Packaging": if present, its value must be one of the following: {', '.join(map(json.dumps, ALLOWED['Packaging']))}
+* "Commodity": if present, its value must be one of the following: {', '.join(map(json.dumps, ALLOWED['Commodity']))}
 """.strip()
 
-json_schema = {
+JSON_SCHEMA = {
     "name": "name_normalization",
     "schema": {
         "type": "object",
         "properties": {
             "Food Product Group": {
                 "type": "string",
-                "enum": allowed["Food Product Group"],
+                "enum": ALLOWED["Food Product Group"],
             },
             "Food Product Category": {
                 "type": "string",
-                "enum": allowed["Food Product Category"],
+                "enum": ALLOWED["Food Product Category"],
             },
             "Primary Food Product Category": {
                 "type": "string",
-                "enum": allowed["Primary Food Product Category"],
+                "enum": ALLOWED["Primary Food Product Category"],
             },
             "Basic Type": {"type": "string"},
             "Sub-Type": {
@@ -345,55 +302,55 @@ json_schema = {
             },
             "Flavor/Cut": {
                 "type": "string",
-                "enum": allowed["Flavor/Cut"],
+                "enum": ALLOWED["Flavor/Cut"],
             },
             "Shape": {
                 "type": "string",
-                "enum": allowed["Shape"],
+                "enum": ALLOWED["Shape"],
             },
             "Skin": {
                 "type": "string",
-                "enum": allowed["Skin"],
+                "enum": ALLOWED["Skin"],
             },
             "Seed/Bone": {
                 "type": "string",
-                "enum": allowed["Seed/Bone"],
+                "enum": ALLOWED["Seed/Bone"],
             },
             "Processing": {
                 "type": "string",
-                "enum": allowed["Processing"],
+                "enum": ALLOWED["Processing"],
             },
             "Cooked/Cleaned": {
                 "type": "string",
-                "enum": allowed["Cooked/Cleaned"],
+                "enum": ALLOWED["Cooked/Cleaned"],
             },
             "WG/WGR": {
                 "type": "string",
-                "enum": allowed["WG/WGR"],
+                "enum": ALLOWED["WG/WGR"],
             },
             "Dietary Concern": {
                 "type": "string",
-                "enum": allowed["Dietary Concern"],
+                "enum": ALLOWED["Dietary Concern"],
             },
             "Additives": {
                 "type": "string",
-                "enum": allowed["Additives"],
+                "enum": ALLOWED["Additives"],
             },
             "Dietary Accommodation": {
                 "type": "string",
-                "enum": allowed["Dietary Accommodation"],
+                "enum": ALLOWED["Dietary Accommodation"],
             },
             "Frozen": {
                 "type": "string",
-                "enum": allowed["Frozen"],
+                "enum": ALLOWED["Frozen"],
             },
             "Packaging": {
                 "type": "string",
-                "enum": allowed["Packaging"],
+                "enum": ALLOWED["Packaging"],
             },
             "Commodity": {
                 "type": "string",
-                "enum": allowed["Commodity"],
+                "enum": ALLOWED["Commodity"],
             },
         },
         "required": [
@@ -405,7 +362,7 @@ json_schema = {
     },
 }
 
-fields = [
+FIELDS = [
     "Product Type",
     "Food Product Group",
     "P(Food Product Group)",
@@ -448,9 +405,9 @@ fields = [
     "Commodity",
     "P(Commodity)",
 ]
-field_to_index = {x: i for i, x in enumerate(fields)}
+FIELD_TO_INDEX = {x: i for i, x in enumerate(FIELDS)}
 
-product_name_fields = [
+PRODUCT_NAME_FIELDS = [
     "Basic Type",
     "Sub-Type 1",
     "Sub-Type 2",
@@ -470,11 +427,9 @@ product_name_fields = [
     "Commodity",
 ]
 
-done_sentinel = object()
 
 def predict_product_name(product_type):
-    output_row = [""] * len(fields)
-    output_row[field_to_index["Product Type"]] = product_type
+    output = {"Product Type": product_type}
 
     response = requests.post(
         "https://api.openai.com/v1/chat/completions",
@@ -486,12 +441,12 @@ def predict_product_name(product_type):
         json={
             "model": "ft:gpt-4.1-mini-2025-04-14:u-chicago:name-normalization-try3:CgFswafI",
             "messages": [
-                {"role": "system", "content": system_message},
+                {"role": "system", "content": SYSTEM_MESSAGE},
                 {"role": "user", "content": product_type},
             ],
             "response_format": {
                 "type": "json_schema",
-                "json_schema": json_schema,
+                "json_schema": JSON_SCHEMA,
             },
         },
     )
@@ -500,106 +455,152 @@ def predict_product_name(product_type):
 
     basic_type = None
     for column, probabilities in p_correct.items():
-        out = output_row[field_to_index[column]] = result.get(column, "")
+        out = output[column] = result.get(column, "")
         if column == "Basic Type":
             basic_type = out
 
         if probabilities["numsamples"].get(out, 0) >= MINIMUM_NUM_SAMPLES:
-            probability = f"{probabilities['byvalue'].get(out, 0):.0f}"
+            probability = probabilities["byvalue"].get(out, 0)
         else:
-            probability = "???"
-        output_row[field_to_index[f"P({column})"]] = probability
+            probability = None
+        output[f"P({column})"] = probability
 
     subtypes = result.get("Sub-Type", [])
-    if len(subtypes) > 0:
-        output_row[field_to_index["Sub-Type 1"]] = subtypes[0]
-    if len(subtypes) > 1:
-        output_row[field_to_index["Sub-Type 2"]] = subtypes[1]
-    if len(subtypes) > 2:
-        output_row[field_to_index["Sub-Type 3"]] = subtypes[2]
+    output["Sub-Type 1"] = subtypes[0] if len(subtypes) > 0 else ""
+    output["Sub-Type 2"] = subtypes[1] if len(subtypes) > 1 else ""
+    output["Sub-Type 3"] = subtypes[2] if len(subtypes) > 2 else ""
 
     key_suffix = "empty" if len(subtypes) == 0 else "nonempty"
     if (
         p_subtype_correct[f"numsamples_{key_suffix}"].get(basic_type, 0)
         >= MINIMUM_NUM_SAMPLES
     ):
-        probability = (
-            f"{p_subtype_correct[f'byvalue_{key_suffix}'].get(basic_type, 0):.0f}"
-        )
+        probability = p_subtype_correct[f"byvalue_{key_suffix}"].get(basic_type, 0)
     else:
-        probability = "???"
-    output_row[field_to_index["P(Sub-Types)"]] = probability
+        probability = None
+    output["P(Sub-Types)"] = probability
 
-    product_name_pieces = [
-        output_row[field_to_index[column]] for column in product_name_fields
-    ]
-    output_row[field_to_index["Product Name"]] = ", ".join(
-        [x for x in product_name_pieces if x != ""]
-    )
+    product_name_pieces = [output[column] for column in PRODUCT_NAME_FIELDS]
+    output["Product Name"] = ", ".join([x for x in product_name_pieces if x != ""])
 
     probability_factors = [
-        output_row[field_to_index[f"P({column})"]]
-        for column in product_name_fields
+        output[f"P({column})"]
+        for column in PRODUCT_NAME_FIELDS
         if not column.startswith("Sub-Type")
-    ] + [output_row[field_to_index["P(Sub-Types)"]]]
+    ] + [output["P(Sub-Types)"]]
 
-    if all(x != "???" for x in probability_factors):
-        probability = f"{100 * reduce(mul, [float(x) / 100 for x in probability_factors]):.0f}"
+    if all(x is not None for x in probability_factors):
+        probability = 100 * reduce(mul, [float(x) / 100 for x in probability_factors])
     else:
-        probability = "???"
-    output_row[field_to_index["P(Product Name)"]] = probability
+        probability = None
+    output["P(Product Name)"] = probability
 
-    return output_row
+    return output
 
 
-queries = queue.Queue()
-for product_type in product_type_column:
-    queries.put(product_type)
+def format_as_output_row(output, output_row):
+    for key, value in output.items():
+        if not key.startswith("P("):
+            output_row[FIELD_TO_INDEX[key]] = value
+        else:
+            output_row[FIELD_TO_INDEX[key]] = "" if value is None else f"{value:.0f}"
 
-for _ in range(args.num_parallel):
-    queries.put(done_sentinel)
 
-output_lock = threading.Lock()
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Normalize 'Product Name' in an Excel sheet for Center for Good Food Purchasing food products."
+    )
+    parser.add_argument(
+        "input_excel",
+        type=str,
+        help="Path to the input Excel spreadsheet file (.xlsx, .xls)",
+    )
+    parser.add_argument("output_csv", type=str, help="Path to the output CSV file")
+    parser.add_argument(
+        "--sheet",
+        type=str,
+        help="Name of the sheet in the Excel file to process (alternative to --sheet-index)",
+    )
+    parser.add_argument(
+        "--sheet-index",
+        type=int,
+        default=0,
+        help="Index of the sheet in the Excel file to process (0-based, alternative to --sheet)",
+    )
+    parser.add_argument(
+        "--num-parallel",
+        type=int,
+        default=1,
+        help="Number of queries to run in parallel",
+    )
+    args = parser.parse_args()
 
-with open(args.output_csv, "w") as output_file:
-    output_writer = csv.writer(output_file)
-    output_writer.writerow(fields)
-    output_file.flush()
+    if args.sheet is not None and args.sheet_index is not None:
+        parser.error("Specify either --sheet or --sheet-index, not both.")
+    sheet_kw = args.sheet if args.sheet is not None else args.sheet_index
 
-    pbar = tqdm(total=len(product_type_column))
+    product_type_sheet = pd.read_excel(args.input_excel, sheet_name=sheet_kw)
+    if "Product Type" not in product_type_sheet.columns:
+        parser.error("'Product Type' column not found in input spreadsheet.")
+    product_type_column = product_type_sheet["Product Type"]
 
-    def print_error(err):
-        print(
-            f"{json.dumps(product_type)} failed with {type(err).__name__}: {str(err)}"
-        )
+    with open(DIRECTORY / "p_correct.json") as file:
+        p_correct = json.load(file)
 
-    def write_output(output_row):
-        with output_lock:
-            if not output_file.closed:
-                output_writer.writerow(output_row)
-                output_file.flush()
-            pbar.update(1)
+    with open(DIRECTORY / "p_subtype_correct.json") as file:
+        p_subtype_correct = json.load(file)
 
-    def worker():
-        while True:
-            product_type = queries.get()
-            if product_type is done_sentinel:
-                break
+    done_sentinel = object()
 
-            output_row = [""] * len(fields)
-            output_row[field_to_index["Product Type"]] = product_type
+    queries = queue.Queue()
+    for product_type in product_type_column:
+        queries.put(product_type)
 
-            try:
-                output_row = predict_product_name(product_type)
-            except Exception as err:
-                print_error(err)
+    for _ in range(args.num_parallel):
+        queries.put(done_sentinel)
 
-            write_output(output_row)
+    output_lock = threading.Lock()
 
-    threads = [threading.Thread(target=worker) for _ in range(args.num_parallel)]
-    for thread in threads:
-        thread.start()
-    for thread in threads:
-        thread.join()
+    with open(args.output_csv, "w") as output_file:
+        output_writer = csv.writer(output_file)
+        output_writer.writerow(FIELDS)
+        output_file.flush()
 
-    pbar.close()
+        pbar = tqdm(total=len(product_type_column))
+
+        def print_error(err):
+            print(
+                f"{json.dumps(product_type)} failed with {type(err).__name__}: {str(err)}"
+            )
+
+        def write_output(output_row):
+            with output_lock:
+                if not output_file.closed:
+                    output_writer.writerow(output_row)
+                    output_file.flush()
+                pbar.update(1)
+
+        def worker():
+            while True:
+                product_type = queries.get()
+                if product_type is done_sentinel:
+                    break
+
+                output_row = [""] * len(FIELDS)
+                output_row[FIELD_TO_INDEX["Product Type"]] = product_type
+
+                try:
+                    output = predict_product_name(product_type)
+                    format_as_output_row(output, output_row)
+                except Exception as err:
+                    print_error(err)
+
+                write_output(output_row)
+
+        threads = [threading.Thread(target=worker) for _ in range(args.num_parallel)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+        pbar.close()
