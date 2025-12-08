@@ -22,10 +22,6 @@ MINIMUM_NUM_SAMPLES = 10
 CHATGPT_TIMEOUT = 20  # seconds
 CHATGPT_TEMPERATURE = 1.0
 
-if "OPENAI_API_KEY" not in os.environ:
-    raise Exception("environment variable `OPENAI_API_KEY` not found")
-OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
-
 DIRECTORY = pathlib.Path(
     "~/Box/dsi-core/11th-hour/good-food-purchasing/nov2025-dataset"
 ).expanduser()
@@ -443,11 +439,14 @@ PRODUCT_NAME_FIELDS = [
 # functions
 
 
-def predict_product_name(product_type: str) -> Dict[str, Optional[Union[float, str]]]:
+def predict_product_name(
+    product_type: str, openai_api_key: str
+) -> Dict[str, Optional[Union[float, str]]]:
     """Predict normalized attributes for a single product type.
 
     Args:
         product_type: Free-form product type description from the spreadsheet.
+        openai_api_key: API key for the account to charge ChatGPT fees.
 
     Returns:
         Mapping keyed by `FIELDS` with attribute strings (or empty strings when the
@@ -460,7 +459,7 @@ def predict_product_name(product_type: str) -> Dict[str, Optional[Union[float, s
         "https://api.openai.com/v1/chat/completions",
         timeout=CHATGPT_TIMEOUT,
         headers={
-            "Authorization": f"Bearer {OPENAI_API_KEY}",
+            "Authorization": f"Bearer {openai_api_key}",
             "Content-Type": "application/json",
         },
         json={
@@ -565,7 +564,6 @@ def main() -> None:
     parser.add_argument(
         "--sheet-index",
         type=int,
-        default=0,
         help="Index of the sheet in the Excel file to process (0-based, alternative to --sheet)",
     )
     parser.add_argument(
@@ -578,7 +576,14 @@ def main() -> None:
 
     if args.sheet is not None and args.sheet_index is not None:
         parser.error("Specify either --sheet or --sheet-index, not both.")
-    sheet_kw = args.sheet if args.sheet is not None else args.sheet_index
+    if args.sheet is not None:
+        sheet_kw = args.sheet
+    elif args.sheet_index is not None:
+        sheet_kw = args.sheet_index
+    else:
+        sheet_kw = 0
+
+    openai_api_key = input("OpenAI API key: ")
 
     product_type_sheet = pd.read_excel(args.input_excel, sheet_name=sheet_kw)
     if "Product Type" not in product_type_sheet.columns:
@@ -591,7 +596,7 @@ def main() -> None:
 
     queries: queue.Queue = queue.Queue()
     for product_type in product_type_column:
-        queries.put(product_type)
+        queries.put(str(product_type))
 
     for _ in range(args.num_parallel):
         queries.put(done_sentinel)
@@ -629,7 +634,7 @@ def main() -> None:
                 output_row[FIELD_TO_INDEX["Product Type"]] = product_type
 
                 try:
-                    output = predict_product_name(product_type)
+                    output = predict_product_name(product_type, openai_api_key)
                     format_as_output_row(output, output_row)
                 except Exception as err:
                     print_error(err)
