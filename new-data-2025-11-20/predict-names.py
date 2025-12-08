@@ -11,7 +11,6 @@ from functools import reduce
 from operator import mul
 from typing import Dict, List, Optional, Union
 
-import numpy as np
 import pandas as pd
 import requests
 from tqdm import tqdm
@@ -22,14 +21,10 @@ MINIMUM_NUM_SAMPLES = 10
 CHATGPT_TIMEOUT = 20  # seconds
 CHATGPT_TEMPERATURE = 1.0
 
-DIRECTORY = pathlib.Path(
-    "~/Box/dsi-core/11th-hour/good-food-purchasing/nov2025-dataset"
-).expanduser()
-
-with open(DIRECTORY / "p_correct.json") as file:
+with open("p_correct.json") as file:
     P_CORRECT = json.load(file)
 
-with open(DIRECTORY / "p_subtype_correct.json") as file:
+with open("p_subtype_correct.json") as file:
     P_SUBTYPE_CORRECT = json.load(file)
 
 ALLOWED = {
