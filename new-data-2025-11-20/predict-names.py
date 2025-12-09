@@ -21,10 +21,10 @@ MINIMUM_NUM_SAMPLES = 10
 CHATGPT_TIMEOUT = 20  # seconds
 CHATGPT_TEMPERATURE = 1.0
 
-with open("p_correct.json") as file:
+with open("/app/p_correct.json") as file:
     P_CORRECT = json.load(file)
 
-with open("p_subtype_correct.json") as file:
+with open("/app/p_subtype_correct.json") as file:
     P_SUBTYPE_CORRECT = json.load(file)
 
 ALLOWED = {
