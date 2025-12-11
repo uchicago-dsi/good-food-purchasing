@@ -366,6 +366,7 @@ JSON_SCHEMA = {
 }
 
 FIELDS = [
+    "Index",
     "Product Type",
     "Food Product Group",
     "P(Food Product Group)",
@@ -578,7 +579,7 @@ def main() -> None:
     else:
         sheet_kw = 0
 
-    openai_api_key = input("OpenAI API key: ")
+    openai_api_key = input("OpenAI API key: ").strip()
 
     product_type_sheet = pd.read_excel(args.input_excel, sheet_name=sheet_kw)
     if "Product Type" not in product_type_sheet.columns:
@@ -590,8 +591,8 @@ def main() -> None:
     done_sentinel = object()
 
     queries: queue.Queue = queue.Queue()
-    for product_type in product_type_column:
-        queries.put(str(product_type))
+    for index, product_type in enumerate(product_type_column):
+        queries.put((index, str(product_type)))
 
     for _ in range(args.num_parallel):
         queries.put(done_sentinel)
@@ -621,11 +622,14 @@ def main() -> None:
 
         def worker() -> None:
             while True:
-                product_type = queries.get()
-                if product_type is done_sentinel:
-                    break
+                query = queries.get()
+                if query is done_sentinel:
+                    break  # we're done
+
+                index, product_type = query
 
                 output_row: List[str] = [""] * len(FIELDS)
+                output_row[FIELD_TO_INDEX["Index"]] = index
                 output_row[FIELD_TO_INDEX["Product Type"]] = product_type
 
                 try:
