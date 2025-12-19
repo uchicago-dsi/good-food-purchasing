@@ -13,12 +13,13 @@
           "subcategory": {
             "type": "string",
             "enum": ["Beef", "Pork", "Cheese", "Chicken", "Turkey, Other Poultry", "Eggs", "Fish (Wild)", "Fish (Farm-Raised)", "Seafood", "Milk & Dairy", "Farm-Raised", "Wild"]
-          },
-          "required": ["category"],
-          "additionalProperties": False
-        }
+          }
+        },
+        "required": ["category"],
+        "additionalProperties": false
       }
-    },
-    "required": ["food_products"],
-    "additionalProperties": false
+    }
+  },
+  "required": ["food_products"],
+  "additionalProperties": false
 }
