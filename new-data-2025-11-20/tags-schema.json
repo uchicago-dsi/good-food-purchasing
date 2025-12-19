@@ -1,0 +1,86 @@
+{
+  "type": "object",
+  "properties": {
+    "food_products": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "basic_type": {"type": "string"},
+          "sub_types": {
+            "type": "array",
+            "items": {"type": "string"},
+          },
+          "flavored": {"type": "boolean"},
+          "shape": {
+            "type": "string",
+            "enum": ["cut", "patty", "ground", "concentrate", "bacon", "hot dog", "meatball", "thickened", "crumble", "nugget", "jerky", "salami", "pepperoni", "pastrami", "bologna", "prosciutto", "shredded", "genoa", "liquid", "mortadella", "capocollo", "pancetta", "bresaola", "sopressata", "breast", "cotto", "guanciale", "nostrano"],
+          },
+          "meat_cut": {
+            "type": "string",
+            "enum": ["breast", "ham", "wing", "thigh", "steak", "loin", "rib", "mix", "tenderloin", "leg", "brisket", "chuck", "butt", "sirloin", "shoulder", "short rib", "bottom round", "belly", "shank", "oxtail", "skirt", "tri tip", "striploin", "knuckle", "rack", "shortloin", "cheek", "neck", "round", "tripe", "tongue", "teres major", "pectoral meat", "outside skirt", "marrow bone", "loin rib", "t-bone", "cut"],
+          }
+          "meat_skin": {
+            "type": "string",
+            "enum": ["skin on", "tail on", "shell on"],
+          },
+          "meat_bone": {"type": "boolean"},
+          "seed_pitted": {"type": "boolean"},
+          "processing": {
+            "type": "string",
+            "enum": ["breaded", "in juice", "seasoned", "dried", "in syrup", "puree", "powder", "in water", "battered", "hard boiled", "dehydrated", "whipped", "grated", "corned", "in sauce", "stuffed", "in brine", "in oil", "evaporated", "in puree", "in vinegar", "in liquid", "in gel", "marinated", "powdered", "in vegetable broth"],
+          },
+          "cooked": {
+            "type": "string",
+            "enum": ["cooked", "smoked"],
+          },
+          "whole_grain": {"type": "boolean"},
+          "fat_content": {
+            "type": "string",
+            "enum": ["nonfat", "low fat", "1%", "2%", "fat free"],
+          },
+          "sodium_level": {
+            "type": "string",
+            "enum": ["low sodium", "reduced sodium", "salted", "unsalted"],
+          },
+          "caffeine": {
+            "type": "string",
+            "enum": ["decaffeinated", "caffeinated"],
+          },
+          "diet": {
+            "type": "string",
+            "enum": ["diet", "reduced calorie"],
+          },
+          "reduced_sugar": {"type": "boolean"},
+          "sweetened": {
+            "type": "string",
+            "enum": ["sweetened", "unsweetened"],
+          },
+          "additives": {
+            "type": "string",
+            "enum": ["additives", "no additives"],
+          },
+          "accommodation": {
+            "type": "string",
+            "enum": ["gluten free", "kosher", "vegan", "vegetarian", "lactose free", "halal", "non-dairy"],
+          },
+          "frozen": {
+            "type": "string",
+            "enum": ["frozen", "iced"],
+          },
+          "packaging": {
+            "type": "string",
+            "enum": ["ss", "canned", "jarred"],
+          },
+          "commodity": {"type": "boolean"}
+        },
+        "required": [
+          "basic_type",
+        ],
+        "additionalProperties": False
+      }
+    }
+  },
+  "required": ["food_products"],
+  "additionalProperties": false
+}

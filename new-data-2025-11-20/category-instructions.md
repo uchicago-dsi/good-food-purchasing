@@ -1,4 +1,6 @@
-Here are the instructions that the classification task is supposed to follow. There are no valid `category` or `subcategory` values other than the ones presented here.
+Here are the instructions that the classification task is supposed to follow. There are no allowed values for `category` or `subcategory` other than the ones presented here.
+
+General guideline: items are determined by ingredient, not level of processing. In general, multi-ingredient items are included as meals and snacks.
 
 `category` = `Fruit`, no `subcategory` for
   * Fresh, canned and frozen fruits
@@ -122,15 +124,45 @@ This category is intended
 Examples:
   * Bison, lamb, veal, venison (i.e. red game like elk or deer), rabbit
 
-`category` = `Fish (Farm-Raised)`, no `subcategory` for
-  * Fresh or processed fish (use the table below to determine if farm-raised or wild)
-Examples:
-  * Fresh / breaded / marinated fillets, fish sticks
+`category` = `Fish` for fresh or processed finfish and
+  * `subcategory` = `Farm-Raised` if farm-raised (see "Fish Sources" table below)
+  * `subcategory` = `Wild` if not farm-raised
 
-`category` = `Fish (Wild)`, no `subcategory` for
-  * Fresh or processed fish (use the "Fish Sources" table below to determine if farm-raised or wild)
-Examples:
-  * Fresh or processed fish (use the "Fish Sources" table below to determine if farm-raised or wild)
+Fish Sources table:
+  * anchovy: wild
+  * barramundi: may be farm-raised or wild
+  * bass: may be farm-raised or wild
+  * catfish: may be farm-raised or wild
+  * char: may be farm-raised or wild
+  * cod (pacific): wild
+  * cod (atlantic): may be farm-raised or wild
+  * flounder: may be farm-raised or wild
+  * haddock: wild
+  * mackerel: may be farm-raised or wild
+  * mahi mahi: wild
+  * marlin: wild
+  * pangasius: may be farm-raised or wild
+  * pollock: wild
+  * salmon (coho): may be farm-raised or wild
+  * salmon (atlantic): may be farm-raised or wild
+  * sardine: wild
+  * snapper: may be farm-raised or wild
+  * snapper (tai): may be farm-raised or wild
+  * sole: may be farm-raised or wild
+  * swai: may be farm-raised or wild
+  * swordfish: wild
+  * tilapia: may be farm-raised or wild
+  * trout (rainbow): may be farm-raised or wild
+  * tuna (albacore): wild
+  * tuna (atlantic bluefin): may be farm-raised or wild
+  * tuna (bigeye or ahi): wild
+  * tuna (longtail): wild
+  * tuna (pacific bluefin): may be farm-raised or wild
+  * tuna (skipjack): wild
+  * tuna (southern bluefin): may be farm-raised or wild
+  * tuna (yellowfin or ahi): may be farm-raised or wild
+  * walleye pollock: wild
+  * whiting: wild
 
 `category` = `Seafood`, no `subcategory` for
   * To account for any other items without a category
@@ -304,6 +336,23 @@ Examples:
 Examples:
   * Cleaners, serving ware,  kitchen supplies and equipment
 
+Further, note that
+  * juice slushies and juice cups are `Condiments & Snacks`
+  * lime and lemon juice are `Condiments & Snacks`
+  * canned coconut milk is `Condiments & Snacks`
+  * French toast, pancakes, and waffles are `Meals`
+  * baked and refried beans are `Meals`
+  * powdered cheese sauce is `Condiments & Snacks`
+  * vegan cheese alternatives are `Condiments & Snacks`
+  * limeade and lemonade are `Beverages`
+  * snack kits (hummus, cheese, etc., crackers, fruit) are `Meals`
+  * only dried herbs should be `Condiments & Snacks`
+  * coleslaw without dressing is `Produce`, coleslaw with dressing is `Meals`
+  * fresh potatoes are `Produce`
+  * vegan or vegetarian meat substitutes are `Meals`
+  * condensed or powdered milk are `Milk & Dairy`
+  * pickles are `Condiments & Snacks`
+
 Thus, the only allowed values for `category` are:
   * `Fruit`
   * `Vegetables`
@@ -331,39 +380,3 @@ Thus, the only allowed values for `category` are:
   * `Meals`
   * `Condiments & Snacks`
   * `Non-Food`
-
-Here is the "Fish Sources" table:
-  * anchovy: wild
-  * barramundi: may be farm-raised or wild
-  * bass: may be farm-raised or wild
-  * catfish: may be farm-raised or wild
-  * char: may be farm-raised or wild
-  * cod (pacific): wild
-  * cod (atlantic): may be farm-raised or wild
-  * flounder: may be farm-raised or wild
-  * haddock: wild
-  * mackerel: may be farm-raised or wild
-  * mahi mahi: wild
-  * marlin: wild
-  * pangasius: may be farm-raised or wild
-  * pollock: wild
-  * salmon (coho): may be farm-raised or wild
-  * salmon (atlantic): may be farm-raised or wild
-  * sardine: wild
-  * snapper: may be farm-raised or wild
-  * snapper (tai): may be farm-raised or wild
-  * sole: may be farm-raised or wild
-  * swai: may be farm-raised or wild
-  * swordfish: wild
-  * tilapia: may be farm-raised or wild
-  * trout (rainbow): may be farm-raised or wild
-  * tuna (albacore): wild
-  * tuna (atlantic bluefin): may be farm-raised or wild
-  * tuna (bigeye or ahi): wild
-  * tuna (longtail): wild
-  * tuna (pacific bluefin): may be farm-raised or wild
-  * tuna (skipjack): wild
-  * tuna (southern bluefin): may be farm-raised or wild
-  * tuna (yellowfin or ahi): may be farm-raised or wild
-  * walleye pollock: wild
-  * whiting: wild
