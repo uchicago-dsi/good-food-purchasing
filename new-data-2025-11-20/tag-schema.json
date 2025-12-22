@@ -6,6 +6,7 @@
       "items": {
         "type": "object",
         "properties": {
+          "input": {"type": "string"},
           "basic_type": {"type": "string"},
           "sub_types": {
             "type": "array",
@@ -74,7 +75,7 @@
           },
           "commodity": {"type": "boolean"}
         },
-        "required": ["basic_type"],
+        "required": ["input", "basic_type"],
         "additionalProperties": false
       }
     }

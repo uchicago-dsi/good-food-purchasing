@@ -6,6 +6,7 @@
       "items": {
         "type": "object",
         "properties": {
+          "input": {"type": "string"},
           "category": {
             "type": "string",
             "enum": ["Condiments & Snacks", "Vegetables", "Meals", "Fruit", "Grain Products", "Beverages", "Non-Food", "Roots & Tubers", "Chicken", "Beef", "Cheese", "Pork", "Turkey, Other Poultry", "Milk & Dairy", "Yogurt", "Seafood", "Legumes", "Milk", "Eggs", "Tree Nuts & Seeds", "Rice", "Meat", "Butter", "Fish", "Produce"]
@@ -15,7 +16,7 @@
             "enum": ["Beef", "Pork", "Cheese", "Chicken", "Turkey, Other Poultry", "Eggs", "Fish (Wild)", "Fish (Farm-Raised)", "Seafood", "Milk & Dairy", "Farm-Raised", "Wild"]
           }
         },
-        "required": ["category"],
+        "required": ["input", "category"],
         "additionalProperties": false
       }
     }

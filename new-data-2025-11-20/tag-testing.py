@@ -26,7 +26,7 @@ with open("tag-schema.json") as file:
     tag_schema = json.load(file)
 
 tag_testing = []
-with open(DIRECTORY / "fine-tuning-2" / "tag-testing-try1.jsonl") as file:
+with open(DIRECTORY / "fine-tuning-2" / "tag-testing-try2.jsonl") as file:
     for line in file:
         tag_testing.append(json.loads(line))
 

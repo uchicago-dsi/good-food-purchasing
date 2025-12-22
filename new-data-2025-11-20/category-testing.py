@@ -26,7 +26,7 @@ with open("category-schema.json") as file:
     category_schema = json.load(file)
 
 category_testing = []
-with open(DIRECTORY / "fine-tuning-2" / "category-testing-try1.jsonl") as file:
+with open(DIRECTORY / "fine-tuning-2" / "category-testing-try2.jsonl") as file:
     for line in file:
         category_testing.append(json.loads(line))
 
