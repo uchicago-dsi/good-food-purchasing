@@ -3,536 +3,313 @@
 import argparse
 import csv
 import json
-import os
-import pathlib
-import queue
-import threading
-from functools import reduce
-from operator import mul
-from typing import Dict, List, Optional, Union
+import re
+import time
 
+import numpy as np
 import pandas as pd
 import requests
-from tqdm import tqdm
 
 # constants
 
-MINIMUM_NUM_SAMPLES = 10
-CHATGPT_TIMEOUT = 20  # seconds
 CHATGPT_TEMPERATURE = 1.0
-
-with open("/app/p_correct.json") as file:
-    P_CORRECT = json.load(file)
-
-with open("/app/p_subtype_correct.json") as file:
-    P_SUBTYPE_CORRECT = json.load(file)
-
-ALLOWED = {
-    "Food Product Group": [
-        "Produce",
-        "Condiments & Snacks",
-        "Meat",
-        "Bread, Grains & Legumes",
-        "Meals",
-        "Milk & Dairy",
-        "Beverages",
-        "Non-Food",
-        "Seafood",
-    ],
-    "Food Product Category": [
-        "Condiments & Snacks",
-        "Vegetables",
-        "Meals",
-        "Fruit",
-        "Grain Products",
-        "Beverages",
-        "Non-Food",
-        "Roots & Tubers",
-        "Chicken",
-        "Beef",
-        "Cheese",
-        "Pork",
-        "Turkey, Other Poultry",
-        "Milk & Dairy",
-        "Yogurt",
-        "Seafood",
-        "Legumes",
-        "Milk",
-        "Eggs",
-        "Tree Nuts & Seeds",
-        "Rice",
-        "Meat",
-        "Butter",
-        "Fish (Wild)",
-        "Fish (Farm-Raised)",
-        "Produce",
-    ],
-    "Primary Food Product Category": [
-        "Condiments & Snacks",
-        "Vegetables",
-        "Fruit",
-        "Grain Products",
-        "Beverages",
-        "Non-Food",
-        "Cheese",
-        "Roots & Tubers",
-        "Meals",
-        "Beef",
-        "Chicken",
-        "Pork",
-        "Turkey, Other Poultry",
-        "Milk & Dairy",
-        "Seafood",
-        "Yogurt",
-        "Legumes",
-        "Milk",
-        "Eggs",
-        "Tree Nuts & Seeds",
-        "Rice",
-        "Butter",
-        "Fish (Wild)",
-        "Fish (Farm-Raised)",
-        "Produce",
-        "Meat",
-        "Egg",
-        "Meats",
-    ],
-    "Flavor/Cut": [
-        "flavored",
-        "breast",
-        "ham",
-        "wing",
-        "thigh",
-        "steak",
-        "loin",
-        "rib",
-        "mix",
-        "tenderloin",
-        "leg",
-        "brisket",
-        "chuck",
-        "butt",
-        "sirloin",
-        "shoulder",
-        "short rib",
-        "bottom round",
-        "belly",
-        "shank",
-        "oxtail",
-        "skirt",
-        "tri tip",
-        "striploin",
-        "knuckle",
-        "rack",
-        "shortloin",
-        "cheek",
-        "neck",
-        "round",
-        "tripe",
-        "tongue",
-        "teres major",
-        "pectoral meat",
-        "outside skirt",
-        "marrow bone",
-        "loin rib",
-        "t-bone",
-        "cut",
-    ],
-    "Shape": [
-        "cut",
-        "patty",
-        "ground",
-        "concentrate",
-        "bacon",
-        "hot dog",
-        "meatball",
-        "thickened",
-        "crumble",
-        "nugget",
-        "jerky",
-        "salami",
-        "pepperoni",
-        "pastrami",
-        "bologna",
-        "prosciutto",
-        "shredded",
-        "genoa",
-        "liquid",
-        "mortadella",
-        "capocollo",
-        "pancetta",
-        "bresaola",
-        "sopressata",
-        "breast",
-        "cotto",
-        "guanciale",
-        "nostrano",
-    ],
-    "Skin": [
-        "skin on",
-        "tail on",
-        "shell on",
-    ],
-    "Seed/Bone": [
-        "bone-in",
-        "pitted",
-    ],
-    "Processing": [
-        "breaded",
-        "in juice",
-        "seasoned",
-        "dried",
-        "in syrup",
-        "puree",
-        "powder",
-        "in water",
-        "battered",
-        "hard boiled",
-        "dehydrated",
-        "whipped",
-        "grated",
-        "corned",
-        "in sauce",
-        "stuffed",
-        "in brine",
-        "in oil",
-        "evaporated",
-        "in puree",
-        "in vinegar",
-        "in liquid",
-        "in gel",
-        "marinated",
-        "powdered",
-        "in vegetable broth",
-    ],
-    "Cooked/Cleaned": [
-        "cooked",
-        "smoked",
-    ],
-    "WG/WGR": [
-        "whole grain rich",
-    ],
-    "Dietary Concern": [
-        "nonfat",
-        "low sodium",
-        "low fat",
-        "1%",
-        "salted",
-        "unsalted",
-        "decaffeinated",
-        "diet",
-        "2%",
-        "reduced sodium",
-        "fat free",
-        "reduced sugar",
-        "no sodium",
-        "reduced calorie",
-        "caffeinated",
-    ],
-    "Additives": [
-        "no additives",
-        "unsweetened",
-        "additives",
-        "sweetened",
-    ],
-    "Dietary Accommodation": [
-        "gluten free",
-        "kosher",
-        "vegan",
-        "vegetarian",
-        "lactose free",
-        "halal",
-        "non-dairy",
-    ],
-    "Frozen": [
-        "frozen",
-        "iced",
-    ],
-    "Packaging": [
-        "ss",
-        "canned",
-        "jarred",
-    ],
-    "Commodity": [
-        "commodity",
-    ],
-}
-
-SYSTEM_MESSAGE = f"""
-Your job is to classify a food product's attributes as a JSON object with the following keys and values:
-
-* "Food Product Group": which must be present and its value must be one of the following: {', '.join(map(json.dumps, ALLOWED['Food Product Group']))}
-* "Food Product Category": which must be present and its value must be one of the following: {', '.join(map(json.dumps, ALLOWED['Food Product Category']))}
-* "Primary Food Product Category": which must be present and its value must be one of the following: {', '.join(map(json.dumps, ALLOWED['Primary Food Product Category']))}
-* "Basic Type": if it is present, it must have a value like "chicken", "beef", "cheese", "juice", "condiment", "pork", "sauce", "potato", "dessert", "pepper", "seasoned", "turkey", "cereal", "chip", "apple", "tomato", "carrot", "dressing", "lettuce", "yogurt", "onion", "bread", "cracker", "herb", "milk", "pasta", "bean", "squash", "bar"
-* "Sub-Type": if it is present, it is a list of values like "cheese", "blend", "chicken", "corn", "sausage", "bell", "beef", "potato", "variety", "vegetable", "cake", "mozzarella", "grape", "mayonnaise", "oat", "pie", "sparkling", "syrup", "soy", "chocolate", "cookie", "barbecue", "mustard", "romaine", "graham", "italian", "zucchini", "pepper", "ranch"
-* "Flavor/Cut": if present, its value must be one of the following: {', '.join(map(json.dumps, ALLOWED['Flavor/Cut']))}
-* "Shape": if present, its value must be one of the following: {', '.join(map(json.dumps, ALLOWED['Shape']))}
-* "Skin": if present, its value must be one of the following: {', '.join(map(json.dumps, ALLOWED['Skin']))}
-* "Seed/Bone": if present, its value must be one of the following: {', '.join(map(json.dumps, ALLOWED['Seed/Bone']))}
-* "Processing": if present, its value must be one of the following: {', '.join(map(json.dumps, ALLOWED['Processing']))}
-* "Cooked/Cleaned": if present, its value must be one of the following: {', '.join(map(json.dumps, ALLOWED['Cooked/Cleaned']))}
-* "WG/WGR": if present, its value must be one of the following: {', '.join(map(json.dumps, ALLOWED['WG/WGR']))}
-* "Dietary Concern": if present, its value must be one of the following: {', '.join(map(json.dumps, ALLOWED['Dietary Concern']))}
-* "Additives": if present, its value must be one of the following: {', '.join(map(json.dumps, ALLOWED['Additives']))}
-* "Dietary Accommodation": if present, its value must be one of the following: {', '.join(map(json.dumps, ALLOWED['Dietary Accommodation']))}
-* "Frozen": if present, its value must be one of the following: {', '.join(map(json.dumps, ALLOWED['Frozen']))}
-* "Packaging": if present, its value must be one of the following: {', '.join(map(json.dumps, ALLOWED['Packaging']))}
-* "Commodity": if present, its value must be one of the following: {', '.join(map(json.dumps, ALLOWED['Commodity']))}
-""".strip()
-
-JSON_SCHEMA = {
-    "name": "name_normalization",
-    "schema": {
-        "type": "object",
-        "properties": {
-            "Food Product Group": {
-                "type": "string",
-                "enum": ALLOWED["Food Product Group"],
-            },
-            "Food Product Category": {
-                "type": "string",
-                "enum": ALLOWED["Food Product Category"],
-            },
-            "Primary Food Product Category": {
-                "type": "string",
-                "enum": ALLOWED["Primary Food Product Category"],
-            },
-            "Basic Type": {"type": "string"},
-            "Sub-Type": {
-                "type": "array",
-                "items": {"type": "string"},
-            },
-            "Flavor/Cut": {
-                "type": "string",
-                "enum": ALLOWED["Flavor/Cut"],
-            },
-            "Shape": {
-                "type": "string",
-                "enum": ALLOWED["Shape"],
-            },
-            "Skin": {
-                "type": "string",
-                "enum": ALLOWED["Skin"],
-            },
-            "Seed/Bone": {
-                "type": "string",
-                "enum": ALLOWED["Seed/Bone"],
-            },
-            "Processing": {
-                "type": "string",
-                "enum": ALLOWED["Processing"],
-            },
-            "Cooked/Cleaned": {
-                "type": "string",
-                "enum": ALLOWED["Cooked/Cleaned"],
-            },
-            "WG/WGR": {
-                "type": "string",
-                "enum": ALLOWED["WG/WGR"],
-            },
-            "Dietary Concern": {
-                "type": "string",
-                "enum": ALLOWED["Dietary Concern"],
-            },
-            "Additives": {
-                "type": "string",
-                "enum": ALLOWED["Additives"],
-            },
-            "Dietary Accommodation": {
-                "type": "string",
-                "enum": ALLOWED["Dietary Accommodation"],
-            },
-            "Frozen": {
-                "type": "string",
-                "enum": ALLOWED["Frozen"],
-            },
-            "Packaging": {
-                "type": "string",
-                "enum": ALLOWED["Packaging"],
-            },
-            "Commodity": {
-                "type": "string",
-                "enum": ALLOWED["Commodity"],
-            },
-        },
-        "required": [
-            "Food Product Group",
-            "Food Product Category",
-            "Primary Food Product Category",
-        ],
-        "additionalProperties": False,
-    },
-}
 
 FIELDS = [
     "Index",
     "Product Type",
     "Food Product Group",
-    "P(Food Product Group)",
     "Food Product Category",
-    "P(Food Product Category)",
     "Primary Food Product Category",
-    "P(Primary Food Product Category)",
     "Product Name",
-    "P(Product Name)",
     "Basic Type",
-    "P(Basic Type)",
     "Sub-Type 1",
     "Sub-Type 2",
     "Sub-Type 3",
-    "P(Sub-Types)",
     "Flavor/Cut",
-    "P(Flavor/Cut)",
     "Shape",
-    "P(Shape)",
     "Skin",
-    "P(Skin)",
     "Seed/Bone",
-    "P(Seed/Bone)",
     "Processing",
-    "P(Processing)",
     "Cooked/Cleaned",
-    "P(Cooked/Cleaned)",
     "WG/WGR",
-    "P(WG/WGR)",
     "Dietary Concern",
-    "P(Dietary Concern)",
     "Additives",
-    "P(Additives)",
     "Dietary Accommodation",
-    "P(Dietary Accommodation)",
     "Frozen",
-    "P(Frozen)",
     "Packaging",
-    "P(Packaging)",
     "Commodity",
-    "P(Commodity)",
 ]
 FIELD_TO_INDEX = {x: i for i, x in enumerate(FIELDS)}
 
-PRODUCT_NAME_FIELDS = [
-    "Basic Type",
-    "Sub-Type 1",
-    "Sub-Type 2",
-    "Sub-Type 3",
-    "Flavor/Cut",
-    "Shape",
-    "Skin",
-    "Seed/Bone",
-    "Processing",
-    "Cooked/Cleaned",
-    "WG/WGR",
-    "Dietary Concern",
-    "Additives",
-    "Dietary Accommodation",
-    "Frozen",
-    "Packaging",
-    "Commodity",
-]
+CATEGORY_TO_GROUP = {
+    "Beverages": "Beverages",
+    "Grain Products": "Bread, Grains & Legumes",
+    "Legumes": "Bread, Grains & Legumes",
+    "Rice": "Bread, Grains & Legumes",
+    "Tree Nuts & Seeds": "Bread, Grains & Legumes",
+    "Condiments & Snacks": "Condiments & Snacks",
+    "Meals": "Meals",
+    "Beef": "Meat",
+    "Chicken": "Meat",
+    "Eggs": "Meat",
+    "Meat": "Meat",
+    "Pork": "Meat",
+    "Turkey, Other Poultry": "Meat",
+    "Butter": "Milk & Dairy",
+    "Cheese": "Milk & Dairy",
+    "Milk": "Milk & Dairy",
+    "Milk & Dairy": "Milk & Dairy",
+    "Yogurt": "Milk & Dairy",
+    "Non-Food": "Non-Food",
+    "Fruit": "Produce",
+    "Produce": "Produce",
+    "Roots & Tubers": "Produce",
+    "Vegetables": "Produce",
+    "Fish (Farm-Raised)": "Seafood",
+    "Fish (Wild)": "Seafood",
+    "Seafood": "Seafood",
+}
 
+with open("category-instructions.md") as file:
+    category_instructions = file.read()
+
+with open("category-schema.json") as file:
+    category_schema = json.load(file)
+
+with open("tag-instructions.md") as file:
+    tag_instructions = file.read()
+
+with open("tag-schema.json") as file:
+    tag_schema = json.load(file)
 
 # functions
 
 
-def predict_product_name(
-    product_type: str, openai_api_key: str
-) -> Dict[str, Optional[Union[float, str]]]:
-    """Predict normalized attributes for a single product type.
-
-    Args:
-        product_type: Free-form product type description from the spreadsheet.
-        openai_api_key: API key for the account to charge ChatGPT fees.
-
-    Returns:
-        Mapping keyed by `FIELDS` with attribute strings (or empty strings when the
-        attribute is missing), unrounded probability floats, or None for missing
-        probabilities.
-    """
-    output: Dict[str, Optional[Union[float, str]]] = {"Product Type": product_type}
-
+def chatgpt_for_categories(food_products, openai_api_key, chatgpt_timeout):
     response = requests.post(
         "https://api.openai.com/v1/chat/completions",
-        timeout=CHATGPT_TIMEOUT,
+        timeout=chatgpt_timeout,
         headers={
             "Authorization": f"Bearer {openai_api_key}",
             "Content-Type": "application/json",
         },
         json={
-            "model": "ft:gpt-4.1-mini-2025-04-14:u-chicago:name-normalization-try3:CgFswafI",
+            "model": "ft:gpt-4.1-mini-2025-04-14:u-chicago:cgfp-category-try2:CphJxpT2",
             "temperature": CHATGPT_TEMPERATURE,
             "messages": [
-                {"role": "system", "content": SYSTEM_MESSAGE},
-                {"role": "user", "content": product_type},
+                {
+                    "role": "system",
+                    "content": f"""
+Your job is to read a set of food product names and categorize them. The input
+is formatted as
+
+```json
+{{"food_products": [...]}}
+```
+
+where each object in `...` contains a food product description in its `"input"`.
+You need to produce a similar JSON object in which each of the output `"food_products"`
+corresponds to one of the inputs, repeating the `"input"` value exactly and adding
+category attributes as described below.
+
+{category_instructions}
+""".strip(),
+                },
+                {
+                    "role": "user",
+                    "content": json.dumps({"food_products": food_products}),
+                },
             ],
             "response_format": {
                 "type": "json_schema",
-                "json_schema": JSON_SCHEMA,
+                "json_schema": {
+                    "name": "cgfp-categorization",
+                    "schema": category_schema,
+                },
             },
         },
     )
 
-    result = json.loads(response.json()["choices"][0]["message"]["content"])
+    if response.status_code != 200:
+        raise Exception(
+            f"ChatGPT raised error status code {response.status_code}:\n\n{response.text}"
+        )
 
-    basic_type = None
-    for column, probabilities in P_CORRECT.items():
-        out = output[column] = result.get(column, "")
-        if column == "Basic Type":
-            basic_type = out
+    data = response.json()
+    if len(data.get("choices", [])) == 0:
+        raise Exception(f'ChatGPT didn\'t return any "choices":\n\n{response.text}')
 
-        if probabilities["numsamples"].get(out, 0) >= MINIMUM_NUM_SAMPLES:
-            probability = probabilities["byvalue"].get(out, 0)
-        else:
-            probability = None
-        output[f"P({column})"] = probability
+    data2 = json.loads(data["choices"][0].get("message", {}).get("content", "null"))
+    if not isinstance(data2.get("food_products"), list):
+        raise Exception(
+            f"ChatGPT returned data with the wrong format:\n\n{json.dumps(data2, indent=2)}"
+        )
 
-    subtypes = result.get("Sub-Type", [])
-    output["Sub-Type 1"] = subtypes[0] if len(subtypes) > 0 else ""
-    output["Sub-Type 2"] = subtypes[1] if len(subtypes) > 1 else ""
-    output["Sub-Type 3"] = subtypes[2] if len(subtypes) > 2 else ""
+    return data2["food_products"]
 
-    key_suffix = "empty" if len(subtypes) == 0 else "nonempty"
-    if (
-        P_SUBTYPE_CORRECT[f"numsamples_{key_suffix}"].get(basic_type, 0)
-        >= MINIMUM_NUM_SAMPLES
-    ):
-        probability = P_SUBTYPE_CORRECT[f"byvalue_{key_suffix}"].get(basic_type, 0)
-    else:
-        probability = None
-    output["P(Sub-Types)"] = probability
 
-    product_name_pieces = [output[column] for column in PRODUCT_NAME_FIELDS]
-    output["Product Name"] = ", ".join([x for x in product_name_pieces if x != ""])
+def chatgpt_for_tags(food_products, openai_api_key, chatgpt_timeout):
+    response = requests.post(
+        "https://api.openai.com/v1/chat/completions",
+        timeout=chatgpt_timeout,
+        headers={
+            "Authorization": f"Bearer {openai_api_key}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "model": "ft:gpt-4.1-mini-2025-04-14:u-chicago:cgfp-tag-try2:CphN8ams",
+            "temperature": CHATGPT_TEMPERATURE,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": f"""
+Your job is to read a set of food product names and assign tags to them. The input
+is formatted as
 
-    probability_factors = [
-        output[f"P({column})"]
-        for column in PRODUCT_NAME_FIELDS
-        if not column.startswith("Sub-Type")
-    ] + [output["P(Sub-Types)"]]
+```json
+{{"food_products": [...]}}
+```
 
-    if all(x is not None for x in probability_factors):
-        probability = 100 * reduce(mul, [float(x) / 100 for x in probability_factors])
-    else:
-        probability = None
-    output["P(Product Name)"] = probability
+where each object in `...` contains a food product description in its `"input"`.
+You need to produce a similar JSON object in which each of the output `"food_products"`
+corresponds to one of the inputs, repeating the `"input"` value exactly and adding
+tag attributes as described below.
+
+{tag_instructions}
+""".strip(),
+                },
+                {
+                    "role": "user",
+                    "content": json.dumps({"food_products": food_products}),
+                },
+            ],
+            "response_format": {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "cgfp-categorization",
+                    "schema": tag_schema,
+                },
+            },
+        },
+    )
+
+    if response.status_code != 200:
+        raise Exception(
+            f"ChatGPT raised error status code {response.status_code}:\n\n{response.text}"
+        )
+
+    data = response.json()
+    if len(data.get("choices", [])) == 0:
+        raise Exception(f'ChatGPT didn\'t return any "choices":\n\n{response.text}')
+
+    data2 = json.loads(data["choices"][0].get("message", {}).get("content", "null"))
+    if not isinstance(data2.get("food_products"), list):
+        raise Exception(
+            f"ChatGPT returned data with the wrong format:\n\n{json.dumps(data2, indent=2)}"
+        )
+
+    return data2["food_products"]
+
+
+def categories_and_tags_to_fields(index, categories, tags):
+    output = [""] * len(FIELDS)
+    output[FIELD_TO_INDEX["Index"]] = index
+    output[FIELD_TO_INDEX["Product Type"]] = categories.get("input", "???")
+
+    category = categories.get("category", "???")
+    subcategory = categories.get("subcategory", "")
+    if subcategory == "":
+        subcategory = category
+    group = CATEGORY_TO_GROUP.get(category, "???")
+    output[FIELD_TO_INDEX["Food Product Group"]] = group
+    output[FIELD_TO_INDEX["Food Product Category"]] = category
+    output[FIELD_TO_INDEX["Primary Food Product Category"]] = subcategory
+
+    sub_types = tags.get("sub_types", [])
+    if not isinstance(sub_types, list):
+        sub_types = [sub_types]
+    output[FIELD_TO_INDEX["Basic Type"]] = tags.get("basic_type", "???")
+    output[FIELD_TO_INDEX["Sub-Type 1"]] = sub_types[0] if len(sub_types) > 0 else ""
+    output[FIELD_TO_INDEX["Sub-Type 2"]] = sub_types[1] if len(sub_types) > 1 else ""
+    output[FIELD_TO_INDEX["Sub-Type 3"]] = sub_types[2] if len(sub_types) > 2 else ""
+
+    output[FIELD_TO_INDEX["Flavor/Cut"]] = (
+        ("flavored" if tags.get("flavored", False) else "")
+        + ("/" if "flavored" in tags and "meat_cut" in tags else "")
+        + tags.get("meat_cut", "")
+    )
+
+    output[FIELD_TO_INDEX["Shape"]] = tags.get("shape", "")
+    output[FIELD_TO_INDEX["Skin"]] = tags.get("meat_skin", "")
+
+    output[FIELD_TO_INDEX["Seed/Bone"]] = (
+        ("pitted" if tags.get("seed_pitted", False) else "")
+        + ("/" if "seed_pitted" in tags and "meat_bone" in tags else "")
+        + ("bone-in" if tags.get("meat_bone", False) else "")
+    )
+
+    output[FIELD_TO_INDEX["Processing"]] = tags.get("processing", "")
+    output[FIELD_TO_INDEX["Cooked/Cleaned"]] = tags.get("cooked", "")
+    output[FIELD_TO_INDEX["WG/WGR"]] = (
+        "whole grain rich" if tags.get("whole_grain", False) else ""
+    )
+
+    output[FIELD_TO_INDEX["Dietary Concern"]] = "/".join(
+        [
+            x
+            for x in [
+                tags.get("fat_content", ""),
+                tags.get("sodium_level", ""),
+                tags.get("caffeine", ""),
+                tags.get("diet", ""),
+                "reduced sugar" if tags.get("reduced_sugar", False) else "",
+            ]
+            if x != ""
+        ]
+    )
+
+    output[FIELD_TO_INDEX["Additives"]] = (
+        tags.get("sweetened", "")
+        + ("/" if "sweetened" in tags and "additives" in tags else "")
+        + tags.get("additives", "")
+    )
+
+    output[FIELD_TO_INDEX["Dietary Accommodation"]] = tags.get(
+        "dietary_accommodation", ""
+    )
+    output[FIELD_TO_INDEX["Frozen"]] = tags.get("frozen", "")
+    output[FIELD_TO_INDEX["Packaging"]] = tags.get("packaging", "")
+    output[FIELD_TO_INDEX["Commodity"]] = (
+        "commodity" if tags.get("commodity", False) else ""
+    )
+
+    output[FIELD_TO_INDEX["Product Name"]] = ", ".join(
+        [
+            x
+            for x in [
+                output[FIELD_TO_INDEX["Basic Type"]],
+                output[FIELD_TO_INDEX["Sub-Type 1"]],
+                output[FIELD_TO_INDEX["Sub-Type 2"]],
+                output[FIELD_TO_INDEX["Sub-Type 3"]],
+                output[FIELD_TO_INDEX["Flavor/Cut"]],
+                output[FIELD_TO_INDEX["Shape"]],
+                output[FIELD_TO_INDEX["Skin"]],
+                output[FIELD_TO_INDEX["Seed/Bone"]],
+                output[FIELD_TO_INDEX["Processing"]],
+                output[FIELD_TO_INDEX["Cooked/Cleaned"]],
+                output[FIELD_TO_INDEX["WG/WGR"]],
+                output[FIELD_TO_INDEX["Dietary Concern"]],
+                output[FIELD_TO_INDEX["Additives"]],
+                output[FIELD_TO_INDEX["Dietary Accommodation"]],
+                output[FIELD_TO_INDEX["Frozen"]],
+                output[FIELD_TO_INDEX["Packaging"]],
+                output[FIELD_TO_INDEX["Commodity"]],
+            ]
+            if x != ""
+        ]
+    )
 
     return output
-
-
-def format_as_output_row(
-    output: Dict[str, Optional[Union[float, str]]], output_row: List[str]
-) -> None:
-    """Format a result dict into a CSV row in-place.
-
-    Args:
-        output: Mapping produced by `predict_product_name`.
-        output_row: Mutable CSV row to fill; length must equal `FIELDS`.
-    """
-    for key, value in output.items():
-        if not key.startswith("P("):
-            output_row[FIELD_TO_INDEX[key]] = value
-        else:
-            output_row[FIELD_TO_INDEX[key]] = "" if value is None else f"{value:.0f}"
 
 
 # script
@@ -563,10 +340,10 @@ def main() -> None:
         help="Index of the sheet in the Excel file to process (0-based, alternative to --sheet)",
     )
     parser.add_argument(
-        "--num-parallel",
+        "--chatgpt-timeout",
         type=int,
-        default=1,
-        help="Number of queries to run in parallel",
+        default=300,
+        help="Number of seconds to wait for a ChatGPT response before giving up",
     )
     args = parser.parse_args()
 
@@ -586,67 +363,38 @@ def main() -> None:
         parser.error("'Product Type' column not found in input spreadsheet.")
     product_type_column = product_type_sheet["Product Type"]
 
-    # parallel-processing
+    rng = np.random.default_rng()
+    all_index = rng.permutation(np.arange(len(product_type_column)))
+    food_products = [
+        {"input": re.sub(r"\s+", " ", x.upper())}
+        for x in product_type_column.iloc[all_index]
+    ]
 
-    done_sentinel = object()
+    print(f"Sending {len(food_products)} food products to ChatGPT for categorizing")
+    start_timer = time.time()
+    all_categories = chatgpt_for_categories(
+        food_products, openai_api_key, args.chatgpt_timeout
+    )
+    sec = int(round(time.time() - start_timer))
+    print(f"Got {len(all_categories)} categorized food products back in {sec} seconds")
 
-    queries: queue.Queue = queue.Queue()
-    for index, product_type in enumerate(product_type_column):
-        queries.put((index, str(product_type)))
+    print(f"Sending {len(food_products)} food products to ChatGPT for tagging")
+    start_timer = time.time()
+    all_tags = chatgpt_for_tags(food_products, openai_api_key, args.chatgpt_timeout)
+    sec = int(round(time.time() - start_timer))
+    print(f"Got {len(all_tags)} tagged food products back in {sec} seconds")
 
-    for _ in range(args.num_parallel):
-        queries.put(done_sentinel)
-
-    output_lock = threading.Lock()
-
-    # stream continuously to output file while updating progress bar
-
+    print(f"Writing output CSV file: {args.output_csv}")
     with open(args.output_csv, "w") as output_file:
         output_writer = csv.writer(output_file)
         output_writer.writerow(FIELDS)
-        output_file.flush()
 
-        pbar = tqdm(total=len(product_type_column))
-
-        def print_error(err: Exception) -> None:
-            print(
-                f"{json.dumps(product_type)} failed with {type(err).__name__}: {str(err)}"
+        for index, categories, tags in zip(all_index, all_categories, all_tags):
+            output_writer.writerow(
+                categories_and_tags_to_fields(index, categories, tags)
             )
 
-        def write_output(output_row: List[str]) -> None:
-            with output_lock:
-                if not output_file.closed:
-                    output_writer.writerow(output_row)
-                    output_file.flush()
-                pbar.update(1)
-
-        def worker() -> None:
-            while True:
-                query = queries.get()
-                if query is done_sentinel:
-                    break  # we're done
-
-                index, product_type = query
-
-                output_row: List[str] = [""] * len(FIELDS)
-                output_row[FIELD_TO_INDEX["Index"]] = index
-                output_row[FIELD_TO_INDEX["Product Type"]] = product_type
-
-                try:
-                    output = predict_product_name(product_type, openai_api_key)
-                    format_as_output_row(output, output_row)
-                except Exception as err:
-                    print_error(err)
-
-                write_output(output_row)
-
-        threads = [threading.Thread(target=worker) for _ in range(args.num_parallel)]
-        for thread in threads:
-            thread.start()
-        for thread in threads:
-            thread.join()
-
-        pbar.close()
+    print("Done!")
 
 
 if __name__ == "__main__":
