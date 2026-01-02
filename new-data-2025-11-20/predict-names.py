@@ -5,6 +5,7 @@ import csv
 import json
 import re
 import time
+from typing import Any, Dict, List, Sequence
 
 import numpy as np
 import pandas as pd
@@ -85,7 +86,12 @@ with open("tag-schema.json") as file:
 # functions
 
 
-def chatgpt_for_categories(food_products, openai_api_key, chatgpt_timeout):
+def chatgpt_for_categories(
+    food_products: Sequence[Dict[str, Any]],
+    openai_api_key: str,
+    chatgpt_timeout: int,
+) -> List[Dict[str, Any]]:
+    """Fetch product categories for the provided food product inputs."""
     response = requests.post(
         "https://api.openai.com/v1/chat/completions",
         timeout=chatgpt_timeout,
@@ -148,7 +154,12 @@ category attributes as described below.
     return data2["food_products"]
 
 
-def chatgpt_for_tags(food_products, openai_api_key, chatgpt_timeout):
+def chatgpt_for_tags(
+    food_products: Sequence[Dict[str, Any]],
+    openai_api_key: str,
+    chatgpt_timeout: int,
+) -> List[Dict[str, Any]]:
+    """Fetch product tags for the provided food product inputs."""
     response = requests.post(
         "https://api.openai.com/v1/chat/completions",
         timeout=chatgpt_timeout,
@@ -211,7 +222,12 @@ tag attributes as described below.
     return data2["food_products"]
 
 
-def categories_and_tags_to_fields(index, categories, tags):
+def categories_and_tags_to_fields(
+    index: int,
+    categories: Dict[str, Any],
+    tags: Dict[str, Any],
+) -> List[str]:
+    """Convert category and tag payloads into a CSV row aligned to FIELDS."""
     output = [""] * len(FIELDS)
     output[FIELD_TO_INDEX["Index"]] = index
     output[FIELD_TO_INDEX["Product Type"]] = categories.get("input", "???")
