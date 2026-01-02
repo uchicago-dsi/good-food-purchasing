@@ -71,16 +71,16 @@ CATEGORY_TO_GROUP = {
     "Seafood": "Seafood",
 }
 
-with open("category-instructions.md") as file:
+with open("/app/category-instructions.md") as file:
     category_instructions = file.read()
 
-with open("category-schema.json") as file:
+with open("/app/category-schema.json") as file:
     category_schema = json.load(file)
 
-with open("tag-instructions.md") as file:
+with open("/app/tag-instructions.md") as file:
     tag_instructions = file.read()
 
-with open("tag-schema.json") as file:
+with open("/app/tag-schema.json") as file:
     tag_schema = json.load(file)
 
 # functions
@@ -374,6 +374,8 @@ def main() -> None:
 
     openai_api_key = input("OpenAI API key: ").strip()
 
+    print(f"Reading Excel file {args.input_excel}", flush=True)
+
     product_type_sheet = pd.read_excel(args.input_excel, sheet_name=sheet_kw)
     if "Product Type" not in product_type_sheet.columns:
         parser.error("'Product Type' column not found in input spreadsheet.")
@@ -386,21 +388,29 @@ def main() -> None:
         for x in product_type_column.iloc[all_index]
     ]
 
-    print(f"Sending {len(food_products)} food products to ChatGPT for categorizing")
+    print(
+        f"Sending {len(food_products)} food products to ChatGPT for categorizing",
+        flush=True,
+    )
     start_timer = time.time()
     all_categories = chatgpt_for_categories(
         food_products, openai_api_key, args.chatgpt_timeout
     )
     sec = int(round(time.time() - start_timer))
-    print(f"Got {len(all_categories)} categorized food products back in {sec} seconds")
+    print(
+        f"Got {len(all_categories)} categorized food products back in {sec} seconds",
+        flush=True,
+    )
 
-    print(f"Sending {len(food_products)} food products to ChatGPT for tagging")
+    print(
+        f"Sending {len(food_products)} food products to ChatGPT for tagging", flush=True
+    )
     start_timer = time.time()
     all_tags = chatgpt_for_tags(food_products, openai_api_key, args.chatgpt_timeout)
     sec = int(round(time.time() - start_timer))
-    print(f"Got {len(all_tags)} tagged food products back in {sec} seconds")
+    print(f"Got {len(all_tags)} tagged food products back in {sec} seconds", flush=True)
 
-    print(f"Writing output CSV file: {args.output_csv}")
+    print(f"Writing output CSV file: {args.output_csv}", flush=True)
     with open(args.output_csv, "w") as output_file:
         output_writer = csv.writer(output_file)
         output_writer.writerow(FIELDS)
@@ -410,7 +420,7 @@ def main() -> None:
                 categories_and_tags_to_fields(index, categories, tags)
             )
 
-    print("Done!")
+    print("Done!", flush=True)
 
 
 if __name__ == "__main__":
