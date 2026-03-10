@@ -1,0 +1,26 @@
+{
+  "type": "object",
+  "properties": {
+    "food_products": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "input": {"type": "string"},
+          "category": {
+            "type": "string",
+            "enum": ["Condiments & Snacks", "Vegetables", "Meals", "Fruit", "Grain Products", "Beverages", "Non-Food", "Roots & Tubers", "Chicken", "Beef", "Cheese", "Pork", "Turkey, Other Poultry", "Milk & Dairy", "Yogurt", "Seafood", "Legumes", "Milk", "Eggs", "Tree Nuts & Seeds", "Rice", "Meat", "Butter", "Fish", "Produce"]
+          },
+          "subcategory": {
+            "type": "string",
+            "enum": ["Beef", "Pork", "Cheese", "Chicken", "Turkey, Other Poultry", "Eggs", "Fish (Wild)", "Fish (Farm-Raised)", "Seafood", "Milk & Dairy", "Farm-Raised", "Wild"]
+          }
+        },
+        "required": ["input", "category"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["food_products"],
+  "additionalProperties": false
+}
