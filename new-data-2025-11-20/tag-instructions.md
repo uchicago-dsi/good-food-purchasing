@@ -160,11 +160,11 @@ Condiments & Snacks:
   * note commodity
 
 Seasonings:
-  * `basic_type` = `seasoning` are spice or herb blends used to season a specific meat or dish
+  * `basic_type` = `seasoning` are seasoning blends used to season a specific meat or dish
     * `sub_types` may be `cajun`, `chicken`, `fajita`, `poultry`, `taco`, etc.
-  * `basic_type` = `spice` is a seed, fruit, root, bark, salt, or other plant substance primarily used for flavoring or coloring food
+  * `basic_type` = `spice` is a dried seed, fruit, root, bark, salt, or other plant substance primarily used for flavoring or coloring food
     * `sub_types` may be `allspice`, `garam masala`, `pepper`, `chili`, `cinnamon`, etc.
-  * `basic_type` = `herb` is the leaves, flowers, or stems of plants used for flavoring or as a garnish
+  * `basic_type` = `herb` is the fresh leaves, flowers, or stems of plants used for flavoring or as a garnish
     * `sub_types` may be `basil`, `oregano`, `sage`, `thyme`, etc.
 
 Pastries versus deserts:
@@ -197,7 +197,7 @@ Meat substitutes
       * `VEGGIE BURGER CALIFORNIA GTF` has `sub_types` = `["vegetable", "patty"]`
 
 Meat & Eggs:
-  * for `basic_type` = `eggs`,
+  * for `basic_type` = `egg`,
     * note the species in `sub_types` if not chicken
   * note that `bacon`, `ham`, and `gyro` are the `shape` of meat, not a `basic_type`
   * note the meat species
@@ -206,14 +206,29 @@ Meat & Eggs:
   * do not include "Angus" or "CAB" (Certified Agnus Beef)
   * `sausage` is a `basic_type`, not the `shape`
   * note `meat_cut`
+    * "diced", "DCD" = `cut`
+    * "fillet", "filet", "FIL": `cut`
+    * "half", "halve": `cut`
+    * "chopped", "chpd": `cut`
+    * "quartered", "quarter", "qrtr": `cut`
+    * "sliced", SLI", "SCLD": `cut`
+    * "chunk", "chnk": `cut`
+    * "shaved": `cut`
+    * "strip", "STRP": `cut`
   * note `shape`
   * note `meat_bone`
   * note `processing`
     * flavored or marinated `processing` = `marinated`
+    * "seasoned", "seasnd" = `seasoned`
+    * "brd"; "battered", "breaded", "brdd": `breaded`
+    * "tender": `breaded"
+    * "fritter" `processing` = `breaded`
     * bacon is assumed to be cut
     * "pulled" meat is `meat_cut` = `cut`
     * chunks or squares are `meat_cut` = `cut`
+    * "popcorn": `breaded`
   * note if `cooked`
+    * "grilled": `cooked`
   * note dietary concerns
   * note additives
   * note dietary accommodation
@@ -226,14 +241,14 @@ Collapsed terms and common abbreviations for meats:
     * `AB` (All Beef); collapsed term: `beef`
     * `TRKY`; collapsed term: `turkey`
   * shape
-    * `FL`, `FIL`; collapsed term: `filet`
+    * `FL`, `FIL`; collapsed term: `cut`
     * `BRST`; collapsed term: `breast`
     * `PTY`; collapsed term: `patty`
     * `WHL`; collapsed term: `whole`
   * processing
     * `BRD`; collapsed term: `breaded`
   * cooked
-    * `PRCK`, `PCK`, `FC`, `SMKD`; collapsed term: `cooked`
+    * `grilled`, `Roasted`,`PRCK`, `PCK`, `FC`, `SMKD`, 'CKD'; collapsed term: `cooked`
   * `MSC` means "Mechanically Separated Chicken"; no need to include in `basic_type` or `sub_types`
 
 Milk:
@@ -285,6 +300,21 @@ Produce (Fruits, Vegetables, Roots & Tubers):
   * note shape
     * trimmed and shaped produce: `cut`
     * for carrots, "baby": `cut`
+    * "diced" or "dcd": `cut`
+    * "chunk" or "chnk": `cut`
+    * "tidbit": `cut`
+    * "sliced", "SLI", "SLICE", "SLCD", "SL": `cut`
+    * "cut": `cut`
+    * "wedge", "wdg": `cut`
+    * "stick", "sticks": `cut`
+    * "strip", "strp": `cut`
+    * "qtr", "quarter", "quartered": `cut`
+    * "julienne": `cut`
+    * "spear": `cut`
+    * "chopped", "chpd": `cut`
+    * "florette", "floret": `cut`
+    * "peeled": `cut`
+    * 
   * note processing
   * note dietary concern
   * note additives
